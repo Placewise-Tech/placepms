@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 50" fill="none">
+  <!-- P Icon Badge -->
+  <rect x="0" y="4" width="42" height="42" rx="12" fill="url(#pms-grad)" />
+  <path d="M14 16H24C27.3137 16 30 18.6863 30 22C30 25.3137 27.3137 28 24 28H19V34H14V16Z" fill="white" />
+  <path d="M19 20V24H23.5C24.8807 24 26 22.8807 26 21.5C26 20.1193 24.8807 19 23.5 19H19Z" fill="#2D7F62" />
+  
+  <!-- PlacePMS Typography -->
+  <text x="52" y="34" font-family="'Plus Jakarta Sans', system-ui, -apple-system, sans-serif" font-size="27" font-weight="900" letter-spacing="-0.8" fill="#0F172A">
+    Place<tspan fill="#2D7F62">PMS</tspan>
+  </text>
+
+  <defs>
+    <linearGradient id="pms-grad" x1="0" y1="4" x2="42" y2="46" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2D7F62" />
+      <stop offset="1" stop-color="#1B5541" />
+    </linearGradient>
+  </defs>
+</svg>
