@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import Preloader, { AnimatePresence } from './components/Preloader';
+import ThreeCanvas3D from './components/ThreeCanvas3D';
+import Scroll3DController from './components/Scroll3DController';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -26,6 +28,12 @@ export default function App() {
       <AnimatePresence mode="wait">
         {isLoading && <Preloader onComplete={() => setIsLoading(false)} />}
       </AnimatePresence>
+
+      {/* 3D Smooth Momentum Scroll & Hover Physics Controller */}
+      <Scroll3DController />
+
+      {/* Interactive 3D Three.js WebGL Particle & Geometry Universe */}
+      <ThreeCanvas3D scrollY={scrollY} />
 
       {/* Scroll Progress Bar */}
       <div 
