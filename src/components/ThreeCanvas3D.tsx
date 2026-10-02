@@ -151,11 +151,11 @@ export default function ThreeCanvas3D({ scrollY }: ThreeCanvas3DProps) {
 
     // 7. Render Loop with 3D Scroll Dynamics
     let reqId: number;
-    let clock = new THREE.Clock();
+    const startTime = performance.now();
 
     const animate = () => {
       reqId = requestAnimationFrame(animate);
-      const elapsedTime = clock.getElapsedTime();
+      const elapsedTime = (performance.now() - startTime) / 1000;
       const currentScroll = scrollRef.current;
 
       // 3D Rotations driven by continuous time + scroll acceleration
