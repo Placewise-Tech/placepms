@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Preloader, { AnimatePresence } from './components/Preloader';
 import ThreeCanvas3D from './components/ThreeCanvas3D';
 import Scroll3DController from './components/Scroll3DController';
@@ -6,16 +6,22 @@ import Scroll3DController from './components/Scroll3DController';
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [scrollY, setScrollY] = useState(0);
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      const currentY = window.scrollY;
-      setScrollY(currentY);
-      const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-      if (totalScroll > 0) {
-        setScrollProgress(currentY / totalScroll);
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          if (progressBarRef.current) {
+            const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
+            if (totalScroll > 0) {
+              progressBarRef.current.style.transform = `scaleX(${window.scrollY / totalScroll})`;
+            }
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -33,28 +39,20 @@ export default function App() {
       <Scroll3DController />
 
       {/* Interactive 3D Three.js WebGL Particle & Geometry Universe */}
-      <ThreeCanvas3D scrollY={scrollY} />
+      <ThreeCanvas3D />
 
-      {/* Scroll Progress Bar */}
+      {/* Scroll Progress Bar - Direct GPU transform */}
       <div 
-        className="fixed top-0 left-0 right-0 h-[3px] bg-[#2D7F62] z-50 origin-left transition-transform duration-75"
-        style={{ transform: `scaleX(${scrollProgress})` }}
+        ref={progressBarRef}
+        className="fixed top-0 left-0 right-0 h-[3px] bg-[#2D7F62] z-50 origin-left will-change-transform"
+        style={{ transform: 'scaleX(0)' }}
       />
 
-            {/* Ambient 3D Scroll Parallax Background Lighting */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div 
-          className="absolute -top-32 -left-32 w-[550px] h-[550px] rounded-full bg-[#2D7F62]/10 blur-[120px] transition-transform duration-150 ease-out will-change-transform"
-          style={{ transform: `translate3d(0, ${scrollY * 0.12}px, 0)` }}
-        />
-        <div 
-          className="absolute top-1/3 -right-40 w-[600px] h-[600px] rounded-full bg-emerald-500/10 blur-[130px] transition-transform duration-150 ease-out will-change-transform"
-          style={{ transform: `translate3d(0, ${-scrollY * 0.08}px, 0)` }}
-        />
-        <div 
-          className="absolute top-2/3 -left-20 w-[450px] h-[450px] rounded-full bg-teal-500/10 blur-[110px] transition-transform duration-150 ease-out will-change-transform"
-          style={{ transform: `translate3d(0, ${scrollY * 0.06}px, 0)` }}
-        />
+      {/* Ambient 3D Subtle Lighting Accents */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" style={{ transform: 'translateZ(0)' }}>
+        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#2D7F62]/10 blur-[100px]" />
+        <div className="absolute top-1/3 -right-40 w-[550px] h-[550px] rounded-full bg-emerald-500/10 blur-[110px]" />
+        <div className="absolute top-2/3 -left-20 w-[450px] h-[450px] rounded-full bg-teal-500/10 blur-[100px]" />
       </div>
 
       {/* SVG Color Matrix Filter for Mascot images */}
