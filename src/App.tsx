@@ -1,32 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import Preloader, { AnimatePresence } from './components/Preloader';
-import ThreeCanvas3D from './components/ThreeCanvas3D';
-import Scroll3DController from './components/Scroll3DController';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const progressBarRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        requestAnimationFrame(() => {
-          if (progressBarRef.current) {
-            const totalScroll = document.documentElement.scrollHeight - window.innerHeight;
-            if (totalScroll > 0) {
-              progressBarRef.current.style.transform = `scaleX(${window.scrollY / totalScroll})`;
-            }
-          }
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
 
   return (
     <div className="min-h-full flex flex-col flex-1 bg-[#F8FAFC] text-[#0F172A] relative font-sans">
@@ -34,26 +11,6 @@ export default function App() {
       <AnimatePresence mode="wait">
         {isLoading && <Preloader onComplete={() => setIsLoading(false)} />}
       </AnimatePresence>
-
-      {/* 3D Smooth Momentum Scroll & Hover Physics Controller */}
-      <Scroll3DController />
-
-      {/* Interactive 3D Three.js WebGL Particle & Geometry Universe */}
-      <ThreeCanvas3D />
-
-      {/* Scroll Progress Bar - Direct GPU transform */}
-      <div 
-        ref={progressBarRef}
-        className="fixed top-0 left-0 right-0 h-[3px] bg-[#2D7F62] z-50 origin-left will-change-transform"
-        style={{ transform: 'scaleX(0)' }}
-      />
-
-      {/* Ambient 3D Subtle Lighting Accents */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0" style={{ transform: 'translateZ(0)' }}>
-        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-[#2D7F62]/10 blur-[100px]" />
-        <div className="absolute top-1/3 -right-40 w-[550px] h-[550px] rounded-full bg-emerald-500/10 blur-[110px]" />
-        <div className="absolute top-2/3 -left-20 w-[450px] h-[450px] rounded-full bg-teal-500/10 blur-[100px]" />
-      </div>
 
       {/* SVG Color Matrix Filter for Mascot images */}
       <svg width="0" height="0" style={{ position: 'absolute', width: 0, height: 0 }} aria-hidden="true">
