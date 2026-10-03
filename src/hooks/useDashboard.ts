@@ -33,7 +33,7 @@ export function useDashboard(user: User) {
 
   useEffect(() => {
     mounted.current = true;
-    void refresh();
+    const initial = window.setTimeout(() => void refresh(), 0);
     const handleFocus = () => { void refresh(); };
     window.addEventListener('focus', handleFocus);
     const interval = window.setInterval(() => {
@@ -41,6 +41,7 @@ export function useDashboard(user: User) {
     }, 60_000);
     return () => {
       mounted.current = false;
+      window.clearTimeout(initial);
       window.removeEventListener('focus', handleFocus);
       window.clearInterval(interval);
     };

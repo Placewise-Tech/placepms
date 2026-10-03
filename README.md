@@ -76,17 +76,27 @@ See `.env.example`. The original labelled key format in `.env` is also supported
 Private server keys are never included in the browser configuration; `.env` is
 ignored by Git. Database row-level-security policies control record access.
 
-The dashboard reads the existing `profiles`, `pms_squads`, `squad_members`,
-`milestones`, `connected_integrations`, and `user_sessions` tables. Counts come
+The dashboard reads the existing `profiles`, `pms_squads`, `squad_members`, and
+`milestones` tables and the server-side integration metadata. Counts come
 from the signed-in user's accessible projects and milestones. Users can create
 projects, create/submit milestones for review, and update their profile. Approved
 milestones count as completed; project approval keeps a project active. Records refresh
 on focus, every minute while visible, after changes, and through Refresh.
 
-Documents come from milestone submission links; repository, Figma, and Miro hubs
-come from project URLs. Research, academic resources, and blackbook generation
-show a not-connected state because this database has no corresponding service.
-There is no sample data or fallback data in the application.
+## Connected workspace
+
+GitHub has public URL, OAuth, and PAT access options with repository browsing,
+commit/branch/language analysis, file inspection, and diffs. Figma and Miro offer
+OAuth/API-token connections and resource inspection. Login & Sessions uses live
+Supabase sessions with device revocation. Projects now support editing, team and
+mentor management, milestone attachments/reviews, and a monthly calendar.
+Research, resources, and documents have private saved libraries; the Blackbook
+builder produces editable reports from actual project records.
+
+Apply `supabase/migrations/202610030002_workspace_integrations.sql` before deploying
+these features. See [Connected workspace setup](docs/workspace-integrations.md) for
+the provider app credentials, exact callback URLs, permissions, and feature limits.
+There is no invented project data or fallback provider analysis in the application.
 
 ## Structure
 

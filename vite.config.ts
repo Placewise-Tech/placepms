@@ -3,6 +3,9 @@ import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
 import { createSignupHandler } from './server/signup.ts'
+import { createIntegrationsHandler } from './server/integrations.ts'
+import { createSessionsHandler } from './server/sessions.ts'
+import { createWorkspaceHandler } from './server/workspace.ts'
 
 // Only public settings reach the browser. Also accepts the labelled keys in
 // the original .env file; private keys are used only by the server middleware.
@@ -43,7 +46,7 @@ export default defineConfig(({ mode }) => {
     try {
       privileged ||= JSON.parse(Buffer.from(value.split('.')[1] || '', 'base64url').toString()).role === 'service_role'
     } catch { /* Not a JWT. */ }
-    if (privileged || /SERVICE_ROLE|SECRET|BREVO|SMTP|PASSWORD/i.test(name)) {
+    if (privileged || /SERVICE_ROLE|SECRET|BREVO|SMTP|PASSWORD|TOKEN|ENCRYPTION/i.test(name)) {
       throw new Error(`Remove the VITE_ prefix from the private environment variable ${name}.`)
     }
   }
@@ -51,11 +54,18 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), {
       name: 'placepms-signup-api',
       configureServer(server) {
-        const handler = createSignupHandler({
+        const serverEnv = {
           ...process.env, ...env,
           APP_URL: env.APP_URL || 'http://localhost:5173',
-        })
+        }
+        const handler = createSignupHandler(serverEnv)
         server.middlewares.use('/api/signup', (request, response) => { void handler(request, response) })
+        const integrations = createIntegrationsHandler(serverEnv)
+        const sessions = createSessionsHandler(serverEnv)
+        server.middlewares.use('/api/integrations', (request, response) => { void integrations(request, response) })
+        server.middlewares.use('/api/sessions', (request, response) => { void sessions(request, response) })
+        const workspace = createWorkspaceHandler(serverEnv)
+        server.middlewares.use('/api/workspace', (request, response) => { void workspace(request, response) })
       },
     }],
     server: { watch: { usePolling: true, interval: 500 } },

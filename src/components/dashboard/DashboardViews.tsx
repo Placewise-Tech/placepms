@@ -2,10 +2,16 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, ExternalLink, FileText, FolderKanban, GitBranch, GraduationCap, Layers, Link2, Monitor, Plus, Search, Users } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, FileText, FolderKanban, GraduationCap, Link2, Plus, Search, Users } from 'lucide-react';
 import type { DashboardData, Milestone, Squad } from '../../lib/dashboard-data';
-import { getDashboardStats, getDocuments, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
+import { getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
+import IntegrationWorkspace from './IntegrationWorkspace';
+import SessionsView from './SessionsView';
+import LibraryView from './LibraryView';
+import BlackbookView from './BlackbookView';
+import CalendarView from './CalendarView';
+import ProjectDetails from './ProjectDetails';
 
 interface Props {
   view: string;
@@ -43,11 +49,12 @@ function ProjectCard({ project, data }: { project: Squad; data: DashboardData })
   const tasksUnavailable = data.errors.some(error => error.section === 'Milestones');
   return <article className="dash-project-card">
     <div className="dash-row"><span className="dash-project-icon"><FolderKanban size={20} /></span><Status value={project.status} /></div>
-    <h3>{project.title}</h3><p>{project.tagline || project.summary || 'No description added yet.'}</p>
+    <h3><Link to={`/dashboard/projects/${encodeURIComponent(project.id)}`}>{project.title}</Link></h3><p>{project.tagline || project.summary || 'No description added yet.'}</p>
     <div className="dash-tags">{project.domain && <span>{project.domain}</span>}{project.current_phase && <span>{project.current_phase}</span>}</div>
     <div className="dash-project-progress"><span>Milestones</span><strong>{tasksUnavailable ? 'Unavailable' : `${completed} / ${milestones.length}`}</strong></div>
     <div className="dash-progress" role="progressbar" aria-label={`${project.title} milestone completion`} aria-valuenow={milestones.length ? Math.round(completed / milestones.length * 100) : 0} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${milestones.length ? completed / milestones.length * 100 : 0}%` }} /></div>
     <div className="dash-project-footer"><span><Users size={14} />{members.length} team member{members.length === 1 ? '' : 's'}</span>{repository && <a href={repository} target="_blank" rel="noreferrer">Repository <ArrowUpRight size={14} /></a>}</div>
+    <Link className="dash-text-link workspace-spaced" to={`/dashboard/projects/${encodeURIComponent(project.id)}`}>Open project workspace <ChevronRight size={14} /></Link>
   </article>;
 }
 
@@ -74,7 +81,7 @@ function TaskList({ tasks, data, onSaved }: { tasks: Milestone[]; data: Dashboar
             setError(cause instanceof Error ? cause.message : typeof cause === 'object' && cause && 'message' in cause ? String(cause.message) : 'Unable to update this milestone.');
           } finally { setBusy(null); }
         }}>{busy === task.id ? <Clock3 size={17} /> : complete || submitted ? <CheckCircle2 size={19} /> : <Circle size={19} />}</button>
-        <div className="dash-task-copy"><h3>{task.name}</h3><p>{data.squads.find(squad => squad.id === task.squad_id)?.title || 'Project'}<span>·</span>{task.phase}</p>{task.mentor_feedback && <p>Feedback: {task.mentor_feedback}</p>}</div>
+        <div className="dash-task-copy"><h3>{task.name}</h3><p><Link to={`/dashboard/projects/${encodeURIComponent(task.squad_id)}`}>{data.squads.find(squad => squad.id === task.squad_id)?.title || 'Project'}</Link><span>·</span>{task.phase}</p>{task.mentor_feedback && <p>Feedback: {task.mentor_feedback}</p>}<Link className="dash-text-link" to={`/dashboard/projects/${encodeURIComponent(task.squad_id)}`}>Details & submission links</Link></div>
         <div className="dash-task-meta"><Status value={task.status} /><span className={overdue ? 'dash-overdue' : ''}>{overdue && 'Overdue · '}{formatDate(task.due_date)}</span></div>
       </article>;
     })}
@@ -91,6 +98,12 @@ export default function DashboardViews({ view, data, user, onCreate, onSaved }: 
   const taskAction = <button className="dash-button dash-button-primary" disabled={!data.squads.length} onClick={() => onCreate('milestone')}><Plus size={15} />Add milestone</button>;
   const projectError = data.errors.some(error => ['Projects', 'Team projects', 'Memberships', 'Mentorship'].includes(error.section));
   const taskError = projectError || data.errors.some(error => error.section === 'Milestones');
+
+  if (['integrations', 'repositories', 'figma', 'miro'].includes(view)) return <IntegrationWorkspace view={view} data={data} />;
+  if (view === 'sessions') return <SessionsView />;
+  if (['research', 'resources', 'documents'].includes(view)) return <LibraryView kind={view === 'research' ? 'research' : view === 'resources' ? 'resource' : 'document'} data={data} user={user} />;
+  if (view === 'blackbook') return <BlackbookView data={data} user={user} />;
+  if (view.startsWith('projects/')) return <ProjectDetails id={decodeURIComponent(view.slice('projects/'.length))} data={data} user={user} onSaved={onSaved} onCreate={onCreate} />;
 
   if (view === 'overview') return <>
     <div className="dash-stats">
@@ -128,41 +141,18 @@ export default function DashboardViews({ view, data, user, onCreate, onSaved }: 
   }
 
   if (view === 'calendar') {
-    const dated = data.milestones.filter(task => task.due_date && !isInactive(task.status));
-    return <Panel title="Project calendar" subtitle="Due dates from your project milestones." action={taskAction}>{dated.length ? <TaskList tasks={dated} data={data} onSaved={onSaved} /> : <EmptyState icon={<CalendarDays size={25} />} title="No deadlines scheduled" description="Milestones with due dates will appear here and can be exported to your calendar." />}</Panel>;
+    return <CalendarView milestones={data.milestones} action={taskAction} renderTasks={tasks => <TaskList tasks={tasks} data={data} onSaved={onSaved} />} />;
   }
 
   if (view === 'mentorship') {
     const mentored = data.squads.filter(squad => squad.mentor_id || squad.mentor_name);
-    return <Panel title="Mentorship" subtitle="Mentors and feedback linked to your projects.">{mentored.length ? <div className="dash-project-grid">{mentored.map(squad => <article className="dash-project-card" key={squad.id}><span className="dash-project-icon"><GraduationCap size={22} /></span><h3>{squad.mentor_name || 'Assigned mentor'}</h3><p>{squad.title}</p><div className="dash-tags"><span>{squad.current_phase || 'Phase not set'}</span></div>{data.milestones.filter(task => task.squad_id === squad.id && task.mentor_feedback).map(task => <div className="dash-feedback" key={task.id}><strong>{task.name}</strong><p>{task.mentor_feedback}</p>{task.score !== null && <span>Score: {task.score}</span>}</div>)}</article>)}</div> : <EmptyState icon={<GraduationCap size={25} />} title="No mentor assigned yet" description="When a mentor is assigned to one of your projects, their details and milestone feedback appear here." />}</Panel>;
+    return <Panel title="Mentorship" subtitle="Assign mentors from project settings. Assigned mentors can approve submissions, request revisions, and leave scores.">{mentored.length ? <div className="dash-project-grid">{mentored.map(squad => <article className="dash-project-card" key={squad.id}><span className="dash-project-icon"><GraduationCap size={22} /></span><h3>{squad.mentor_name || 'Assigned mentor'}</h3><p>{squad.title}</p><div className="dash-tags"><span>{squad.current_phase || 'Phase not set'}</span></div><Link className="dash-text-link" to={`/dashboard/projects/${encodeURIComponent(squad.id)}`}>Open submissions & feedback <ChevronRight size={14} /></Link>{data.milestones.filter(task => task.squad_id === squad.id && task.mentor_feedback).map(task => <div className="dash-feedback" key={task.id}><strong>{task.name}</strong><p>{task.mentor_feedback}</p>{task.score !== null && <span>Score: {task.score}</span>}</div>)}</article>)}</div> : <EmptyState icon={<GraduationCap size={25} />} title="No mentor assigned yet" description="Open one of your projects and use Edit project to assign a mentor by their registered email." action={<Link className="dash-button" to="/dashboard/projects">Choose a project</Link>} />}</Panel>;
   }
-
-  if (view === 'documents') {
-    const documents = getDocuments(data.milestones);
-    return <Panel title="Documents" subtitle="Files attached to your milestone submissions.">{documents.length ? <div className="dash-resource-list">{documents.map(document => <a key={document.id} className="dash-resource" href={document.url} target="_blank" rel="noreferrer"><FileText size={22} /><div><h3>{document.name}</h3><p>{document.milestone} · {formatDate(document.submittedAt)}</p></div><ExternalLink size={16} /></a>)}</div> : <EmptyState icon={<FileText size={25} />} title="No submitted documents" description="Document links saved with your milestone submissions will appear here." />}</Panel>;
-  }
-
-  if (['repositories', 'figma', 'miro'].includes(view)) {
-    const field = view === 'repositories' ? 'github_repo' : view === 'figma' ? 'figma_url' : 'miro_url';
-    const label = view === 'repositories' ? 'Repositories' : view === 'figma' ? 'Figma designs' : 'Miro whiteboards';
-    const links = data.squads.flatMap(squad => { const url = safeExternalUrl(squad[field]); return url ? [{ squad, url }] : []; });
-    return <Panel title={label} subtitle="Tools linked to your real project records.">{links.length ? <div className="dash-resource-list">{links.map(({ squad, url }) => <a className="dash-resource" href={url} target="_blank" rel="noreferrer" key={squad.id}><GitBranch size={22} /><div><h3>{squad.title}</h3><p>{new URL(url).hostname}</p></div><ExternalLink size={16} /></a>)}</div> : <EmptyState icon={<Layers size={25} />} title={`No ${label.toLowerCase()} linked`} description="Add a tool URL when creating a project to see it in this workspace." action={projectAction} />}</Panel>;
-  }
-
-  if (view === 'integrations') return <Panel title="Integrations" subtitle="Connection records saved for your account.">{data.integrations.length ? <div className="dash-resource-list">{data.integrations.map(integration => <div className="dash-resource" key={integration.id}><Link2 size={22} /><div><h3>{integration.tool_name}</h3><p>{integration.account || 'No account label'} · Updated {formatDate(integration.updated_at)}</p></div><Status value={integration.is_connected ? 'CONNECTED' : 'DISCONNECTED'} /></div>)}</div> : <EmptyState icon={<Link2 size={25} />} title="No connected integrations" description="Your saved tool connections will appear here when integrations are configured for your account." />}</Panel>;
-
-  if (view === 'sessions') return <Panel title="Login & sessions" subtitle="Saved session records for your account. Use Sign out below your profile to end this browser session.">{data.sessions.length ? <div className="dash-resource-list">{data.sessions.map(session => <div className="dash-resource" key={session.id}><Monitor size={23} /><div><h3>{session.device_name || [session.browser, session.os].filter(Boolean).join(' on ') || 'Device'}</h3><p>{session.location ? `${session.location} · ` : ''}Last active {formatDate(session.last_active_at, true)}</p></div><Status value={session.status} /></div>)}</div> : <EmptyState icon={<Monitor size={25} />} title="No saved session history" description="You are signed in with Supabase. The user_sessions table has no visible session records for this account." />}</Panel>;
 
   if (view === 'portfolio') {
     const profile = data.profile;
     return <Panel title="Your portfolio" subtitle="Your profile and project work, together." action={<button className="dash-button" onClick={() => onCreate('profile')}>Edit profile</button>}><div className="dash-profile-summary"><span className="dash-profile-large"><GraduationCap size={34} /></span><div><h2>{profile?.full_name || user.user_metadata.full_name || user.email}</h2><p>{user.email}</p></div></div><dl className="dash-profile-details">{[['Institution', profile?.college || user.user_metadata.college], ['Program', profile?.program], ['Batch', profile?.batch], ['Division', profile?.division], ['Roll number', profile?.roll_number], ['Role', profile?.role]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not added'}</dd></div>)}</dl><div className="dash-section-divider"><h3>Your projects</h3></div>{data.squads.length ? <div className="dash-project-grid">{data.squads.map(project => <ProjectCard key={project.id} project={project} data={data} />)}</div> : <EmptyState title="Your work belongs here" description="Projects you create or join will become part of your portfolio." action={projectAction} />}</Panel>;
   }
 
-  const unavailable: Record<string, { title: string; description: string }> = {
-    research: { title: 'Research', description: 'Your connected database does not currently include research records. Project documents are available in Documents.' },
-    resources: { title: 'Academic resources', description: 'Your connected database does not currently include a resource library. Links saved on your projects are available in the tool hubs.' },
-    blackbook: { title: 'Blackbook generator', description: 'A blackbook generation service has not been connected to this workspace. Your saved project details and submissions remain available in Projects and Documents.' },
-  };
-  const page = unavailable[view];
-  return <Panel title={page?.title || 'Page not found'}><EmptyState icon={<FileText size={25} />} title={page ? 'Not connected yet' : 'This page does not exist'} description={page?.description || 'Return to the overview to continue working.'} action={<Link className="dash-button" to="/dashboard">Back to overview</Link>} /></Panel>;
+  return <Panel title="Page not found"><EmptyState icon={<FileText size={25} />} title="This page does not exist" description="Return to the overview to continue working." action={<Link className="dash-button" to="/dashboard">Back to overview</Link>} /></Panel>;
 }

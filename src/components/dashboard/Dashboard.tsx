@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronRight, CircleHelp, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, Link2, LogOut, Menu, Monitor, Moon, PanelLeftClose, RefreshCw, School, Sun, UserRound, Users, X } from 'lucide-react';
 import { useDashboard } from '../../hooks/useDashboard';
+import { useSessionMonitor } from '../../hooks/useSessionMonitor';
 import { calendarExport, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
 import DashboardViews from './DashboardViews';
@@ -26,6 +27,7 @@ const navigation = [
 ];
 
 export default function Dashboard({ user }: { user: User }) {
+  useSessionMonitor(user.id);
   const { data, loading, refreshing, error, updatedAt, refresh } = useDashboard(user);
   const navigate = useNavigate();
   const location = useLocation();
@@ -44,12 +46,13 @@ export default function Dashboard({ user }: { user: User }) {
   const role = data.profile?.role || (typeof user.user_metadata.role === 'string' ? user.user_metadata.role : '') || 'Member';
   const avatar = safeExternalUrl(data.profile?.avatar_url);
   const upcoming = upcomingMilestones(data.milestones);
-  const [now] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const pageTitle = view === 'overview' ? 'Overview' : view === 'portfolio' ? 'Portfolio' : navigation.find(item => item.slug === view)?.label || 'Workspace';
+  const pageTitle = view === 'overview' ? 'Overview' : view === 'portfolio' ? 'Portfolio' : view.startsWith('projects/') ? data.squads.find(item => item.id === decodeURIComponent(view.slice(9)))?.title || 'Project workspace' : navigation.find(item => item.slug === view)?.label || 'Workspace';
 
   useEffect(() => { document.title = `${pageTitle} | PlacePMS`; }, [pageTitle]);
+  useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => window.clearInterval(timer); }, []);
   useEffect(() => {
     if (!mobileOpen && !showDeadlines) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -80,7 +83,7 @@ export default function Dashboard({ user }: { user: User }) {
           if (!supabase) throw new Error('Supabase is not configured.');
           const { error: logoutError } = await supabase.auth.signOut({ scope: 'local' });
           if (logoutError) throw logoutError;
-          navigate('/', { replace: true });
+          navigate('/login', { replace: true });
         } catch (cause) { setSignOutError(cause instanceof Error ? cause.message : 'Unable to sign out. Try again.'); }
         finally { setSigningOut(false); }
       }}><LogOut size={15} /><span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button></div>
@@ -88,7 +91,7 @@ export default function Dashboard({ user }: { user: User }) {
     <div className="dash-shell">
       <header className="dash-header"><div className="dash-header-left"><button className="dash-icon-button dash-mobile-toggle" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={21} /></button><div className="dash-breadcrumb"><span>Workspace</span><ChevronRight size={13} /><strong>{pageTitle}</strong></div>{data.profile?.batch && <span className="dash-batch">Batch {data.profile.batch}</span>}{data.profile?.program && <span className="dash-program">{data.profile.program}</span>}</div><div className="dash-header-actions"><span className={`dash-sync ${data.errors.length || error ? 'has-error' : ''}`} title={updatedAt ? `Last refreshed ${updatedAt.toLocaleTimeString()}` : 'Connecting to Supabase'}><i />{loading ? 'Connecting' : error || data.errors.length ? 'Check connection' : 'Connected'}</span><button className="dash-icon-button" aria-label="Refresh dashboard" disabled={refreshing} onClick={() => void refresh()}><RefreshCw size={17} className={refreshing ? 'dash-spinning' : ''} /></button><button className="dash-icon-button" aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'} onClick={() => { setDark(!dark); localStorage.setItem('placepms:theme', dark ? 'light' : 'dark'); }}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button><div className="dash-notifications"><button className="dash-icon-button" aria-label="Upcoming deadlines" aria-expanded={showDeadlines} onClick={() => setShowDeadlines(!showDeadlines)}><Bell size={18} />{upcoming.length > 0 && <span className="dash-notification-dot" />}</button>{showDeadlines && <div className="dash-deadline-popover"><h3>Upcoming deadlines</h3>{upcoming.length ? upcoming.slice(0, 5).map(task => <button key={task.id} onClick={() => { navigate('/dashboard/calendar'); setShowDeadlines(false); }}><strong>{task.name}</strong><span>{task.due_date}</span></button>) : <p>No upcoming deadlines.</p>}</div>}</div><button className="dash-avatar dash-header-avatar" aria-label="Open your profile" onClick={() => navigate('/dashboard/portfolio')}>{avatar ? <img src={avatar} alt="" /> : initials}</button></div></header>
       <main className="dash-main" id="workspace-main">
-        <div className="dash-page-heading"><div><div className="dash-heading-title"><h1>{view === 'overview' ? `${greeting}, ${name.split(' ')[0]}` : pageTitle}</h1>{view === 'overview' && <span className="dash-wave" aria-hidden="true">👋</span>}{data.profile?.division && <span className="dash-division">Division {data.profile.division}</span>}</div><p>{view === 'overview' ? 'Here’s what’s happening in your academic workspace.' : 'Your work, connected to your institution.'}<span className="dash-heading-date">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span></p></div><button className="dash-button" disabled={!data.milestones.some(task => task.due_date)} onClick={() => {
+        <div className="dash-page-heading"><div><div className="dash-heading-title"><h1>{view === 'overview' ? `${greeting}, ${name.split(' ')[0]}` : pageTitle}</h1>{view === 'overview' && <span className="dash-wave" aria-hidden="true">👋</span>}{data.profile?.division && <span className="dash-division">Division {data.profile.division}</span>}</div><p>{view === 'overview' ? 'Here’s what’s happening in your academic workspace.' : 'Your work, connected to your institution.'}<span className="dash-heading-date">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span></p></div><button className="dash-button" disabled={!data.milestones.some(task => task.due_date)} onClick={() => {
           const url = URL.createObjectURL(new Blob([calendarExport(data.milestones)], { type: 'text/calendar;charset=utf-8' }));
           const link = document.createElement('a');
           link.href = url; link.download = 'placepms-deadlines.ics'; link.click();
@@ -101,6 +104,6 @@ export default function Dashboard({ user }: { user: User }) {
         <footer className="dash-footer"><span>PlacePMS <span>·</span> Your academic workspace</span><span>{updatedAt ? `Last refreshed ${updatedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : 'Connecting to your workspace'}</span></footer>
       </main>
     </div>
-    {dialog && <WorkspaceDialog kind={dialog} data={data} user={user} onClose={() => setDialog(null)} onSaved={saved} />}
+    {dialog && <WorkspaceDialog kind={dialog} data={data} user={user} initialProjectId={view.startsWith('projects/') ? decodeURIComponent(view.slice(9)) : undefined} onClose={() => setDialog(null)} onSaved={saved} />}
   </div>;
 }
