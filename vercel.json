@@ -1,5 +1,6 @@
 {
+  "functions": { "api/signup.ts": { "maxDuration": 60 } },
   "rewrites": [
-    { "source": "/((?!assets/|images/|logos/|.*\\.[^/]+$).*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|images/|logos/|.*\\.[^/]+$).*)", "destination": "/index.html" }
   ]
 }

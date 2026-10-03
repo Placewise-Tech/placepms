@@ -36,6 +36,7 @@ export default function AuthInterface({
     setError('');
     setNotice('');
     setIsSuccess(false);
+    setPassword('');
   };
 
   useEffect(() => {
@@ -74,15 +75,15 @@ export default function AuthInterface({
         const { error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (authError) throw authError;
       } else {
-        const { data, error: authError } = await supabase.auth.signUp({
-          email: email.trim(), password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
-            data: { full_name: fullName.trim(), college: organization.trim(), role },
-          },
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), fullName: fullName.trim(), organization: organization.trim(), role, agreeTerms }),
         });
-        if (authError) throw authError;
-        if (!data.session) setIsSuccess(true);
+        const result = await response.json().catch(() => null);
+        if (!response.ok || !result?.message) throw new Error(result?.error || 'Account email delivery is unavailable. Please try again later.');
+        setPassword('');
+        setIsSuccess(true);
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to authenticate. Please try again.');
@@ -276,8 +277,9 @@ export default function AuthInterface({
                   Check your email
                 </h3>
                 <p className="text-sm text-slate-600">
-                  If your account needs verification, you will receive a confirmation link at {email}. Confirm your email, then sign in to open your workspace.
+                  For a new account, we have sent a temporary password to <strong>{email}</strong>. Sign in with your email and temporary password, then choose a new password to open your workspace. Check your spam folder too.
                 </p>
+                <p className="text-xs text-slate-500">Already registered? Use your existing password or select Forgot password on the sign-in screen.</p>
               </div>
               <div className="pt-2">
                 <button
@@ -298,8 +300,8 @@ export default function AuthInterface({
                 </h1>
                 <p className="text-sm text-slate-600 font-normal">
                   {mode === 'signin'
-                    ? 'Enter your registered institutional email credentials to access your portal.'
-                    : 'Select your role and enter your details to set up your verified workspace.'}
+                    ? 'Enter your email and password. New here? Use the temporary password sent to your email.'
+                    : 'Enter your details and we will email your temporary login credentials. You will choose your own password after signing in.'}
                 </p>
               </div>
 
@@ -343,11 +345,14 @@ export default function AuthInterface({
                 {/* Full Name (Sign Up Mode) */}
                 {mode === 'signup' && (
                   <div className="w-full space-y-1.5 text-left">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    <label htmlFor="signup-full-name" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                       Full Name <span className="text-rose-500 font-bold">*</span>
                     </label>
                     <input
                       type="text"
+                      id="signup-full-name"
+                      autoComplete="name"
+                      maxLength={120}
                       required
                       placeholder="e.g. Alex Sharma"
                       value={fullName}
@@ -359,11 +364,14 @@ export default function AuthInterface({
 
                 {/* Email Input */}
                 <div className="w-full space-y-1.5 text-left">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  <label htmlFor="auth-email" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                     Institutional Email <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="email"
+                    id="auth-email"
+                    autoComplete="username"
+                    maxLength={254}
                     required
                     placeholder="student@college.edu or teacher@placepms.com"
                     value={email}
@@ -375,11 +383,14 @@ export default function AuthInterface({
                 {/* Organization / College (Sign Up Mode) */}
                 {mode === 'signup' && (
                   <div className="w-full space-y-1.5 text-left">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    <label htmlFor="signup-organization" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
                       {role === 'recruiter' ? 'Company Name' : 'College / University Name'} <span className="text-rose-500 font-bold">*</span>
                     </label>
                     <input
                       type="text"
+                      id="signup-organization"
+                      autoComplete="organization"
+                      maxLength={200}
                       required
                       placeholder={role === 'recruiter' ? 'e.g. Google, Microsoft' : 'e.g. National Institute of Technology'}
                       value={organization}
@@ -390,10 +401,11 @@ export default function AuthInterface({
                 )}
 
                 {/* Password Input */}
+                {mode === 'signin' && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
-                      Password <span className="text-rose-500 font-bold">*</span>
+                    <label htmlFor="auth-password" className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Password <span aria-hidden="true" className="text-rose-500 font-bold">*</span>
                     </label>
                     {mode === 'signin' && (
                       <button type="button" disabled={isLoading} onClick={() => void resetPassword()} className="text-xs font-semibold text-[#2D7F62] hover:text-[#236850] hover:underline transition-colors cursor-pointer">
@@ -404,9 +416,9 @@ export default function AuthInterface({
                   <div className="relative">
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      id="auth-password"
                       required
-                      minLength={mode === 'signup' ? 6 : undefined}
-                      autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                      autoComplete="current-password"
                       placeholder="••••••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -431,6 +443,7 @@ export default function AuthInterface({
                     </button>
                   </div>
                 </div>
+                )}
 
                 {/* Checkbox Options */}
                 {mode === 'signin' ? (
