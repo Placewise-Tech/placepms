@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronRight, CircleHelp, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, Link2, LogOut, Menu, Monitor, Moon, PanelLeftClose, RefreshCw, School, Sun, UserRound, Users, X } from 'lucide-react';
+import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronRight, CircleHelp, Command, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, Link2, LogOut, Menu, Monitor, Moon, PanelLeftClose, Plus, RefreshCw, Search, School, Sparkles, Sun, UserRound, Users, X } from 'lucide-react';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useSessionMonitor } from '../../hooks/useSessionMonitor';
 import { calendarExport, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
@@ -10,20 +10,20 @@ import DashboardViews from './DashboardViews';
 import WorkspaceDialog from './WorkspaceDialog';
 
 const navigation = [
-  { slug: '', label: 'Overview', icon: LayoutDashboard },
-  { slug: 'projects', label: 'Projects', icon: FolderKanban },
-  { slug: 'tasks', label: 'My Tasks', icon: CheckSquare },
-  { slug: 'mentorship', label: 'Mentorship', icon: Users },
-  { slug: 'calendar', label: 'Calendar', icon: CalendarDays },
-  { slug: 'documents', label: 'Documents', icon: FileText },
-  { slug: 'research', label: 'Research', icon: FlaskConical },
-  { slug: 'resources', label: 'Academic Resources', icon: BookOpen },
-  { slug: 'blackbook', label: 'Blackbook Generator', icon: BookMarked },
-  { slug: 'integrations', label: 'Integrations', icon: Link2 },
-  { slug: 'repositories', label: 'Repositories Hub', icon: GitBranch },
-  { slug: 'figma', label: 'Figma Designs Hub', icon: LayoutTemplate },
-  { slug: 'miro', label: 'Miro Whiteboards Hub', icon: LayoutDashboard },
-  { slug: 'sessions', label: 'Login & Sessions', icon: Monitor },
+  { slug: '', label: 'Overview', icon: LayoutDashboard, section: 'WORKSPACE' },
+  { slug: 'projects', label: 'Projects', icon: FolderKanban, section: 'WORKSPACE' },
+  { slug: 'tasks', label: 'My Tasks', icon: CheckSquare, section: 'WORKSPACE' },
+  { slug: 'mentorship', label: 'Mentorship', icon: Users, section: 'WORKSPACE' },
+  { slug: 'calendar', label: 'Calendar', icon: CalendarDays, section: 'WORKSPACE' },
+  { slug: 'documents', label: 'Documents', icon: FileText, section: 'LIBRARY' },
+  { slug: 'research', label: 'Research', icon: FlaskConical, section: 'LIBRARY' },
+  { slug: 'resources', label: 'Academic Resources', icon: BookOpen, section: 'LIBRARY' },
+  { slug: 'blackbook', label: 'Blackbook Generator', icon: BookMarked, section: 'LIBRARY' },
+  { slug: 'integrations', label: 'Integrations', icon: Link2, section: 'CONNECTED TOOLS' },
+  { slug: 'repositories', label: 'Repositories Hub', icon: GitBranch, section: 'CONNECTED TOOLS' },
+  { slug: 'figma', label: 'Figma Designs Hub', icon: LayoutTemplate, section: 'CONNECTED TOOLS' },
+  { slug: 'miro', label: 'Miro Whiteboards Hub', icon: LayoutDashboard, section: 'CONNECTED TOOLS' },
+  { slug: 'sessions', label: 'Login & Sessions', icon: Monitor, section: 'ACCOUNT' },
 ];
 
 export default function Dashboard({ user }: { user: User }) {
@@ -36,6 +36,8 @@ export default function Dashboard({ user }: { user: User }) {
   const [collapsed, setCollapsed] = useState(false);
   const [dark, setDark] = useState(() => localStorage.getItem('placepms:theme') === 'dark');
   const [showDeadlines, setShowDeadlines] = useState(false);
+  const [showCommand, setShowCommand] = useState(false);
+  const [commandQuery, setCommandQuery] = useState('');
   const [dialog, setDialog] = useState<'project' | 'milestone' | 'profile' | null>(null);
   const [notice, setNotice] = useState('');
   const [signOutError, setSignOutError] = useState('');
@@ -56,7 +58,9 @@ export default function Dashboard({ user }: { user: User }) {
   useEffect(() => {
     if (!mobileOpen && !showDeadlines) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { setMobileOpen(false); setShowDeadlines(false); }
+      if (event.key === 'Escape') { setMobileOpen(false); setShowDeadlines(false); setShowCommand(false); }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setShowCommand(true); }
+      if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement).tagName)) { event.preventDefault(); setShowCommand(true); }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
@@ -68,14 +72,19 @@ export default function Dashboard({ user }: { user: User }) {
   }, [notice]);
 
   const saved = async (message: string) => { setNotice(message); await refresh(); };
-  const closeMenus = () => { setMobileOpen(false); setShowDeadlines(false); };
+  const closeMenus = () => { setMobileOpen(false); setShowDeadlines(false); setShowCommand(false); };
+  const commandSearch = commandQuery.trim().toLowerCase();
+  const commandPages = navigation.filter(item => !commandSearch || item.label.toLowerCase().includes(commandSearch));
+  const commandProjects = data.squads.filter(project => !commandSearch || `${project.title} ${project.domain || ''}`.toLowerCase().includes(commandSearch)).slice(0, 4);
+  const goToCommand = (path: string) => { navigate(path); setCommandQuery(''); setShowCommand(false); };
 
   return <div className={`dashboard ${dark ? 'dashboard-dark' : ''} ${collapsed ? 'dashboard-collapsed' : ''}`}>
     {mobileOpen && <button className="dash-sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
     <aside className={`dash-sidebar ${mobileOpen ? 'is-open' : ''}`} aria-label="Workspace navigation">
-      <div className="dash-brand"><NavLink to="/dashboard" onClick={closeMenus} aria-label="PlacePMS overview"><img src={dark ? '/PlacePMS-Logo-White.svg' : '/PlacePMS-Logo-Vector.svg'} alt="PlacePMS" /></NavLink><button className="dash-icon-button dash-mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={18} /></button><button className="dash-icon-button dash-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed(!collapsed)}><PanelLeftClose size={16} /></button></div>
-      <button className="dash-institution" onClick={() => { navigate('/dashboard/portfolio'); closeMenus(); }} title={college}><span><School size={19} /></span><div><strong>{college}</strong><small>Academic workspace</small></div><ChevronRight size={14} /></button>
-      <nav className="dash-navigation"><span className="dash-nav-caption">WORKSPACE</span>{navigation.map(item => <NavLink key={item.slug} to={`/dashboard${item.slug ? `/${item.slug}` : ''}`} end title={item.label} onClick={closeMenus} className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><item.icon size={17} /><span>{item.label}</span></NavLink>)}<span className="dash-nav-caption dash-career-caption">CAREER</span><NavLink to="/dashboard/portfolio" onClick={closeMenus} title="Portfolio" className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><UserRound size={17} /><span>Portfolio</span></NavLink></nav>
+       <div className="dash-brand"><NavLink to="/dashboard" onClick={closeMenus} aria-label="PlacePMS overview"><img src={dark ? '/PlacePMS-Logo-White.svg' : '/PlacePMS-Logo-Vector.svg'} alt="PlacePMS" /></NavLink><span className="dash-brand-mark"><Sparkles size={14} /></span><button className="dash-icon-button dash-mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={18} /></button><button className="dash-icon-button dash-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed(!collapsed)}><PanelLeftClose size={16} /></button></div>
+       <button className="dash-institution" onClick={() => { navigate('/dashboard/portfolio'); closeMenus(); }} title={college}><span><School size={19} /></span><div><strong>{college}</strong><small>Academic workspace</small></div><ChevronRight size={14} /></button>
+       <button className="dash-create-button" onClick={() => setDialog('project')}><span><Plus size={15} /></span><strong>New project</strong><kbd>N</kbd></button>
+       <nav className="dash-navigation">{navigation.map((item, index) => <span key={item.slug || 'overview'}>{(index === 0 || item.section !== navigation[index - 1].section) && <span className={`dash-nav-caption ${item.section === 'ACCOUNT' ? 'dash-career-caption' : ''}`}>{item.section}</span>}<NavLink to={`/dashboard${item.slug ? `/${item.slug}` : ''}`} end title={item.label} onClick={closeMenus} className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><item.icon size={17} /><span>{item.label}</span>{item.slug === 'tasks' && data.milestones.some(task => !['COMPLETED', 'COMPLETE', 'DONE', 'APPROVED'].includes((task.status || '').toUpperCase())) && <b className="dash-nav-count">{data.milestones.filter(task => !['COMPLETED', 'COMPLETE', 'DONE', 'APPROVED'].includes((task.status || '').toUpperCase())).length}</b>}</NavLink></span>)}<span className="dash-nav-caption dash-career-caption">CAREER</span><NavLink to="/dashboard/portfolio" onClick={closeMenus} title="Portfolio" className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><UserRound size={17} /><span>Portfolio</span></NavLink></nav>
       <div className="dash-sidebar-bottom"><div className="dash-sidebar-help"><GraduationCap size={19} /><div><strong>A little progress, every day.</strong><span>Your work. Your next chapter.</span></div></div><button className="dash-user" onClick={() => { navigate('/dashboard/portfolio'); closeMenus(); }} title={name}><span className="dash-avatar">{avatar ? <img src={avatar} alt="" /> : initials}</span><span className="dash-user-copy"><strong>{name}</strong><small>{role}</small></span><ChevronRight size={15} /></button><button className="dash-sign-out" disabled={signingOut} title="Sign out" onClick={async () => {
         setSigningOut(true);
         setSignOutError('');
@@ -89,7 +98,7 @@ export default function Dashboard({ user }: { user: User }) {
       }}><LogOut size={15} /><span>{signingOut ? 'Signing out…' : 'Sign out'}</span></button></div>
     </aside>
     <div className="dash-shell">
-      <header className="dash-header"><div className="dash-header-left"><button className="dash-icon-button dash-mobile-toggle" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={21} /></button><div className="dash-breadcrumb"><span>Workspace</span><ChevronRight size={13} /><strong>{pageTitle}</strong></div>{data.profile?.batch && <span className="dash-batch">Batch {data.profile.batch}</span>}{data.profile?.program && <span className="dash-program">{data.profile.program}</span>}</div><div className="dash-header-actions"><span className={`dash-sync ${data.errors.length || error ? 'has-error' : ''}`} title={updatedAt ? `Last refreshed ${updatedAt.toLocaleTimeString()}` : 'Connecting to Supabase'}><i />{loading ? 'Connecting' : error || data.errors.length ? 'Check connection' : 'Connected'}</span><button className="dash-icon-button" aria-label="Refresh dashboard" disabled={refreshing} onClick={() => void refresh()}><RefreshCw size={17} className={refreshing ? 'dash-spinning' : ''} /></button><button className="dash-icon-button" aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'} onClick={() => { setDark(!dark); localStorage.setItem('placepms:theme', dark ? 'light' : 'dark'); }}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button><div className="dash-notifications"><button className="dash-icon-button" aria-label="Upcoming deadlines" aria-expanded={showDeadlines} onClick={() => setShowDeadlines(!showDeadlines)}><Bell size={18} />{upcoming.length > 0 && <span className="dash-notification-dot" />}</button>{showDeadlines && <div className="dash-deadline-popover"><h3>Upcoming deadlines</h3>{upcoming.length ? upcoming.slice(0, 5).map(task => <button key={task.id} onClick={() => { navigate('/dashboard/calendar'); setShowDeadlines(false); }}><strong>{task.name}</strong><span>{task.due_date}</span></button>) : <p>No upcoming deadlines.</p>}</div>}</div><button className="dash-avatar dash-header-avatar" aria-label="Open your profile" onClick={() => navigate('/dashboard/portfolio')}>{avatar ? <img src={avatar} alt="" /> : initials}</button></div></header>
+       <header className="dash-header"><div className="dash-header-left"><button className="dash-icon-button dash-mobile-toggle" aria-label="Open navigation" aria-expanded={mobileOpen} onClick={() => setMobileOpen(true)}><Menu size={21} /></button><div className="dash-breadcrumb"><span>Workspace</span><ChevronRight size={13} /><strong>{pageTitle}</strong></div>{data.profile?.batch && <span className="dash-batch">Batch {data.profile.batch}</span>}{data.profile?.program && <span className="dash-program">{data.profile.program}</span>}</div><div className="dash-header-actions"><button className="dash-command-trigger" aria-label="Search workspace" onClick={() => setShowCommand(true)}><Search size={15} /><span>Search workspace</span><kbd><Command size={11} /> K</kbd></button><span className={`dash-sync ${data.errors.length || error ? 'has-error' : ''}`} title={updatedAt ? `Last refreshed ${updatedAt.toLocaleTimeString()}` : 'Connecting to Supabase'}><i />{loading ? 'Connecting' : error || data.errors.length ? 'Check connection' : 'Connected'}</span><button className="dash-icon-button" aria-label="Refresh dashboard" disabled={refreshing} onClick={() => void refresh()}><RefreshCw size={17} className={refreshing ? 'dash-spinning' : ''} /></button><button className="dash-icon-button" aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'} onClick={() => { setDark(!dark); localStorage.setItem('placepms:theme', dark ? 'light' : 'dark'); }}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button><div className="dash-notifications"><button className="dash-icon-button" aria-label="Upcoming deadlines" aria-expanded={showDeadlines} onClick={() => setShowDeadlines(!showDeadlines)}><Bell size={18} />{upcoming.length > 0 && <span className="dash-notification-dot" />}</button>{showDeadlines && <div className="dash-deadline-popover"><h3>Upcoming deadlines</h3>{upcoming.length ? upcoming.slice(0, 5).map(task => <button key={task.id} onClick={() => { navigate('/dashboard/calendar'); setShowDeadlines(false); }}><strong>{task.name}</strong><span>{task.due_date}</span></button>) : <p>No upcoming deadlines.</p>}</div>}</div><button className="dash-avatar dash-header-avatar" aria-label="Open your profile" onClick={() => navigate('/dashboard/portfolio')}>{avatar ? <img src={avatar} alt="" /> : initials}</button></div></header>
       <main className="dash-main" id="workspace-main">
         <div className="dash-page-heading"><div><div className="dash-heading-title"><h1>{view === 'overview' ? `${greeting}, ${name.split(' ')[0]}` : pageTitle}</h1>{view === 'overview' && <span className="dash-wave" aria-hidden="true">👋</span>}{data.profile?.division && <span className="dash-division">Division {data.profile.division}</span>}</div><p>{view === 'overview' ? 'Here’s what’s happening in your academic workspace.' : 'Your work, connected to your institution.'}<span className="dash-heading-date">{now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span></p></div><button className="dash-button" disabled={!data.milestones.some(task => task.due_date)} onClick={() => {
           const url = URL.createObjectURL(new Blob([calendarExport(data.milestones)], { type: 'text/calendar;charset=utf-8' }));
@@ -104,6 +113,7 @@ export default function Dashboard({ user }: { user: User }) {
         <footer className="dash-footer"><span>PlacePMS <span>·</span> Your academic workspace</span><span>{updatedAt ? `Last refreshed ${updatedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : 'Connecting to your workspace'}</span></footer>
       </main>
     </div>
+    {showCommand && <div className="dash-command-overlay" role="dialog" aria-modal="true" aria-label="Search workspace" onMouseDown={event => { if (event.target === event.currentTarget) setShowCommand(false); }}><div className="dash-command"><div className="dash-command-input"><Search size={18} /><input autoFocus value={commandQuery} onChange={event => setCommandQuery(event.target.value)} placeholder="Jump to a page or project…" aria-label="Search pages and projects" /><kbd>ESC</kbd></div>{!commandSearch && <p className="dash-command-hint">Search your workspace or use <strong>⌘ K</strong> anytime.</p>}{commandPages.length > 0 && <div className="dash-command-section"><span>Pages</span>{commandPages.slice(0, 6).map(item => <button key={item.slug} onClick={() => goToCommand(`/dashboard${item.slug ? `/${item.slug}` : ''}`)}><item.icon size={16} /><span>{item.label}</span><ArrowUpRight size={14} /></button>)}</div>}{commandProjects.length > 0 && <div className="dash-command-section"><span>Projects</span>{commandProjects.map(project => <button key={project.id} onClick={() => goToCommand(`/dashboard/projects/${encodeURIComponent(project.id)}`)}><FolderKanban size={16} /><span>{project.title}<small>{project.domain || project.current_phase || 'Project workspace'}</small></span><ArrowUpRight size={14} /></button>)}</div>}{commandSearch && !commandPages.length && !commandProjects.length && <div className="dash-command-empty"><Search size={24} /><strong>No matches found</strong><span>Try a page name or project title.</span></div>}</div></div>}
     {dialog && <WorkspaceDialog kind={dialog} data={data} user={user} initialProjectId={view.startsWith('projects/') ? decodeURIComponent(view.slice(9)) : undefined} onClose={() => setDialog(null)} onSaved={saved} />}
   </div>;
 }
