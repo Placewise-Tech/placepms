@@ -1,29 +1,56 @@
-import { useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Preloader, { AnimatePresence } from './components/Preloader';
 import AuthInterface from './components/AuthInterface';
+import PasswordRecovery from './components/PasswordRecovery';
+import { useAuth } from './hooks/useAuth';
+
+const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
+
+function WorkspaceLoading() {
+  return <div className="workspace-gate" role="status"><img src="/PlacePMS-Logo-Vector.svg" alt="PlacePMS" width="140" /><p>Opening your workspace…</p></div>;
+}
 
 export default function App() {
+  const { session, loading: authLoading, error: sessionError, passwordRecovery, finishPasswordRecovery } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const isAuthOpen = location.pathname === '/login' || location.pathname === '/signup';
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [authRole, setAuthRole] = useState<'student' | 'faculty' | 'college' | 'recruiter'>('student');
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (session) {
+      if (!passwordRecovery && !location.pathname.startsWith('/dashboard')) navigate('/dashboard', { replace: true });
+    } else if (location.pathname.startsWith('/dashboard')) {
+      navigate('/login', { replace: true });
+    }
+  }, [session, authLoading, passwordRecovery, location.pathname, navigate]);
 
   const openAuth = (mode: 'signin' | 'signup', role: 'student' | 'faculty' | 'college' | 'recruiter' = 'student') => {
     setAuthMode(mode);
     setAuthRole(role);
-    setIsAuthOpen(true);
+    navigate(mode === 'signin' ? '/login' : '/signup');
   };
+
+  if (authLoading) return <WorkspaceLoading />;
+  if (passwordRecovery && session) return <PasswordRecovery onComplete={finishPasswordRecovery} />;
+  if (session) return <Suspense fallback={<WorkspaceLoading />}><Dashboard key={session.user.id} user={session.user} /></Suspense>;
 
   return (
     <div className="min-h-full flex flex-col flex-1 bg-[#F8FAFC] text-[#0F172A] relative font-sans">
+      {sessionError && <div className="auth-feedback auth-feedback-error" role="alert">{sessionError}</div>}
       {/* Exact Split-Screen Auth Interface from signinup.zip */}
-      <AuthInterface 
-        isOpen={isAuthOpen} 
-        onClose={() => setIsAuthOpen(false)} 
-        initialMode={authMode} 
+      {isAuthOpen && <AuthInterface
+        key={`${location.pathname}:${authRole}`}
+        isOpen={isAuthOpen}
+        onClose={() => navigate('/')}
+        initialMode={location.pathname === '/signup' ? 'signup' : location.pathname === '/login' ? 'signin' : authMode}
         initialRole={authRole} 
-      />
+      />}
 
       {/* Exact Zip Curved Multilingual SVG Preloader */}
       <AnimatePresence mode="wait">
