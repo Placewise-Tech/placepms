@@ -20,15 +20,17 @@ export default function App() {
   const isAuthOpen = location.pathname === '/login' || location.pathname === '/signup';
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [authRole, setAuthRole] = useState<'student' | 'faculty' | 'college' | 'recruiter'>('student');
+  const mustChangePassword = session?.user.app_metadata.must_change_password === true;
 
   useEffect(() => {
     if (authLoading) return;
     if (session) {
-      if (!passwordRecovery && !location.pathname.startsWith('/dashboard')) navigate('/dashboard', { replace: true });
-    } else if (location.pathname.startsWith('/dashboard')) {
+      if (mustChangePassword && location.pathname !== '/set-password') navigate('/set-password', { replace: true });
+      else if (!mustChangePassword && !passwordRecovery && !location.pathname.startsWith('/dashboard')) navigate('/dashboard', { replace: true });
+    } else if (location.pathname.startsWith('/dashboard') || location.pathname === '/set-password') {
       navigate('/login', { replace: true });
     }
-  }, [session, authLoading, passwordRecovery, location.pathname, navigate]);
+  }, [session, authLoading, passwordRecovery, mustChangePassword, location.pathname, navigate]);
 
   const openAuth = (mode: 'signin' | 'signup', role: 'student' | 'faculty' | 'college' | 'recruiter' = 'student') => {
     setAuthMode(mode);
@@ -37,7 +39,7 @@ export default function App() {
   };
 
   if (authLoading) return <WorkspaceLoading />;
-  if (passwordRecovery && session) return <PasswordRecovery onComplete={finishPasswordRecovery} />;
+  if ((passwordRecovery || mustChangePassword) && session) return <PasswordRecovery requiredSetup={mustChangePassword} email={session.user.email} onComplete={finishPasswordRecovery} />;
   if (session) return <Suspense fallback={<WorkspaceLoading />}><Dashboard key={session.user.id} user={session.user} /></Suspense>;
 
   return (

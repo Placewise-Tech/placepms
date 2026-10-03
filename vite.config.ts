@@ -2,9 +2,10 @@ import react from '@vitejs/plugin-react'
 import { readFileSync, existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
+import { createSignupHandler } from './server/signup.ts'
 
 // Only public settings reach the browser. Also accepts the labelled keys in
-// the original .env file; private keys are never used by the application.
+// the original .env file; private keys are used only by the server middleware.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const envPath = resolve(process.cwd(), '.env')
@@ -42,12 +43,21 @@ export default defineConfig(({ mode }) => {
     try {
       privileged ||= JSON.parse(Buffer.from(value.split('.')[1] || '', 'base64url').toString()).role === 'service_role'
     } catch { /* Not a JWT. */ }
-    if (privileged || /SERVICE_ROLE|SECRET/i.test(name)) {
+    if (privileged || /SERVICE_ROLE|SECRET|BREVO|SMTP|PASSWORD/i.test(name)) {
       throw new Error(`Remove the VITE_ prefix from the private environment variable ${name}.`)
     }
   }
   return {
-    plugins: [react()],
+    plugins: [react(), {
+      name: 'placepms-signup-api',
+      configureServer(server) {
+        const handler = createSignupHandler({
+          ...process.env, ...env,
+          APP_URL: env.APP_URL || 'http://localhost:5173',
+        })
+        server.middlewares.use('/api/signup', (request, response) => { void handler(request, response) })
+      },
+    }],
     server: { watch: { usePolling: true, interval: 500 } },
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(url),
