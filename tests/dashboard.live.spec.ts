@@ -70,7 +70,7 @@ test('real authentication, database writes, refresh, navigation, and mobile layo
     await page.screenshot({ path: '/tmp/omnirush/placepms-dashboard-mobile.png', fullPage: true });
     await page.getByRole('button', { name: 'Open navigation' }).click();
     await page.getByRole('button', { name: 'Sign out', exact: true }).click();
-    await expect(page).toHaveURL(/\/$/);
+    await expect(page).toHaveURL(/\/login$/);
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/login$/);
     expect(consoleErrors).toEqual([]);

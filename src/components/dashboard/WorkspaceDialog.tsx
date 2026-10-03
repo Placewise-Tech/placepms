@@ -8,11 +8,12 @@ interface Props {
   kind: 'project' | 'milestone' | 'profile';
   data: DashboardData;
   user: User;
+  initialProjectId?: string;
   onClose: () => void;
   onSaved: (message: string) => Promise<void>;
 }
 
-export default function WorkspaceDialog({ kind, data, user, onClose, onSaved }: Props) {
+export default function WorkspaceDialog({ kind, data, user, initialProjectId, onClose, onSaved }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -89,7 +90,7 @@ export default function WorkspaceDialog({ kind, data, user, onClose, onSaved }: 
             </div>
           </>}
           {kind === 'milestone' && <>
-            <label>Project<select name="squad_id" required defaultValue={data.squads[0]?.id}>
+            <label>Project<select name="squad_id" required defaultValue={initialProjectId || data.squads[0]?.id}>
               {data.squads.map(squad => <option key={squad.id} value={squad.id}>{squad.title}</option>)}
             </select></label>
             <label>Milestone name<input name="name" required maxLength={160} autoFocus placeholder="What needs to be delivered?" /></label>
