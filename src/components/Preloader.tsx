@@ -84,7 +84,7 @@ export default function Preloader({
       }}
       initial="initial"
       exit="exit"
-      style={{ backgroundColor: bgColor }}
+      style={{ backgroundColor: bgColor, zIndex: 99999 }}
       className="fixed inset-0 w-screen h-screen flex items-center justify-center z-[99999] pointer-events-auto select-none"
     >
       {dimension.width > 0 && (
