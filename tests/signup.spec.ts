@@ -31,7 +31,7 @@ async function mockAuth(page: Page, options: { failUpdate?: boolean } = {}) {
 async function signIn(page: Page) {
   await page.goto('/login');
   await page.getByLabel('Institutional Email').fill(email);
-  await page.getByLabel(/^Password/).fill('Temporary-login-password-A1!');
+  await page.getByLabel(/^Password/).fill('123456');
   await page.getByRole('button', { name: 'Sign In to Workspace', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Set your own password' })).toBeVisible();
   await expect(page).toHaveURL(/\/set-password$/);
@@ -93,8 +93,8 @@ test('temporary login is gated across reloads and direct URLs until a new passwo
 test('a rejected password keeps the workspace locked', async ({ page }) => {
   const auth = await mockAuth(page, { failUpdate: true });
   await signIn(page);
-  await page.getByLabel('New password', { exact: true }).fill('Temporary-login-password-A1!');
-  await page.getByLabel('Confirm password').fill('Temporary-login-password-A1!');
+  await page.getByLabel('New password', { exact: true }).fill('Rejected-personal-password!');
+  await page.getByLabel('Confirm password').fill('Rejected-personal-password!');
   await page.getByRole('button', { name: 'Save password & open workspace' }).click();
   await expect(page.getByRole('alert')).toContainText('different from the old password');
   await expect(page).toHaveURL(/\/set-password$/);

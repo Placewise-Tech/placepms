@@ -277,7 +277,7 @@ export default function AuthInterface({
                   Check your email
                 </h3>
                 <p className="text-sm text-slate-600">
-                  For a new account, we have sent a temporary password to <strong>{email}</strong>. Sign in with your email and temporary password, then choose a new password to open your workspace. Check your spam folder too.
+                  For a new account, we have sent a 6-digit login code to <strong>{email}</strong>. Enter the code in the Password field when signing in, then choose a new password to open your workspace. Check your spam folder too.
                 </p>
                 <p className="text-xs text-slate-500">Already registered? Use your existing password or select Forgot password on the sign-in screen.</p>
               </div>
@@ -300,8 +300,8 @@ export default function AuthInterface({
                 </h1>
                 <p className="text-sm text-slate-600 font-normal">
                   {mode === 'signin'
-                    ? 'Enter your email and password. New here? Use the temporary password sent to your email.'
-                    : 'Enter your details and we will email your temporary login credentials. You will choose your own password after signing in.'}
+                    ? 'Enter your email and password. New here? Enter your emailed 6-digit login code in the Password field.'
+                    : 'Enter your details and we will email a 6-digit login code. You will choose your own password after signing in.'}
                 </p>
               </div>
 

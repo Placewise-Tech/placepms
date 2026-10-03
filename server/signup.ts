@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHmac, randomInt } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import nodemailer, { type SendMailOptions } from 'nodemailer';
@@ -31,8 +31,8 @@ function validateSignup(input: unknown) {
 }
 
 export function temporaryPassword() {
-  // 192 random bits; fixed suffix satisfies common Supabase character policies.
-  return `${randomBytes(24).toString('base64url')}Aa1!`;
+  // Supabase accepts this cryptographically random six-digit code as the initial password.
+  return randomInt(100_000, 1_000_000).toString();
 }
 
 function escapeHtml(value: string) {
@@ -47,6 +47,19 @@ interface SignupServices {
   senderName: string;
   rateLimitKey: string;
   logError: (message: string) => void;
+}
+
+export function temporaryLoginEmail({ email, fullName, code, appUrl, senderEmail, senderName }: {
+  email: string; fullName: string; code: string; appUrl: string; senderEmail: string; senderName: string;
+}): SendMailOptions {
+  const loginUrl = new URL('/login', appUrl).href;
+  return {
+    from: { name: senderName, address: senderEmail },
+    to: { name: fullName, address: email },
+    subject: 'Your PlacePMS 6-digit login code',
+    text: `Hello ${fullName},\n\nYour PlacePMS account is ready.\n\nLogin email: ${email}\nTemporary login code: ${code}\nSign in: ${loginUrl}\n\nEnter this 6-digit code in the Password field. After signing in, you must choose a new password before opening your workspace. This code stops working once you set your password.\n\nKeep this code private. If you did not request this account, you can ignore this email.\n\nThe PlacePMS team`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#182230;line-height:1.6"><h1 style="color:#2d7f62;font-size:24px">Your PlacePMS login code</h1><p>Hello ${escapeHtml(fullName)},</p><p>Use your email and this 6-digit code to sign in:</p><p><strong>Login email:</strong> ${escapeHtml(email)}</p><p style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#2d7f62">${escapeHtml(code)}</p><p><a href="${escapeHtml(loginUrl)}" style="color:#2d7f62;font-weight:bold">Sign in to PlacePMS</a></p><p>Enter the code in the <strong>Password</strong> field. After signing in, choose a new password to open your workspace. This code stops working once you set your password.</p><p>Keep this code private. If you did not request this account, you can ignore this email.</p><p>The PlacePMS team</p></div>`,
+  };
 }
 
 export async function registerAccount(input: unknown, ip: string, services: SignupServices) {
@@ -70,15 +83,11 @@ export async function registerAccount(input: unknown, ip: string, services: Sign
   if (error?.code === 'email_exists' || error?.code === 'user_already_exists') return successMessage;
   if (error || !data.user) throw new SignupError(503, 'Unable to create your account. Please try again later.');
 
-  const loginUrl = new URL('/login', services.appUrl).href;
   try {
-    await services.sendMail({
-      from: { name: services.senderName, address: services.senderEmail },
-      to: { name: fullName, address: email },
-      subject: 'Your PlacePMS temporary login credentials',
-      text: `Hello ${fullName},\n\nYour PlacePMS account is ready.\n\nLogin email: ${email}\nTemporary password: ${password}\nSign in: ${loginUrl}\n\nAfter signing in, you must choose a new password before opening your workspace. This temporary password stops working once you replace it.\n\nKeep these credentials private. If you did not request this account, you can ignore this email.\n\nThe PlacePMS team`,
-      html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#182230;line-height:1.6"><h1 style="color:#2d7f62;font-size:24px">Welcome to PlacePMS</h1><p>Hello ${escapeHtml(fullName)},</p><p>Your account is ready. Use these credentials to sign in:</p><p><strong>Login email:</strong> ${escapeHtml(email)}<br><strong>Temporary password:</strong> <code>${escapeHtml(password)}</code></p><p><a href="${escapeHtml(loginUrl)}" style="color:#2d7f62;font-weight:bold">Sign in to PlacePMS</a></p><p>After signing in, you must choose a new password before opening your workspace. This temporary password stops working once you replace it.</p><p>Keep these credentials private. If you did not request this account, you can ignore this email.</p><p>The PlacePMS team</p></div>`,
-    });
+    await services.sendMail(temporaryLoginEmail({
+      email, fullName, code: password, appUrl: services.appUrl,
+      senderEmail: services.senderEmail, senderName: services.senderName,
+    }));
   } catch {
     // Roll back only the account created by this request so a failed send can be retried.
     // Do not log SMTP errors: providers may include credentials/message content.

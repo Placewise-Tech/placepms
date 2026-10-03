@@ -30,8 +30,8 @@ export default function PasswordRecovery({ onComplete, requiredSetup = false, em
       }}>
         <img src="/PlacePMS-Logo-Vector.svg" alt="PlacePMS" width="120" />
         <h1>{requiredSetup ? 'Set your own password' : 'Choose a new password'}</h1>
-        <p>{requiredSetup ? `You are signed in${email ? ` as ${email}` : ''}. Replace your temporary password to continue to your workspace.` : 'Update the password for your PlacePMS account.'}</p>
-        <p>Use at least 12 characters. Choose a password different from your temporary password.</p>
+        <p>{requiredSetup ? `You are signed in${email ? ` as ${email}` : ''}. Replace your temporary login code with your own password to continue to your workspace.` : 'Update the password for your PlacePMS account.'}</p>
+        <p>Use at least 12 characters for your new password.</p>
         {error && <div role="alert" className="auth-feedback auth-feedback-error">{error}</div>}
         <label>New password<input type="password" minLength={12} maxLength={128} required autoComplete="new-password" value={password} onChange={event => setPassword(event.target.value)} /></label>
         <label>Confirm password<input type="password" minLength={12} maxLength={128} required autoComplete="new-password" value={confirmation} onChange={event => setConfirmation(event.target.value)} /></label>
