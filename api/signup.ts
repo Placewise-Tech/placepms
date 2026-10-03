@@ -1,3 +1,3 @@
-import { createSignupHandler } from '../server/signup.ts';
+import { createSignupHandler } from '../server/signup.js';
 
 export default createSignupHandler();
