@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, FileText, FolderKanban, GraduationCap, Link2, Plus, Search, Users } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, FileText, FolderKanban, GraduationCap, Link2, Plus, Search, Sparkles, Users } from 'lucide-react';
 import type { DashboardData, Milestone, Squad } from '../../lib/dashboard-data';
 import { getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
@@ -93,6 +93,8 @@ export default function DashboardViews({ view, data, user, onCreate, onSaved }: 
   const [taskFilter, setTaskFilter] = useState('all');
   const stats = getDashboardStats(data);
   const upcoming = upcomingMilestones(data.milestones);
+  const nextDeadline = upcoming[0];
+  const nextProject = nextDeadline ? data.squads.find(project => project.id === nextDeadline.squad_id) : null;
   const search = query.trim().toLowerCase();
   const projectAction = <button className="dash-button dash-button-primary" onClick={() => onCreate('project')}><Plus size={15} />Create project</button>;
   const taskAction = <button className="dash-button dash-button-primary" disabled={!data.squads.length} onClick={() => onCreate('milestone')}><Plus size={15} />Add milestone</button>;
@@ -106,13 +108,31 @@ export default function DashboardViews({ view, data, user, onCreate, onSaved }: 
   if (view.startsWith('projects/')) return <ProjectDetails id={decodeURIComponent(view.slice('projects/'.length))} data={data} user={user} onSaved={onSaved} onCreate={onCreate} />;
 
   if (view === 'overview') return <>
+    <section className="dash-hero">
+      <div className="dash-hero-copy">
+        <span className="dash-eyebrow"><Sparkles size={13} /> YOUR ACADEMIC HQ</span>
+        <h2>Make progress visible.</h2>
+        <p>Bring your projects, people, research, and next deadline into one calm workspace.</p>
+        <div className="dash-hero-actions">
+          {projectAction}
+          <button className="dash-button dash-button-ghost" disabled={!data.squads.length} onClick={() => onCreate('milestone')}><Plus size={15} />Add a milestone</button>
+          <Link className="dash-hero-link" to="/dashboard/calendar">Open calendar <ArrowUpRight size={14} /></Link>
+        </div>
+      </div>
+      <div className="dash-hero-insight">
+        <div className="dash-hero-glow" aria-hidden="true" />
+        <div className="dash-hero-insight-top"><span>Workspace momentum</span><Sparkles size={16} /></div>
+        <div className="dash-hero-progress"><div className="dash-hero-progress-track"><span style={{ width: `${stats.completion}%` }} /></div><strong>{taskError ? '—' : `${stats.completion}%`}</strong></div>
+        <p>{nextDeadline ? <><strong>Next up:</strong> {nextDeadline.name}<small>{nextProject?.title || 'Project'} · Due {nextDeadline.due_date}</small></> : 'Add a milestone to see your next focus here.'}</p>
+      </div>
+    </section>
     <div className="dash-stats">
       {[
         { label: 'Active projects', value: projectError ? '—' : stats.activeProjects, description: 'Projects in your workspace', icon: <FolderKanban size={19} />, color: 'green', link: 'projects' },
         { label: 'Pending milestones', value: taskError ? '—' : stats.pendingTasks, description: taskError ? 'Data unavailable' : stats.overdueTasks ? `${stats.overdueTasks} overdue` : 'Keep your next delivery on track', icon: <Clock3 size={19} />, color: 'amber', link: 'tasks' },
         { label: 'Completed milestones', value: taskError ? '—' : stats.completedTasks, description: 'Your team’s delivered work', icon: <CheckCircle2 size={19} />, color: 'blue', link: 'tasks' },
         { label: 'Team members', value: projectError || data.errors.some(error => error.section === 'Team members') ? '—' : stats.members, description: 'Across your project teams', icon: <Users size={19} />, color: 'purple', link: 'projects' },
-      ].map(stat => <Link to={`/dashboard/${stat.link}`} className="dash-stat" key={stat.label}><div className="dash-row"><span>{stat.label}</span><span className={`dash-stat-icon ${stat.color}`}>{stat.icon}</span></div><strong>{stat.value}</strong><p>{stat.description}<ArrowUpRight size={14} /></p></Link>)}
+      ].map(stat => <Link to={`/dashboard/${stat.link}`} className={`dash-stat dash-stat-${stat.color}`} key={stat.label}><div className="dash-row"><span>{stat.label}</span><span className={`dash-stat-icon ${stat.color}`}>{stat.icon}</span></div><strong>{stat.value}</strong><p>{stat.description}<ArrowUpRight size={14} /></p><span className="dash-stat-line" /></Link>)}
     </div>
     <div className="dash-overview-grid">
       <Panel title="Your projects" subtitle="Ideas in motion. Progress that matters." action={<Link className="dash-text-link" to="/dashboard/projects">View all <ChevronRight size={14} /></Link>} className="dash-projects-panel">
