@@ -29,10 +29,13 @@ test('signup emails the generated credential only to the account owner and requi
   const created = calls.created[0];
   assert.equal(created.email, 'alex@college.edu');
   assert.equal(created.email_confirm, true);
+  assert.match(created.password, /^[1-9]\d{5}$/);
   assert.deepEqual(created.app_metadata, { must_change_password: true });
   assert.deepEqual(created.user_metadata, { full_name: input.fullName, college: 'College', role: 'student' });
   assert.equal(calls.emails[0].to.address, created.email);
   assert.ok(calls.emails[0].text.includes(created.password));
+  assert.equal(calls.emails[0].subject, 'Your PlacePMS 6-digit login code');
+  assert.ok(calls.emails[0].text.includes('Enter this 6-digit code in the Password field.'));
   assert.ok(calls.emails[0].text.includes('https://placepms.example/login'));
   assert.ok(calls.emails[0].html.includes('Alex &lt;Student&gt;'));
   assert.ok(!message.includes(created.password));
@@ -41,13 +44,8 @@ test('signup emails the generated credential only to the account owner and requi
   assert.deepEqual(calls.deleted, []);
 });
 
-test('temporary passwords are unique and contain all common required character types', () => {
-  const passwords = new Set(Array.from({ length: 100 }, temporaryPassword));
-  assert.equal(passwords.size, 100);
-  for (const password of passwords) {
-    assert.ok(password.length >= 32);
-    for (const pattern of [/[A-Z]/, /[a-z]/, /[0-9]/, /[^A-Za-z0-9]/]) assert.match(password, pattern);
-  }
+test('temporary login credentials are exactly six decimal digits', () => {
+  for (let attempt = 0; attempt < 100; attempt++) assert.match(temporaryPassword(), /^[1-9]\d{5}$/);
 });
 
 test('invalid signup details never create an account or send email', async () => {

@@ -36,23 +36,25 @@ configuration for password-reset redirects.
    - `APP_URL`: your public HTTPS website URL, or `http://localhost:5173` locally.
 3. In Supabase Auth, disable **Allow new users to sign up** so accounts are created
    only by the server's admin signup endpoint. Admin `createUser` still works.
-   Set the Supabase minimum password length to **12** so it is enforced by Auth
-   as well as the form.
+   Supabase must accept **six-digit numeric passwords** for the temporary login
+   code (minimum length **6**, without mandatory letters/symbols). The account's
+   password-setup form requires a personal password of at least **12 characters**.
 4. Configure Supabase Auth's **Custom SMTP** with the same Brevo SMTP credentials
    and verified sender to send **Forgot password** emails through Brevo too.
    Those emails are sent by Supabase, separately from the signup endpoint.
 5. Restart `npm run dev` or redeploy Vercel after updating settings.
 
-The flow is **Create account → email with login email + random temporary password →
+The flow is **Create account → email with login email + random six-digit code →
 Sign in → Set your own password → Dashboard**. Signup no longer asks for a password
 and does not automatically sign the user in. The server creates a confirmed Auth
-account, but the random credential is delivered only to its email address.
+account, but the random credential is delivered only to its email address. The
+code is used in the normal **Password** field for the initial sign-in.
 
 `app_metadata.must_change_password` is server-owned. The password form and database
 policies block workspace access until Supabase updates the password; a database
 trigger clears the flag in the same update. Reloading or opening a dashboard URL
-cannot skip setup. Password recovery also completes setup. The old temporary
-password stops working when the password is replaced. Existing accounts are not
+cannot skip setup. Password recovery also completes setup. The temporary login
+code stops working when the personal password is set. Existing accounts are not
 forced through setup.
 
 `/api/signup` is a Vercel Node function; Vite serves the same handler during
