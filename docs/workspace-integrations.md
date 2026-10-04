@@ -73,14 +73,43 @@ to reconnect their integrations.
 GitHub OAuth callback:
 `https://www.placepms.in/api/integrations?action=callback&provider=github`
 
-Repository inspection includes accessible repository browsing, selected-branch
-commit history, day/author activity, languages, stars/forks, open issues/PRs,
-contributors, file/directory browsing, commit-level additions/deletions, and
-per-file diffs. Export the report as JSON. Analysis explicitly labels its sample:
-up to 100 commits per page, up to 100 branches, 30 PRs/contributors, and 50 issues.
-Use the next-page control for further commit analysis. File previews are limited
-to 1 MB; commit previews show up to 100 files and 50,000 characters per patch.
-Binary content, submodules, and larger files should be opened on GitHub.
+Choose an authorized repository, select a branch and **7 days / 30 days / 90 days /
+1 year / All history**, and inspect it. The repository intelligence view includes:
+
+- **Activity:** daily/weekly/monthly commit graphs, a clickable contribution
+  heatmap (latest 365 days), contributor distribution, UTC weekday/hour patterns,
+  and default-branch language composition with actual byte counts.
+- **Contributors:** authored commit totals and shares, active days, first/latest
+  commit timestamps, merges, verified signatures, and measured additions/deletions.
+  GitHub logins identify linked contributors; unlinked Git identities use email,
+  then name. Co-author trailers are not counted as separate authored commits.
+- **Commits:** searchable, contributor/day/type-filtered history with the full SHA,
+  message, author and committer identities, separate authored/committed UTC times,
+  parent commits, GitHub signature-verification status, and per-file diffs.
+- **Code changes:** **Analyze changes for loaded commits** reads commit statistics
+  in batches of 10 (at most 5 provider requests at once). It adds additions/deletions
+  graphs and the most frequently changed files. Unloaded statistics remain unknown.
+  A failed/rate-limited batch keeps successful results; retry resumes missing commits.
+  **Stop analysis** cancels further loading and keeps results already received.
+- **Repository:** visibility, creation/latest push, stars/forks, license, topics,
+  branches, repository-wide contributor totals, and open pull requests/issues.
+- **Exports:** the loaded JSON report and filtered commit CSV, with exact timestamps.
+
+Commit history loads 100 records per page. **Load next 100 commits** or **Load more
+history (up to 1,000)** adds pages to the same graphs, deduplicates SHAs, preserves
+change statistics, and retains the original snapshot cutoff. The coverage indicator
+distinguishes partial history from a completely loaded branch/window. Each window
+is capped at 10,000 commits. Time graphs use the committer timestamp in UTC; window
+selection covers UTC calendar days. All-history trends include older loaded commits,
+while the heatmap stays limited to the most recent year.
+
+Languages and GitHub contributor totals describe default-branch repository history,
+independently of the selected contributor/branch/window. Branches (100), repository
+contributors/open PRs (30 each), and open issues (50 including PRs) are bounded API
+samples; issues exclude returned PR records. File previews are limited to 1 MB;
+commit previews show up to 100 files and 50,000 characters per patch. Overall commit
+line totals come from GitHub's statistics even when the file list is truncated.
+Binary content, submodules, and larger files can be opened on GitHub.
 
 ## Figma
 
@@ -163,8 +192,10 @@ authorization; state is bound to an HttpOnly cookie, user, active session, and
 ## Verification
 
 `npm test` covers encryption/owner binding, URL validation, provider response
-normalization, bounded analysis, rate limits, OAuth state rejection, report escaping,
-and actual PostgreSQL RLS/session/review rules using PGlite.
+normalization, UTC activity/contributor aggregation, overlapping-page deduplication,
+change-analysis concurrency/partial failures, bounded analysis, rate limits, OAuth
+state rejection, report escaping, and actual PostgreSQL RLS/session/review rules
+using PGlite.
 
 `npm run test:e2e -- tests/home.spec.ts tests/workspace.spec.ts tests/signup.spec.ts` tests browser
 workflows with provider/API fixtures. No external account tokens are needed.

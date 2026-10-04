@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import type { GitHubCommit } from '../src/lib/integration-types';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const sessionId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -8,7 +9,7 @@ const user = { id, aud: 'authenticated', role: 'authenticated', email, app_metad
 const accessToken = `${Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify({ sub: id, session_id: sessionId, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.test-signature`;
 const session = { access_token: accessToken, refresh_token: 'test-refresh', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer', user };
 
-async function workspace(page: Page) {
+async function workspace(page: Page, options: { githubAnalytics?: boolean; failStatsOnce?: boolean } = {}) {
   const project = { id: 'sq-fixture', title: 'Connected Capstone', summary: 'Real project summary', tagline: 'A connected workspace', domain: 'Education', leader_email: email, mentor_id: null, mentor_name: null, github_repo: 'https://github.com/fixture/repo', figma_url: 'https://figma.com/design/Abc123/App', miro_url: 'https://miro.com/app/board/board123/', current_phase: 'Build', status: 'PENDING', created_at: '2026-01-01T00:00:00Z' };
   const milestone: Record<string, any> = { id: 'm-fixture', squad_id: project.id, name: 'Project delivery', phase: 'Build', description: 'Fixture delivery evidence', status: 'PENDING', due_date: date, start_date: null, submission_files: [], mentor_feedback: null, score: null };
   const members: Record<string, unknown>[] = [];
@@ -16,6 +17,13 @@ async function workspace(page: Page) {
   const connections: Record<string, unknown>[] = [];
   let sessions = [{ id: sessionId, created_at: date, last_active_at: date, ip: '127.0.0.1', user_agent: 'Chrome/140 Linux', current_session: true }, { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', created_at: date, last_active_at: date, ip: '192.0.2.10', user_agent: 'Firefox/120 Windows', current_session: false }];
   const calls: Record<string, unknown>[] = [];
+  let failStats = options.failStatsOnce === true;
+  const identity = (name: string, login: string) => ({ key: `github:${login}`, name, login, email: `${login}@example.test`, url: `https://github.com/${login}` });
+  const githubCommits: GitHubCommit[] = [
+    { sha: 'a'.repeat(40), message: 'Implement feature\nAdd authenticated repository analysis.', url: 'https://github.com/fixture/private-repo/commit/a', author: identity('Alice Example', 'alice'), committer: identity('Bob Example', 'bob'), authoredAt: '2026-01-01T09:00:00Z', committedAt: '2026-01-04T10:30:00Z', parents: [], verified: true, verificationReason: 'valid' },
+    { sha: 'b'.repeat(40), message: 'Merge feature branch', url: 'https://github.com/fixture/private-repo/commit/b', author: identity('Bob Example', 'bob'), committer: identity('Bob Example', 'bob'), authoredAt: '2026-01-03T15:00:00Z', committedAt: '2026-01-03T16:00:00Z', parents: ['a'.repeat(40), 'c'.repeat(40)], verified: false, verificationReason: 'unsigned' },
+    { sha: 'c'.repeat(40), message: 'Add repository tests', url: 'https://github.com/fixture/private-repo/commit/c', author: identity('Alice Example', 'alice'), committer: identity('Alice Example', 'alice'), authoredAt: '2026-01-02T08:00:00Z', committedAt: '2026-01-02T09:00:00Z', parents: [], verified: false, verificationReason: 'unsigned' },
+  ];
   await page.route('**/auth/v1/token**', route => route.fulfill({ json: session }));
   await page.route('**/auth/v1/user', route => route.fulfill({ json: user }));
   await page.route('**/auth/v1/logout**', route => route.fulfill({ status: 204 }));
@@ -68,7 +76,27 @@ async function workspace(page: Page) {
     if (input.action === 'disconnect') { const index = connections.findIndex(item => item.provider === input.provider); if (index >= 0) connections.splice(index, 1); return route.fulfill({ json: { disconnected: true } }); }
     if (input.action === 'list') return route.fulfill({ json: { items: [{ id: 'resource-1', title: input.provider === 'github' ? 'fixture/private-repo' : 'My connected resource', kind: input.provider === 'github' ? 'Private' : 'file', url: 'https://example.test/resource' }] } });
     if (input.action === 'files') return route.fulfill({ json: input.path ? { path: 'README.md', text: '# Project\nDocumentation from GitHub', size: 30 } : { path: '', items: [{ id: 'README.md', title: 'README.md', path: 'README.md', kind: 'file', value: 30 }] } });
+    if (input.action === 'commit-stats') {
+      const requested = input.shas as string[];
+      const denied = failStats && requested.includes('b'.repeat(40)); failStats = false;
+      return route.fulfill({ json: { commits: requested.filter(sha => !denied || sha !== 'b'.repeat(40)).map(sha => ({ sha, stats: { additions: 12, deletions: 2, files: [{ name: 'src/app.ts', status: 'modified', additions: 12, deletions: 2 }], filesTruncated: false } })), errors: denied ? [{ sha: 'b'.repeat(40), message: 'github API rate limit reached.' }] : [] } });
+    }
+    if (input.action === 'commit' && options.githubAnalytics) {
+      const item = githubCommits.find(commit => commit.sha === input.sha)!;
+      return route.fulfill({ json: { sha: item.sha, message: item.message, author: item.author.name, authorIdentity: item.author, committerIdentity: item.committer, date: item.authoredAt, committedAt: item.committedAt, parents: item.parents, verified: item.verified, verificationReason: item.verificationReason, additions: 12, deletions: 2, files: [{ name: 'src/app.ts', status: 'modified', additions: 12, deletions: 2, patch: '+const feature = true;' }], truncated: false, url: item.url } });
+    }
     if (input.action === 'commit') return route.fulfill({ json: { sha: 'a'.repeat(40), message: 'Implement feature', author: 'Contributor', date, additions: 12, deletions: 2, files: [{ name: 'src/app.ts', status: 'modified', additions: 12, deletions: 2, patch: '+const feature = true;' }] } });
+    if (input.provider === 'github' && options.githubAnalytics) {
+      const currentPage = Number(input.page) || 1;
+      const until = String(input.until || '2026-01-04T20:00:00.000Z');
+      const days = input.days === 'all' ? 'all' : Number(input.days) || 30;
+      const since = new Date(until); since.setUTCHours(0, 0, 0, 0); if (days !== 'all') since.setUTCDate(since.getUTCDate() - days + 1);
+      const repository = String(input.target || 'fixture/private-repo');
+      return route.fulfill({ json: { provider: 'github', title: repository, description: 'Authorized repository analysis', url: `https://github.com/${repository}`, repository, branch: 'main', branches: ['main', 'develop'], nextPage: currentPage === 1 ? 2 : undefined, metrics: [], sections: [], warnings: [],
+        github: { repository: { name: repository, defaultBranch: 'main', visibility: 'Private', archived: false, createdAt: '2025-01-01T00:00:00Z', pushedAt: '2026-01-04T10:30:00Z', sizeKb: 1024, license: 'MIT License', topics: ['education'], stars: 2, forks: 1, openIssuesAndPulls: 2 }, branch: 'main', window: { days, since: days === 'all' ? null : since.toISOString(), until }, pages: [currentPage], nextPage: currentPage === 1 ? 2 : undefined, commitsAvailable: true,
+          commits: currentPage === 1 ? githubCommits.slice(0, 2) : githubCommits.slice(1), languages: [{ name: 'TypeScript', bytes: 300 }, { name: 'CSS', bytes: 100 }], branches: [{ name: 'main', sha: 'a'.repeat(40), protected: true }], contributors: [{ login: 'alice', commits: 20, url: 'https://github.com/alice' }], pulls: [{ number: 4, title: 'Feature pull request', url: 'https://github.com/fixture/private-repo/pull/4', author: 'alice', createdAt: '2026-01-02T08:00:00Z', updatedAt: '2026-01-03T08:00:00Z', labels: ['enhancement'], draft: false }], issues: [] },
+      } });
+    }
     return route.fulfill({ json: {
       provider: input.provider, title: input.provider === 'github' ? 'fixture/repo' : `${input.provider} project analysis`, description: 'Provider report', url: 'https://example.test/resource', repository: 'fixture/repo', branch: 'main', branches: ['main', 'develop'],
       metrics: [{ label: 'Stars', value: 0 }, { label: 'Commits on this page', value: 1 }], warnings: [], sampleNotice: 'Analysis of up to 100 commits on this page.',
@@ -110,6 +138,71 @@ test('GitHub offers three access modes, public analysis, commit diffs, files and
   expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('fixture-private-readonly-token');
   await page.getByRole('button', { name: 'Browse my repositories' }).click();
   await expect(page.getByRole('button', { name: 'fixture/private-repo' })).toBeVisible();
+});
+
+test('authorized GitHub analytics show graphs, merge paginated history, filter contributors, and inspect exact commit details', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  const { calls, connections } = await workspace(page, { githubAnalytics: true });
+  connections.push({ provider: 'github', account: 'my-github-account', mode: 'oauth', updated_at: date, expires_at: null });
+  await page.goto('/dashboard/integrations?connected=github');
+  await page.getByLabel('Commit window').selectOption('7');
+  await page.getByRole('button', { name: 'fixture/private-repo', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Who contributed, what changed, and when' })).toBeVisible();
+  await expect(page.getByRole('img', { name: 'Commit activity graph', exact: true })).toBeVisible();
+  await expect(page.getByRole('img', { name: /Language distribution: TypeScript 75.0%/ })).toBeVisible();
+  await expect(page.locator('.github-coverage')).toContainText('2 unique commits loaded');
+  await expect(page.locator('.github-coverage')).toContainText('Partial history');
+  await page.getByRole('button', { name: 'Load next 100 commits', exact: true }).click();
+  await expect(page.locator('.github-coverage')).toContainText('3 unique commits loaded');
+  await expect(page.locator('.github-coverage')).toContainText('Complete selected history');
+  const inspectCalls = calls.filter(call => call.action === 'inspect');
+  expect(inspectCalls.every(call => call.access === 'oauth' && call.target === 'fixture/private-repo')).toBe(true);
+  expect(inspectCalls[1].until).toBe('2026-01-04T20:00:00.000Z');
+  expect(inspectCalls[1].page).toBe(2);
+  await page.getByRole('button', { name: 'Analyze changes for loaded commits', exact: true }).click();
+  await expect(page.locator('.github-coverage')).toContainText('Change statistics for 3/3 commits');
+  await expect(page.getByRole('img', { name: 'Code additions graph for measured commits', exact: true })).toBeVisible();
+  await expect(page.getByText('+36 additions', { exact: true })).toBeVisible();
+  await page.getByLabel('Contributor filter').selectOption('github:alice');
+  await page.getByRole('button', { name: '2026-01-04, 1 commits', exact: true }).click();
+  await expect(page.locator('.github-commit')).toHaveCount(1);
+  await expect(page.getByText('Authored 2026-01-01 09:00:00 UTC · alice@example.test')).toBeVisible();
+  await expect(page.getByText('Committed 2026-01-04 10:30:00 UTC')).toBeVisible();
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export filtered commits', exact: true }).click();
+  expect((await download).suggestedFilename()).toBe('github-commits.csv');
+  await page.getByRole('button', { name: 'Inspect files & diff', exact: true }).click();
+  await expect(page.locator('#github-commit-detail')).toContainText('Committed by Bob Example (@bob)');
+  await page.locator('#github-commit-detail').getByText('src/app.ts', { exact: false }).click();
+  await expect(page.getByText('+const feature = true;', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Contributors', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Contributor breakdown' })).toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: 'Alice Example' })).toContainText('66.7%');
+  await page.getByRole('button', { name: 'Repository', exact: true }).click();
+  await expect(page.getByText('MIT License', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: '#4 Feature pull request', exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('GitHub change analysis preserves partial results and retries only missing statistics', async ({ page }) => {
+  const { calls } = await workspace(page, { githubAnalytics: true, failStatsOnce: true });
+  await page.goto('/dashboard/repositories');
+  await page.getByRole('button', { name: /^Public repository/ }).click();
+  await page.getByLabel('Repository URL or owner/repository').fill('fixture/private-repo');
+  await page.getByRole('button', { name: 'Inspect repository', exact: true }).click();
+  await page.getByRole('button', { name: 'Analyze changes for loaded commits', exact: true }).click();
+  await expect(page.locator('.github-coverage')).toContainText('Change statistics for 1/2 commits');
+  await expect(page.getByRole('alert')).toContainText('rate limit');
+  await page.getByRole('button', { name: 'Analyze changes for loaded commits', exact: true }).click();
+  await expect(page.locator('.github-coverage')).toContainText('Change statistics for 2/2 commits');
+  const requests = calls.filter(call => call.action === 'commit-stats');
+  expect(requests[1].shas).toEqual(['b'.repeat(40)]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Switch to dark theme', exact: true }).click();
+  for (const tab of ['Activity', 'Contributors', 'Commits', 'Repository']) {
+    await page.getByRole('button', { name: tab, exact: true }).click();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), `overflow in GitHub ${tab}`).toBe(false);
+  }
 });
 
 for (const provider of ['github', 'figma', 'miro']) test(`${provider} authorization returns to that user's connection and resource browser`, async ({ page }) => {

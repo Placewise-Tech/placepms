@@ -2,7 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { ServerResponse } from 'node:http';
 import { ApiError, digest, providerName, seal, unseal, type Provider } from './integration-security.js';
 import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, serverClients, type Request } from './workspace-http.js';
-import { commitDetail, connectionAccount, inspectDesign, inspectGitHub, listResources, object, repositoryFiles, text, type Credential } from './providers.js';
+import { commitDetail, connectionAccount, githubCommitStatsPage, inspectDesign, inspectGitHub, listResources, object, repositoryFiles, text, type Credential } from './providers.js';
 
 type Admin = ReturnType<typeof serverClients>['admin'];
 const providers: Provider[] = ['github', 'figma', 'miro'];
@@ -149,6 +149,7 @@ export function createIntegrationsHandler(env: NodeJS.ProcessEnv = process.env) 
       }
       if (provider === 'github' && input.action === 'files') { jsonResponse(response, await repositoryFiles(input, credential)); return; }
       if (provider === 'github' && input.action === 'commit') { jsonResponse(response, await commitDetail(input, credential)); return; }
+      if (provider === 'github' && input.action === 'commit-stats') { jsonResponse(response, await githubCommitStatsPage(input, credential)); return; }
       if (input.action === 'inspect') {
         jsonResponse(response, provider === 'github' ? await inspectGitHub(input, credential) : await inspectDesign(provider, input, credential!)); return;
       }

@@ -12,11 +12,16 @@ const jwt = userId => `${Buffer.from('{"alg":"HS256"}').toString('base64url')}.$
 
 async function fixture(t) {
   const connections = new Map(); const states = new Map(); let active = true; let authUnavailable = false; let disconnectOnRefresh = false; let exchanges = 0;
+  const providerCalls = [];
   const originalFetch = globalThis.fetch;
   t.mock.method(globalThis, 'fetch', async (input, options = {}) => {
     const url = new URL(String(input));
     if (url.hostname === '127.0.0.1') return originalFetch(input, options);
-    if (url.hostname === 'api.github.com') return Response.json({ login: 'provider-owner' });
+    if (url.hostname === 'api.github.com') {
+      providerCalls.push({ url: url.href, authorization: new Headers(options.headers).get('authorization') });
+      if (url.pathname.includes('/commits/')) return Response.json({ sha: url.pathname.split('/').at(-1), stats: { additions: 5, deletions: 1 }, files: [] });
+      return Response.json({ login: 'provider-owner' });
+    }
     if (url.hostname === 'github.com') { exchanges++; if (disconnectOnRefresh) connections.clear(); return Response.json({ access_token: 'private-oauth-token', token_type: 'bearer', expires_in: 3600 }); }
     assert.equal(url.hostname, 'workspace-db.example.test');
     const headers = new Headers(options.headers); const method = options.method || 'GET'; const body = options.body ? JSON.parse(options.body) : null;
@@ -54,7 +59,7 @@ async function fixture(t) {
   t.after(() => new Promise(resolve => server.close(resolve)));
   const url = `http://127.0.0.1:${server.address().port}/api/integrations`;
   const post = (body, userId = owner) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt(userId)}` }, body: JSON.stringify(body) });
-  return { url, post, connections, states, revoke: () => { active = false; }, failAuth: () => { authUnavailable = true; }, disconnectDuringRefresh: () => { disconnectOnRefresh = true; }, exchanges: () => exchanges };
+  return { url, post, connections, states, providerCalls, revoke: () => { active = false; }, failAuth: () => { authUnavailable = true; }, disconnectDuringRefresh: () => { disconnectOnRefresh = true; }, exchanges: () => exchanges };
 }
 
 test('authenticated token connection encrypts credentials and isolates status/disconnect by user', async t => {
@@ -96,6 +101,24 @@ test('OAuth uses cookie/PKCE state bound to the starting account and consumes it
   const replay = await fetch(callback, { redirect: 'manual', headers: { Cookie: cookie.split(';')[0] } });
   assert.match(replay.headers.get('location'), /connection_error=/);
   assert.equal(app.exchanges(), 1);
+});
+
+test('commit statistics use only the authenticated account connection and reject revoked sessions', async t => {
+  const app = await fixture(t);
+  app.connections.set(`${owner}:github`, { id: 'owner-connection', user_id: owner, provider: 'github', account: 'owner', mode: 'oauth', expires_at: null, credentials: seal(JSON.stringify({ accessToken: 'owner-private-oauth-token', mode: 'oauth' }), `${owner}:github`, env) });
+  const input = { action: 'commit-stats', provider: 'github', access: 'oauth', target: 'team/repo', shas: ['a'.repeat(40)], token: 'ignored-browser-token' };
+  const response = await app.post(input);
+  assert.equal(response.status, 200);
+  const report = await response.json();
+  assert.equal(report.commits[0].stats.additions, 5);
+  assert.ok(!JSON.stringify(report).includes('owner-private-oauth-token'));
+  assert.equal(app.providerCalls[0].authorization, 'Bearer owner-private-oauth-token');
+  const count = app.providerCalls.length;
+  assert.equal((await app.post(input, other)).status, 409);
+  assert.equal(app.providerCalls.length, count);
+  app.revoke();
+  assert.equal((await app.post(input)).status, 401);
+  assert.equal(app.providerCalls.length, count);
 });
 
 test('revoked sessions cannot use the integration vault or complete pending OAuth', async t => {

@@ -1,5 +1,5 @@
 import { ApiError, filePath, providerResource, repositoryPath, type Provider } from './integration-security.js';
-import type { CommitDetail, InsightItem, Inspection, RepositoryFiles, ResourcePage } from '../src/lib/integration-types.js';
+import type { CommitDetail, GitHubAnalysis, GitHubCommit, GitHubCommitStats, GitHubIdentity, GitHubStatsPage, GitHubWorkItem, InsightItem, Inspection, RepositoryFiles, ResourcePage } from '../src/lib/integration-types.js';
 
 type ObjectValue = Record<string, unknown>;
 export const object = (value: unknown): ObjectValue => value && typeof value === 'object' && !Array.isArray(value) ? value as ObjectValue : {};
@@ -73,33 +73,55 @@ export async function inspectGitHub(input: ObjectValue, credential?: Credential)
   const repo = object((await providerRequest('github', base, credential)).data);
   const branch = text(input.branch) || text(repo.default_branch);
   if (branch.length > 250 || [...branch].some(char => char.charCodeAt(0) < 32)) throw new ApiError(400, 'Invalid branch name.');
-  const days = [7, 30, 90, 365].includes(Number(input.days)) ? Number(input.days) : 30;
-  const since = new Date(Date.now() - days * 86_400_000).toISOString();
+  const days = (input.days === 'all' ? 'all' : [7, 30, 90, 365].includes(Number(input.days)) ? Number(input.days) : 30) as GitHubAnalysis['window']['days'];
+  const untilDate = input.until === undefined ? new Date() : new Date(text(input.until));
+  if (!Number.isFinite(untilDate.getTime()) || untilDate.getTime() > Date.now() + 60_000 || untilDate.getTime() < Date.UTC(2008, 0, 1)) throw new ApiError(400, 'Invalid analysis snapshot date.');
+  const until = untilDate.toISOString();
+  const start = new Date(untilDate); start.setUTCHours(0, 0, 0, 0);
+  if (days !== 'all') start.setUTCDate(start.getUTCDate() - days + 1);
+  const since = days === 'all' ? null : start.toISOString();
   const page = pageNumber(input.page);
   const warnings: string[] = [];
   const optional = async (path: string, label: string) => {
     try { return await providerRequest('github', path, credential); }
-    catch (cause) { warnings.push(`${label}: ${cause instanceof ApiError ? cause.message : 'Unavailable'}`); return { data: null, headers: new Headers() }; }
+    catch (cause) {
+      if (label === 'Commits' && cause instanceof ApiError && cause.status === 409) return { data: [], headers: new Headers() };
+      warnings.push(`${label}: ${cause instanceof ApiError ? cause.message : 'Unavailable'}`); return { data: null, headers: new Headers() };
+    }
   };
   const [commitsResult, languages, branches, pulls, issues, contributors] = await Promise.all([
-    optional(`${base}/commits?sha=${encodeURIComponent(branch)}&since=${since}&per_page=100&page=${page}`, 'Commits'),
+    optional(`${base}/commits?sha=${encodeURIComponent(branch)}${since ? `&since=${since}` : ''}&until=${until}&per_page=100&page=${page}`, 'Commits'),
     optional(`${base}/languages`, 'Languages'), optional(`${base}/branches?per_page=100`, 'Branches'),
     optional(`${base}/pulls?state=open&per_page=30&sort=updated`, 'Pull requests'),
     optional(`${base}/issues?state=open&per_page=50&sort=updated`, 'Issues'), optional(`${base}/contributors?per_page=30`, 'Contributors'),
   ]);
   const commits = rows(commitsResult.data);
+  const history = commits.map(normalizeGitHubCommit).filter(commit => /^[a-f0-9]{40}$/i.test(commit.sha));
   const authors = new Map<string, number>(); const dates = new Map<string, number>();
   for (const row of commits) {
     const commit = object(row.commit); const author = object(commit.author);
     const name = text(object(row.author).login) || text(author.name) || 'Unknown author';
     authors.set(name, (authors.get(name) || 0) + 1);
-    const date = text(author.date).slice(0, 10); if (date) dates.set(date, (dates.get(date) || 0) + 1);
+    const date = (text(object(commit.committer).date) || text(author.date)).slice(0, 10); if (date) dates.set(date, (dates.get(date) || 0) + 1);
   }
+  const hasMore = Boolean(commitsResult.headers.get('link')?.includes('rel="next"'));
+  if (hasMore && page === 100) warnings.push('This analysis is capped at 10,000 commits. Choose a shorter commit window to analyze recent activity in full.');
+  const nextPage = hasMore && page < 100 ? page + 1 : undefined;
+  const github: GitHubAnalysis = {
+    repository: { name: text(repo.full_name), defaultBranch: text(repo.default_branch), visibility: repo.private ? 'Private' : 'Public', archived: repo.archived === true,
+      createdAt: text(repo.created_at), pushedAt: text(repo.pushed_at), sizeKb: num(repo.size), license: text(object(repo.license).name), topics: Array.isArray(repo.topics) ? repo.topics.filter((value): value is string => typeof value === 'string') : [],
+      stars: num(repo.stargazers_count), forks: num(repo.forks_count), openIssuesAndPulls: num(repo.open_issues_count) },
+    branch, window: { days, since, until }, pages: [page], commitsAvailable: Array.isArray(commitsResult.data), historyTruncated: hasMore && page === 100, nextPage, commits: history,
+    languages: Object.entries(object(languages.data)).map(([name, value]) => ({ name, bytes: num(value) })).filter(row => row.bytes > 0).sort((a, b) => b.bytes - a.bytes),
+    branches: rows(branches.data).map(row => ({ name: text(row.name), sha: text(object(row.commit).sha), protected: row.protected === true })),
+    contributors: rows(contributors.data).map(row => ({ login: text(row.login), commits: num(row.contributions), url: text(row.html_url) })),
+    pulls: rows(pulls.data).map(normalizeGitHubWorkItem), issues: rows(issues.data).filter(row => !row.pull_request).map(normalizeGitHubWorkItem),
+  };
   return {
     provider: 'github', title: text(repo.full_name), description: text(repo.description), url: text(repo.html_url), repository, branch,
     branches: rows(branches.data).map(row => text(row.name)), warnings,
-    nextPage: commitsResult.headers.get('link')?.includes('rel="next"') ? page + 1 : undefined,
-    sampleNotice: `Commit analysis covers page ${page} (up to 100 commits) on ${branch} within the last ${days} days. Contributors show up to 30 all-time contributors; issues/PRs and branches are bounded API samples.`,
+    nextPage, github,
+    sampleNotice: `Commit analysis loads up to 100 commits per page on ${branch}${days === 'all' ? ' across its history' : ` within the last ${days} UTC calendar days`}. Load more pages to expand the graphs. Repository-wide languages and up to 30 contributors describe the default branch, not the selected window; open PRs (30), issues (50 including PRs), and branches (100) are bounded API samples.`,
     metrics: [{ label: 'Visibility', value: repo.private ? 'Private' : 'Public' }, { label: 'Stars', value: num(repo.stargazers_count) }, { label: 'Forks', value: num(repo.forks_count) }, { label: 'Commits on this page', value: commits.length }, { label: 'Authors on this page', value: authors.size }, { label: 'Active days on this page', value: dates.size }, { label: 'Open issues + PRs', value: num(repo.open_issues_count) }, { label: 'Default branch', value: text(repo.default_branch) }],
     sections: [
       { title: 'Commit history', items: commits.map(row => { const commit = object(row.commit); const author = object(commit.author); return { id: text(row.sha), title: text(commit.message).split('\n')[0], description: `${text(author.name)} · ${text(row.sha).slice(0, 7)}`, date: text(author.date), url: text(row.html_url), kind: 'commit' }; }) },
@@ -111,6 +133,47 @@ export async function inspectGitHub(input: ObjectValue, credential?: Credential)
       { title: 'All-time contributors', items: rows(contributors.data).map(row => ({ id: String(row.id), title: text(row.login), value: num(row.contributions), url: text(row.html_url) })) },
     ],
   };
+}
+
+function githubIdentity(git: ObjectValue, account: ObjectValue): GitHubIdentity {
+  const login = text(account.login); const email = text(git.email); const name = text(git.name) || login || 'Unknown author';
+  return { key: login ? `github:${login.toLowerCase()}` : email ? `email:${email.toLowerCase()}` : `name:${name}`, name, login, email, url: login ? `https://github.com/${encodeURIComponent(login)}` : '' };
+}
+
+function normalizeGitHubCommit(row: ObjectValue): GitHubCommit {
+  const commit = object(row.commit); const author = object(commit.author); const committer = object(commit.committer); const verification = object(commit.verification);
+  return { sha: text(row.sha), message: text(commit.message), url: text(row.html_url), author: githubIdentity(author, object(row.author)), committer: githubIdentity(committer, object(row.committer)),
+    authoredAt: text(author.date), committedAt: text(committer.date) || text(author.date), parents: rows(row.parents).map(parent => text(parent.sha)).filter(sha => /^[a-f0-9]{40}$/i.test(sha)), verified: verification.verified === true, verificationReason: text(verification.reason) };
+}
+
+function normalizeGitHubWorkItem(row: ObjectValue): GitHubWorkItem {
+  return { number: num(row.number), title: text(row.title), url: text(row.html_url), author: text(object(row.user).login), createdAt: text(row.created_at), updatedAt: text(row.updated_at), labels: rows(row.labels).map(label => text(label.name)), draft: row.draft === true };
+}
+
+function githubCommitStats(row: ObjectValue, headers: Headers): GitHubCommitStats {
+  const stats = object(row.stats); const files = rows(row.files).slice(0, 100);
+  if (typeof stats.additions !== 'number' || typeof stats.deletions !== 'number') throw new ApiError(502, 'GitHub did not return change statistics for this commit.');
+  return { additions: num(stats.additions), deletions: num(stats.deletions), filesTruncated: Boolean(headers.get('link')?.includes('rel="next"')) || rows(row.files).length > 100,
+    files: files.map(file => ({ name: text(file.filename), status: text(file.status), additions: num(file.additions), deletions: num(file.deletions) })) };
+}
+
+export async function githubCommitStatsPage(input: ObjectValue, credential?: Credential): Promise<GitHubStatsPage> {
+  const repository = repositoryPath(input.target);
+  if (!Array.isArray(input.shas) || !input.shas.length || input.shas.length > 10 || input.shas.some(sha => typeof sha !== 'string' || !/^[a-f0-9]{40}$/i.test(sha))) throw new ApiError(400, 'Select between 1 and 10 full commit IDs for change analysis.');
+  const shas = [...new Set(input.shas as string[])]; const result: GitHubStatsPage = { commits: [], errors: [] };
+  // Two bounded waves keep this request within the server's execution window.
+  for (let offset = 0; offset < shas.length; offset += 5) {
+    await Promise.all(shas.slice(offset, offset + 5).map(async sha => {
+      try {
+        const response = await providerRequest('github', `/repos/${repository}/commits/${sha}?per_page=100`, credential);
+        const row = object(response.data);
+        if (text(row.sha).toLowerCase() !== sha.toLowerCase()) throw new ApiError(502, 'GitHub returned a different commit. Please retry.');
+        result.commits.push({ sha, stats: githubCommitStats(row, response.headers) });
+      } catch (cause) { result.errors.push({ sha, message: cause instanceof ApiError ? cause.message : 'Change statistics unavailable.' }); }
+    }));
+    if (result.errors.length) break;
+  }
+  return result;
 }
 
 export async function repositoryFiles(input: ObjectValue, credential?: Credential): Promise<RepositoryFiles> {
@@ -130,10 +193,13 @@ export async function repositoryFiles(input: ObjectValue, credential?: Credentia
 export async function commitDetail(input: ObjectValue, credential?: Credential): Promise<CommitDetail> {
   const repository = repositoryPath(input.target); const sha = text(input.sha);
   if (!/^[a-f0-9]{7,40}$/i.test(sha)) throw new ApiError(400, 'Select a valid commit.');
-  const result = object((await providerRequest('github', `/repos/${repository}/commits/${sha}?per_page=100`, credential)).data);
+  const response = await providerRequest('github', `/repos/${repository}/commits/${sha}?per_page=100`, credential);
+  const result = object(response.data);
   const commit = object(result.commit); const author = object(commit.author); const stats = object(result.stats);
   const files = rows(result.files);
-  return { sha: text(result.sha), message: text(commit.message), author: text(author.name), date: text(author.date), url: text(result.html_url), additions: num(stats.additions), deletions: num(stats.deletions), truncated: files.length >= 100 || files.some(row => text(row.patch).length > 50_000), files: files.map(row => ({ name: text(row.filename), status: text(row.status), additions: num(row.additions), deletions: num(row.deletions), patch: text(row.patch).slice(0, 50_000) })) };
+  const normalized = normalizeGitHubCommit(result);
+  return { sha: text(result.sha), message: text(commit.message), author: text(author.name), date: text(author.date), url: text(result.html_url), additions: num(stats.additions), deletions: num(stats.deletions), truncated: files.length >= 100 || files.some(row => text(row.patch).length > 50_000), files: files.slice(0, 100).map(row => ({ name: text(row.filename), status: text(row.status), additions: num(row.additions), deletions: num(row.deletions), patch: text(row.patch).slice(0, 50_000) })),
+    authorIdentity: normalized.author, committerIdentity: normalized.committer, committedAt: normalized.committedAt, parents: normalized.parents, verified: normalized.verified, verificationReason: normalized.verificationReason };
 }
 
 export async function inspectDesign(provider: 'figma' | 'miro', input: ObjectValue, credential: Credential): Promise<Inspection> {

@@ -110,6 +110,14 @@ mentor management, milestone attachments/reviews, and a monthly calendar.
 Research, resources, and documents have private saved libraries; the Blackbook
 builder produces editable reports from actual project records.
 
+GitHub repository intelligence adds activity graphs, a contribution heatmap,
+contributor breakdowns, exact author/committer UTC timelines, language composition,
+and per-commit code-change graphs. Filter by contributor, date, message or commit
+type, load additional history into the same report, inspect parents/files/diffs,
+and export loaded JSON or filtered commit CSV. Choose **All history** for older
+commits and **Analyze changes for loaded commits** for additions/deletions and
+frequently changed files. Reports show loaded-history and measured-change coverage.
+
 Apply `supabase/migrations/202610030002_workspace_integrations.sql` before deploying
 these features. See [Connected workspace setup](docs/workspace-integrations.md) for
 the provider app credentials, exact callback URLs, permissions, and feature limits.

@@ -34,6 +34,66 @@ export interface Inspection {
   branch?: string;
   nextPage?: number;
   nextCursor?: string;
+  github?: GitHubAnalysis;
+}
+export interface GitHubIdentity {
+  key: string;
+  name: string;
+  login: string;
+  email: string;
+  url: string;
+}
+export interface GitHubCommitStats {
+  additions: number;
+  deletions: number;
+  files: { name: string; status: string; additions: number; deletions: number }[];
+  filesTruncated: boolean;
+}
+export interface GitHubCommit {
+  sha: string;
+  message: string;
+  url: string;
+  author: GitHubIdentity;
+  committer: GitHubIdentity;
+  authoredAt: string;
+  committedAt: string;
+  parents: string[];
+  verified: boolean;
+  verificationReason: string;
+  stats?: GitHubCommitStats;
+}
+export interface GitHubWorkItem {
+  number: number;
+  title: string;
+  url: string;
+  author: string;
+  createdAt: string;
+  updatedAt: string;
+  labels: string[];
+  draft: boolean;
+}
+export interface GitHubAnalysis {
+  repository: {
+    name: string; defaultBranch: string; visibility: string; archived: boolean;
+    createdAt: string; pushedAt: string; sizeKb: number; license: string; topics: string[];
+    stars: number; forks: number; openIssuesAndPulls: number;
+  };
+  branch: string;
+  window: { days: 7 | 30 | 90 | 365 | 'all'; since: string | null; until: string };
+  pages: number[];
+  commitsAvailable: boolean;
+  historyTruncated?: boolean;
+  nextPage?: number;
+  commits: GitHubCommit[];
+  languages: { name: string; bytes: number }[];
+  branches: { name: string; sha: string; protected: boolean }[];
+  contributors: { login: string; commits: number; url: string }[];
+  pulls: GitHubWorkItem[];
+  issues: GitHubWorkItem[];
+}
+export interface GitHubStatsPage {
+  commits: { sha: string; stats: GitHubCommitStats }[];
+  errors: { sha: string; message: string }[];
 }
 export interface ResourcePage { items: InsightItem[]; nextPage?: number; nextCursor?: string }
 export interface RepositoryFiles {
@@ -54,6 +114,12 @@ export interface CommitDetail {
   deletions: number;
   files: { name: string; status: string; additions: number; deletions: number; patch: string }[];
   truncated: boolean;
+  authorIdentity?: GitHubIdentity;
+  committerIdentity?: GitHubIdentity;
+  committedAt?: string;
+  parents?: string[];
+  verified?: boolean;
+  verificationReason?: string;
 }
 export interface LoginSession {
   id: string;
