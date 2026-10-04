@@ -17,6 +17,23 @@ Accounts and sessions use Supabase Auth. Signup emails are sent server-side thro
 Brevo SMTP. Enable the deployed domain and localhost in Supabase Auth's URL
 configuration for password-reset redirects.
 
+### Password-reset URLs
+
+In **Supabase → Authentication → URL Configuration**, set **Site URL** to
+`https://www.placepms.in` and add `https://www.placepms.in/login` and
+`https://placepms.in/login` to **Redirect URLs**. Local testing also uses
+`http://127.0.0.1:5173/login` and `http://localhost:5173/login`. Supabase falls back
+to Site URL when a requested redirect is not allowed, so production Site URL must
+not point to localhost. The recovery email template's reset button should use
+`{{ .ConfirmationURL }}` so Supabase verifies the link before returning to the app.
+
+Forgot password returns to the whitelisted `/login` callback. After Supabase
+verifies it, the app routes to `/reset-password` and preserves the reset screen
+across reloads until the password is saved or the user signs out. Recovery intent
+is captured before React mounts and is bound to the authenticated account. Invalid
+or expired callbacks show a fresh-link request form instead of the dashboard.
+`/reset-password` does not need to be added as an email redirect URL.
+
 ## Temporary-password signup (Brevo)
 
 1. Run `supabase/migrations/202610030001_temporary_password_signup.sql` in your
@@ -160,6 +177,19 @@ RUN_SIGNUP_LIVE_TESTS=1 npm run test:e2e -- tests/signup.live.spec.ts
 
 This creates and removes an isolated account and profile using the standard
 Supabase environment variables in `.env`.
+
+`npm run test:e2e -- tests/recovery.spec.ts` verifies early SDK callbacks, reloads,
+expired/invalid links, password-update errors, and returning to normal sign-in.
+Verify the actual recovery link and password change without sending an email:
+
+```sh
+RUN_RECOVERY_LIVE_TESTS=1 npm run test:e2e -- tests/recovery.live.spec.ts
+```
+
+This checks the configured `APP_URL` redirect with Supabase, exercises its returned
+recovery session on localhost, and removes the isolated account afterward.
+Set `RECOVERY_TEST_ORIGIN=https://www.placepms.in` alongside the live-test flag to
+verify the same flow on the deployed site. The origin must match `APP_URL`.
 
 The opt-in browser test exercises real authentication and database writes with
 an isolated account, and deletes that account and its records afterward:

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { configurationError, setSessionPersistence, supabase } from '../lib/supabase';
+import { requestPasswordReset } from '../lib/password-reset';
 
 interface AuthInterfaceProps {
   isOpen: boolean;
@@ -99,10 +100,7 @@ export default function AuthInterface({
     setError('');
     setNotice('');
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: `${window.location.origin}/login`,
-      });
-      if (resetError) throw resetError;
+      await requestPasswordReset(email);
       setNotice('If an account exists for this email, a password reset link has been sent.');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Unable to send the reset email.');

@@ -1,7 +1,26 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type Session } from '@supabase/supabase-js';
+import { readAuthCallback } from './auth-recovery';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+export const initialAuthCallback = readAuthCallback(window.location.href);
+const recoveryStorageKey = 'placepms:password-recovery-user';
+let recoveryUserId = sessionStorage.getItem(recoveryStorageKey);
+
+export function rememberPasswordRecovery(session: Session) {
+  recoveryUserId = session.user.id;
+  // Only store routing intent, bound to the authenticated account. No link tokens.
+  sessionStorage.setItem(recoveryStorageKey, recoveryUserId);
+}
+
+export function clearPasswordRecovery() {
+  recoveryUserId = null;
+  sessionStorage.removeItem(recoveryStorageKey);
+}
+
+export function isPasswordRecoverySession(session: Session | null) {
+  return Boolean(session && session.user.id === recoveryUserId);
+}
 
 export const supabase = url && key ? createClient(url, key, {
   auth: {
@@ -19,6 +38,12 @@ export const supabase = url && key ? createClient(url, key, {
     },
   },
 }) : null;
+
+// Register immediately: an email callback can finish before React mounts.
+supabase?.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY' && session) rememberPasswordRecovery(session);
+  else if (event === 'SIGNED_OUT' || (session && recoveryUserId && session.user.id !== recoveryUserId)) clearPasswordRecovery();
+});
 
 export function setSessionPersistence(remember: boolean) {
   sessionStorage.setItem('placepms:session-only', String(!remember));
