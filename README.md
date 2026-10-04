@@ -98,9 +98,43 @@ these features. See [Connected workspace setup](docs/workspace-integrations.md) 
 the provider app credentials, exact callback URLs, permissions, and feature limits.
 There is no invented project data or fallback provider analysis in the application.
 
+## Advanced dashboard
+
+- **Overview:** delivery priorities, overdue/revision/review counts, project health,
+  profile completeness, and a workspace setup checklist, all from saved records.
+- **Projects:** current/archive filtering, search by name/domain/phase/mentor,
+  name/date/progress sorting, editable team roles and skills, contextual research
+  and document links, and milestone CSV evidence export.
+- **Tasks:** project and status filters (including overdue, due today, in review,
+  revisions, completed, and undated), due/name/update sorting, list or status-board
+  views, and CSV export of the filtered results. Submissions can also be managed
+  directly inside a project. Updates check the saved status to avoid stale writes.
+- **Mentorship:** submitted-delivery queue, review metrics, revision requests,
+  scores, feedback, and links directly to milestone evidence.
+- **Calendar:** month/agenda views, Today, date deep links, project/completion
+  filtering, and export of the selected deadlines as ICS.
+- **Libraries:** title/notes/URL search, project and exact-tag filters, sorting,
+  refresh, individual Markdown exports, and current-page JSON export. Saved
+  libraries remain private; project and milestone records are shared with the team.
+- **Blackbook:** project-specific drafts saved to the private Documents library.
+  Use **Save draft** before leaving to preserve authored sections and generated
+  Markdown across reloads/devices. A draft uses the existing 20,000-character
+  saved-note limit; larger drafts can be downloaded as JSON. Export the report as
+  Markdown or printable HTML, print/save PDF, or save it to Documents.
+- **Portfolio:** profile-readiness guidance and an HTML export containing your
+  profile, current project details, approved deliveries, and linked tools.
+- **Navigation/account:** Ctrl/⌘ K or `/` for page/project/milestone search, `N` to
+  create a project, keyboard-contained search dialogs, persistent sidebar/theme
+  preferences, live integration status, and auto-refreshed session details.
+
+The public homepage describes these available features, includes an interactive
+product preview and FAQ, and links to student/mentor sign-in. It uses dedicated
+responsive styles rather than relying on the old generated utility stylesheet.
+
 ## Structure
 
-- `src/App.tsx`: landing page and authenticated routing.
+- `src/App.tsx`: authenticated routing and lazy-loaded account/workspace screens.
+- `src/components/HomePage.tsx`, `src/home.css`: public homepage and product content.
 - `src/components/AuthInterface.tsx`: Supabase sign-in/sign-up.
 - `src/components/dashboard/`: workspace layout, views, and data-entry dialogs.
 - `src/hooks/`: session and dashboard loading lifecycle.
@@ -112,8 +146,10 @@ There is no invented project data or fallback provider analysis in the applicati
 
 `npm test` runs dashboard checks, signup/email failure cases, and the actual SQL
 migration against an isolated in-memory PostgreSQL database (PGlite), including
-password gating and rate limits. `npm run test:e2e -- tests/signup.spec.ts` checks
-signup and required password setup in a browser with mocked external services.
+password gating and rate limits.
+`npm run test:e2e -- tests/home.spec.ts tests/workspace.spec.ts tests/signup.spec.ts`
+checks the homepage, advanced dashboard, and required password setup in a browser
+with isolated API/provider fixtures.
 Install Chromium first with `npx playwright install --with-deps chromium`.
 After applying the signup migration, verify the real password-change trigger,
 database access gate, and browser flow without sending an email:

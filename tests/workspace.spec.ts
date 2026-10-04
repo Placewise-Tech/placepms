@@ -10,7 +10,7 @@ const session = { access_token: accessToken, refresh_token: 'test-refresh', expi
 
 async function workspace(page: Page) {
   const project = { id: 'sq-fixture', title: 'Connected Capstone', summary: 'Real project summary', tagline: 'A connected workspace', domain: 'Education', leader_email: email, mentor_id: null, mentor_name: null, github_repo: 'https://github.com/fixture/repo', figma_url: 'https://figma.com/design/Abc123/App', miro_url: 'https://miro.com/app/board/board123/', current_phase: 'Build', status: 'PENDING', created_at: '2026-01-01T00:00:00Z' };
-  const milestone = { id: 'm-fixture', squad_id: project.id, name: 'Project delivery', phase: 'Build', status: 'PENDING', due_date: date, start_date: null, submission_files: [], mentor_feedback: null, score: null };
+  const milestone: Record<string, any> = { id: 'm-fixture', squad_id: project.id, name: 'Project delivery', phase: 'Build', description: 'Fixture delivery evidence', status: 'PENDING', due_date: date, start_date: null, submission_files: [], mentor_feedback: null, score: null };
   const members: Record<string, unknown>[] = [];
   const library: Record<string, unknown>[] = [{ id: 'reference-1', user_id: id, kind: 'research', title: 'Saved academic reference', url: 'https://example.test/paper', notes: 'A reviewed reference', tags: ['research'], project_id: project.id, created_at: date, updated_at: date }];
   const connections: Record<string, unknown>[] = [];
@@ -34,9 +34,12 @@ async function workspace(page: Page) {
         const index = library.findIndex(item => `eq.${item.id}` === url.searchParams.get('id')); if (index >= 0) library.splice(index, 1);
         return route.fulfill({ status: 204 });
       }
-      const result = library.filter(item => (!url.searchParams.has('kind') || `eq.${item.kind}` === url.searchParams.get('kind')) && (!url.searchParams.has('project_id') || `eq.${item.project_id}` === url.searchParams.get('project_id')));
+      const tag = url.searchParams.get('tags')?.match(/^cs\.\{(.+)\}$/)?.[1];
+      const search = url.searchParams.get('or')?.match(/ilike\."%(.+?)%"/)?.[1];
+      const result = library.filter(item => (!url.searchParams.has('kind') || `eq.${item.kind}` === url.searchParams.get('kind')) && (!url.searchParams.has('project_id') || `eq.${item.project_id}` === url.searchParams.get('project_id')) && (!tag || (item.tags as string[]).includes(tag)) && (!search || `${item.title} ${item.notes} ${item.url}`.toLowerCase().includes(search.toLowerCase())));
       return route.fulfill({ json: result, headers: { 'content-range': `0-${Math.max(0, result.length - 1)}/${result.length}`, 'access-control-expose-headers': 'content-range' } });
     }
+    if (table === 'milestones' && request.method() === 'PATCH') { Object.assign(milestone, request.postDataJSON()); return route.fulfill({ json: [{ id: milestone.id }] }); }
     return route.fulfill({ json: table === 'profiles' ? [{ id, email, full_name: 'Workspace Fixture', college: 'Example University' }] : table === 'pms_squads' ? [project] : table === 'milestones' ? [milestone] : table === 'squad_members' ? members : [] });
   });
   await page.route('**/api/sessions', async route => {
@@ -49,7 +52,10 @@ async function workspace(page: Page) {
     if (input.action === 'project.update') Object.assign(project, input);
     if (input.action === 'project.archive') project.status = input.restore ? 'PENDING' : 'ARCHIVED';
     if (input.action === 'member.add') members.push({ ...input, id: 'member-fixture', squad_id: project.id, skills: input.skills.split(',') });
+    if (input.action === 'member.update') { const member = members.find(item => item.id === input.memberId); if (member) Object.assign(member, input, { skills: input.skills.split(',') }); }
     if (input.action === 'milestone.update') Object.assign(milestone, input, { submission_files: input.links.split('\n').filter(Boolean).map((url: string) => ({ name: 'Submission 1', url })) });
+    if (input.action === 'milestone.submit') Object.assign(milestone, { status: input.withdraw ? 'PENDING' : 'SUBMITTED' });
+    if (input.action === 'milestone.review') Object.assign(milestone, { status: input.approve ? 'APPROVED' : 'REVISION_REQUESTED', mentor_feedback: input.feedback, score: input.score === '' ? null : Number(input.score) });
     return route.fulfill({ json: { saved: true } });
   });
   await page.route('**/api/integrations', async route => {
@@ -75,7 +81,7 @@ async function workspace(page: Page) {
   await page.getByRole('button', { name: 'Sign In to Workspace', exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Your projects', exact: true })).toBeVisible();
-  return { calls, library, connections };
+  return { calls, library, connections, project, milestone, members };
 }
 
 test('GitHub offers three access modes, public analysis, commit diffs, files and private PAT browsing', async ({ page }) => {
@@ -114,7 +120,7 @@ for (const provider of ['github', 'figma', 'miro']) test(`${provider} authorizat
   await expect(page.getByRole('tab', { name: label, exact: true })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: new RegExp(`^${label} authorization`) })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('status').filter({ hasText: `${label} connected to your account` })).toBeVisible();
-  await expect(page.getByText(`${provider}-personal-account`, { exact: true })).toBeVisible();
+  await expect(page.locator('.workspace-callout').getByText(`${provider}-personal-account`, { exact: true })).toBeVisible();
   if (provider !== 'figma') {
     await expect(page.getByRole('button', { name: provider === 'github' ? 'fixture/private-repo' : 'My connected resource' })).toBeVisible();
     expect(calls.some(call => call.action === 'list' && call.provider === provider && call.access === 'oauth')).toBe(true);
@@ -195,4 +201,138 @@ test('calendar drills into a deadline and the advanced workspace fits a mobile s
   await page.setViewportSize({ width: 390, height: 844 }); await page.goto('/dashboard/repositories');
   await expect(page.getByRole('button', { name: /^Personal access token/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)).toBe(false);
+});
+
+test('workspace keyboard search opens without another menu and drills into milestone evidence', async ({ page }) => {
+  await workspace(page);
+  await page.keyboard.press('Control+k');
+  const dialog = page.getByRole('dialog', { name: 'Search workspace', exact: true });
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Search pages and projects').fill('Project delivery');
+  await dialog.getByRole('button', { name: /Project delivery/ }).click();
+  await expect(page).toHaveURL(/projects\/sq-fixture#milestone-m-fixture$/);
+  await expect(page.locator('#milestone-m-fixture')).toBeInViewport();
+  await page.keyboard.press('/');
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  await page.keyboard.press('n');
+  await expect(page.getByRole('dialog', { name: 'Create a project' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('priority links apply task filters, board follows status changes, and exports use visible records', async ({ page }) => {
+  const { milestone } = await workspace(page);
+  milestone.due_date = '2020-01-01';
+  await page.reload();
+  await page.getByRole('link', { name: '1 Overdue', exact: true }).click();
+  await expect(page.getByLabel('Filter milestone status')).toHaveValue('overdue');
+  await expect(page.getByRole('heading', { name: 'Project delivery', exact: true })).toBeVisible();
+  await page.getByLabel('Filter milestone status').selectOption('today');
+  await expect(page.getByRole('heading', { name: 'No milestones to show' })).toBeVisible();
+  await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
+  await page.getByRole('button', { name: 'Board view', exact: true }).click();
+  await page.getByRole('button', { name: 'Submit Project delivery', exact: true }).click();
+  await expect(page.locator('.workspace-board-column').filter({ has: page.getByRole('heading', { name: /^In review/ }) }).getByRole('button', { name: 'Withdraw submission for Project delivery' })).toBeVisible();
+  await page.getByLabel('Filter milestone status').selectOption('submitted');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export filtered milestones' }).click();
+  expect((await download).suggestedFilename()).toBe('placepms-milestones.csv');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+});
+
+test('project workspace edits existing members and submits evidence in place', async ({ page }) => {
+  const { calls } = await workspace(page); await page.goto('/dashboard/projects/sq-fixture');
+  await page.getByRole('button', { name: 'Add member', exact: true }).click();
+  await page.getByLabel('Member name').fill('Designer'); await page.getByLabel('Member email').fill('designer@example.test');
+  await page.getByRole('button', { name: 'Save member', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit Designer', exact: true }).click();
+  await page.getByLabel('Team role').fill('Design lead'); await page.getByLabel('Skills (comma-separated)').fill('Figma, Research');
+  await page.getByRole('button', { name: 'Save member', exact: true }).click();
+  await expect(page.getByText('designer@example.test · Design lead')).toBeVisible();
+  await page.getByRole('button', { name: 'Submit for review', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Withdraw submission', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Edit & attach files' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Withdraw submission', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Edit & attach files' })).toBeEnabled();
+  expect(calls.some(call => call.action === 'member.update')).toBe(true);
+  expect(calls.filter(call => call.action === 'milestone.submit')).toHaveLength(2);
+});
+
+test('assigned mentor sees review queue and saves a revision decision with a score', async ({ page }) => {
+  const { project, milestone, calls } = await workspace(page);
+  Object.assign(project, { leader_email: 'lead@example.test', mentor_id: id, mentor_name: 'Workspace Fixture' });
+  Object.assign(milestone, { status: 'SUBMITTED', submitted_at: new Date().toISOString() });
+  await page.goto('/dashboard/mentorship');
+  await expect(page.getByRole('heading', { name: 'Your mentor review queue' })).toBeVisible();
+  await page.getByRole('link', { name: 'Review delivery', exact: true }).click();
+  await page.getByRole('button', { name: 'Review submission', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Decision', exact: true }).selectOption('revise');
+  await page.getByLabel('Feedback', { exact: true }).fill('Add reproducible evaluation evidence.');
+  await page.getByLabel('Score (0–100, optional)').fill('72.5');
+  await page.getByRole('button', { name: 'Save review', exact: true }).click();
+  await expect(page.getByText('Add reproducible evaluation evidence.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Score 72.5\/100/)).toBeVisible();
+  expect(calls.some(call => call.action === 'milestone.review' && call.approve === false)).toBe(true);
+});
+
+test('project-specific report drafts survive reload and update the same saved entry', async ({ page }) => {
+  const { library } = await workspace(page); await page.goto('/dashboard/blackbook');
+  await expect(page.getByLabel('Methodology', { exact: true })).toBeEnabled();
+  await page.getByLabel('Methodology', { exact: true }).fill('Our saved methodology survives reload.');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Draft saved');
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'Methodology', exact: true })).toHaveValue('Our saved methodology survives reload.');
+  await page.getByLabel('Abstract', { exact: true }).fill('Updated project abstract.');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Draft saved');
+  expect(library.filter(item => (item.tags as string[]).includes('blackbook-draft'))).toHaveLength(1);
+  await page.getByRole('button', { name: 'Generate report from saved records' }).click();
+  await expect(page.getByLabel('Generated report')).toHaveValue(/Updated project abstract/);
+});
+
+test('library search includes notes, tags filter saved entries, and project links carry context', async ({ page }) => {
+  await workspace(page); await page.goto('/dashboard/projects/sq-fixture');
+  await page.getByRole('link', { name: 'Project research', exact: true }).click();
+  await expect(page.getByLabel('Library project filter')).toHaveValue('sq-fixture');
+  await page.getByLabel('Search library').fill('reviewed reference');
+  await expect(page.getByRole('heading', { name: 'Saved academic reference', exact: true })).toBeVisible();
+  await page.getByLabel('Library tag filter').fill('missing-tag');
+  await expect(page.getByRole('heading', { name: 'Saved academic reference', exact: true })).toHaveCount(0);
+  await page.getByLabel('Library tag filter').fill('research');
+  await expect(page.getByRole('heading', { name: 'Saved academic reference', exact: true })).toBeVisible();
+});
+
+test('calendar supports date links, agenda, selection export, and project filtering', async ({ page }) => {
+  await workspace(page); await page.goto(`/dashboard/calendar?date=${date}`);
+  await expect(page.getByRole('button', { name: `${date}, 1 deadlines` })).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name: 'Agenda view', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Project delivery', exact: true })).toBeVisible();
+  await page.getByLabel('Calendar status filter').selectOption('complete');
+  await expect(page.getByRole('button', { name: 'Export selection', exact: true })).toBeDisabled();
+  await page.getByLabel('Calendar status filter').selectOption('open');
+  await page.getByLabel('Calendar project filter').selectOption('sq-fixture');
+  const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export selection', exact: true }).click();
+  expect((await download).suggestedFilename()).toBe('placepms-calendar-selection.ics');
+});
+
+test('every dashboard section loads in light and dark themes on mobile without runtime errors', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  await workspace(page); await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  for (const slug of ['', 'projects', 'tasks', 'mentorship', 'calendar', 'documents', 'research', 'resources', 'blackbook', 'integrations', 'repositories', 'figma', 'miro', 'sessions', 'portfolio']) {
+    await page.goto(`/dashboard${slug ? `/${slug}` : ''}`);
+    await expect(page.locator('.dashboard')).toHaveClass(/dashboard-dark/);
+    await expect(page.locator('.dash-main h1')).toBeVisible();
+    await expect(page.getByRole('status', { name: 'Loading dashboard' })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), `overflow on ${slug || 'overview'}`).toBe(false);
+  }
+  const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export portfolio', exact: true }).click();
+  expect((await download).suggestedFilename()).toBe('placepms-portfolio.html');
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
+  await expect(page.locator('.dashboard')).not.toHaveClass(/dashboard-dark/);
+  expect(errors).toEqual([]);
 });

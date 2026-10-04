@@ -126,11 +126,15 @@ authorization; state is bound to an HttpOnly cookie, user, active session, and
 
 - **Projects:** searchable cards link to detail workspaces; leads edit metadata,
   tool URLs, phase, and mentor assignment, archive/restore, and manage team members.
+  Team members' details, roles, and skills can be edited. Project cards support
+  current/archive filters and sorting; project workspaces link to scoped libraries
+  and tasks, and export milestone evidence as CSV.
 - **Milestones:** create/edit dates and descriptions, attach up to 20 document URLs,
   submit/withdraw, and receive mentor approval, revision requests, scores and feedback.
   Submitted and approved milestones cannot be edited through the normal editor.
 - **Calendar:** month navigation, per-day deadlines, overdue/completed indicators,
-  and ICS export.
+  Today, agenda view, project/status filters, date deep links, and selected-date
+  ICS export.
 - **Research:** private saved references and notes, tags/project filtering, Scholar
   and arXiv discovery links, editable/exportable records.
 - **Academic resources:** saved resources and developer documentation shortcuts.
@@ -139,12 +143,22 @@ authorization; state is bound to an HttpOnly cookie, user, active session, and
 - **Blackbook:** team-authored academic sections combined with actual project,
   milestone, member and reference records; editable Markdown, printable HTML,
   browser Print/Save PDF, and saving reports to Documents (20,000-character limit).
+  Project-specific drafts save authored sections and editable Markdown in a private
+  document tagged `blackbook-draft`. Save a draft before leaving to restore it on
+  reload or another device; larger drafts can be downloaded as JSON.
   It does not invent research, test outcomes, or AI-generated claims.
 - **Login & Sessions:** live devices with current-device marker, IP, agent,
   sign-in/activity times, single-device and other-device sign-out. Active tabs check
   their session each minute and on focus; database/API revocation is immediate.
 - **Portfolio/overview:** use real project/profile records and actual saved integration
   metadata; changes refresh the workspace and preserve the existing themes/mobile UI.
+  Overview adds priorities, readiness, and project health; portfolio exports actual
+  profile and project evidence as printable HTML.
+- **Task planning:** list/status-board views, project/status filtering, due-date and
+  update sorting, and filtered CSV export. Concurrent changes check the prior saved
+  milestone status. Mentor queues link directly to each submission's evidence.
+- **Library discovery:** title/notes/URL search, exact-tag and project filters,
+  sorting, refresh, and current-page JSON export.
 
 ## Verification
 
@@ -152,7 +166,7 @@ authorization; state is bound to an HttpOnly cookie, user, active session, and
 normalization, bounded analysis, rate limits, OAuth state rejection, report escaping,
 and actual PostgreSQL RLS/session/review rules using PGlite.
 
-`npm run test:e2e -- tests/workspace.spec.ts tests/signup.spec.ts` tests browser
+`npm run test:e2e -- tests/home.spec.ts tests/workspace.spec.ts tests/signup.spec.ts` tests browser
 workflows with provider/API fixtures. No external account tokens are needed.
 
 Live OAuth consent and private resource access require real provider apps and a

@@ -19,7 +19,13 @@ export default function SessionsView() {
     try { setSessions((await workspaceRequest<{ sessions: LoginSession[] }>('sessions', { action: 'list' })).sessions); }
     catch (cause) { setError(errorMessage(cause)); } finally { setLoading(false); }
   }, []);
-  useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(() => void load(), 0);
+    const interval = setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 60_000);
+    const onFocus = () => { void load(); };
+    window.addEventListener('focus', onFocus);
+    return () => { clearTimeout(timer); clearInterval(interval); window.removeEventListener('focus', onFocus); };
+  }, [load]);
   const revoke = async (session?: LoginSession) => {
     setBusy(session?.id || 'others'); setError(''); setNotice('');
     try {
@@ -31,6 +37,7 @@ export default function SessionsView() {
   return <section className="dash-panel"><div className="dash-panel-heading"><div><h2>Login & session security</h2><p>Live Supabase sessions. Revoked devices lose workspace access and must sign in again.</p></div><button className="dash-button" onClick={() => void load()} disabled={loading || !!busy}><RefreshCw size={15} />Refresh</button></div>
     <div className="workspace-content">
       {error && <div className="dash-alert dash-alert-error" role="alert">{error}</div>}{notice && <div className="dash-alert" role="status">{notice}</div>}
+      <div className="workspace-metrics">{[['Active sessions', loading ? '…' : error ? '—' : sessions.length], ['Other devices', loading ? '…' : error ? '—' : sessions.filter(item => !item.current_session).length], ['Current device', sessions.find(item => item.current_session) ? deviceName(sessions.find(item => item.current_session)!.user_agent) : 'Checking session']].map(([label, value]) => <div key={String(label)}><span>{label}</span><strong>{value}</strong></div>)}</div>
       <div className="workspace-callout"><ShieldCheck size={22} /><div><strong>You control your active sessions</strong><p>Activity is refreshed while PlacePMS is open. IP addresses are reported by Supabase; device names are inferred from the browser agent.</p></div><button className="dash-button" disabled={!!busy || !sessions.some(item => !item.current_session)} onClick={() => void revoke()}>Sign out other devices</button></div>
       {loading ? <p role="status">Loading active sessions…</p> : !sessions.length && !error ? <p>No active sessions found. Sign in again to refresh your session.</p> : <div className="workspace-list">{sessions.map(session => <article className="workspace-list-item" key={session.id}><Monitor size={24} /><div><h3>{deviceName(session.user_agent)} {session.current_session && <span className="dash-status is-complete">This device</span>}</h3><p>IP: {session.ip || 'Unavailable'}</p><p>Signed in {new Date(session.created_at).toLocaleString()} · Last active {new Date(session.last_active_at).toLocaleString()}</p></div><button className="dash-button" disabled={!!busy} onClick={() => void revoke(session)}><LogOut size={14} />{busy === session.id ? 'Signing out…' : 'Sign out device'}</button></article>)}</div>}
     </div></section>;

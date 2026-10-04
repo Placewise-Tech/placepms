@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { X } from 'lucide-react';
-import type { DashboardData } from '../../lib/dashboard-data';
+import { isInactive, safeExternalUrl, type DashboardData } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
 
 interface Props {
@@ -12,12 +12,14 @@ interface Props {
   onClose: () => void;
   onSaved: (message: string) => Promise<void>;
 }
+function savedAt() { return new Date().toISOString(); }
 
 export default function WorkspaceDialog({ kind, data, user, initialProjectId, onClose, onSaved }: Props) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const title = kind === 'project' ? 'Create a project' : kind === 'milestone' ? 'Add a milestone' : 'Edit your profile';
+  const projects = data.squads.filter(project => !isInactive(project.status));
   useEffect(() => {
     const element = dialog.current;
     element?.showModal();
@@ -44,15 +46,16 @@ export default function WorkspaceDialog({ kind, data, user, initialProjectId, on
           if (!supabase || !user.email) throw new Error('Sign in again to save changes.');
           if (kind === 'project') {
             if (!value('title')) throw new Error('Enter a project title.');
+            if (['github_repo', 'figma_url', 'miro_url'].some(field => value(field) && !safeExternalUrl(value(field)))) throw new Error('Use valid HTTP or HTTPS URLs for project tools.');
             const { error: saveError } = await supabase.from('pms_squads').insert({
               title: value('title'), tagline: optional('tagline'), domain: optional('domain'),
-              summary: optional('summary'), leader_email: user.email,
+              summary: optional('summary'), leader_email: user.email, current_phase: optional('current_phase'),
               github_repo: optional('github_repo'), figma_url: optional('figma_url'), miro_url: optional('miro_url'),
             }).select('id').single();
             if (saveError) throw saveError;
           } else if (kind === 'milestone') {
             if (!value('name') || !value('phase')) throw new Error('Enter a milestone name and phase.');
-            if (!data.squads.some(squad => squad.id === value('squad_id'))) throw new Error('Select one of your projects.');
+            if (!projects.some(squad => squad.id === value('squad_id'))) throw new Error('Select a current project. Restore an archived project before adding milestones.');
             if (value('start_date') && value('due_date') && value('start_date') > value('due_date')) throw new Error('The due date must be on or after the start date.');
             const { error: saveError } = await supabase.from('milestones').insert({
               squad_id: value('squad_id'), name: value('name'), phase: value('phase'),
@@ -64,7 +67,7 @@ export default function WorkspaceDialog({ kind, data, user, initialProjectId, on
             const { error: saveError } = await supabase.from('profiles').upsert({
               id: user.id, email: user.email, full_name: value('full_name'),
               college: optional('college'), program: optional('program'), batch: optional('batch'),
-              division: optional('division'), roll_number: optional('roll_number'), updated_at: new Date().toISOString(),
+              division: optional('division'), roll_number: optional('roll_number'), updated_at: savedAt(),
             }, { onConflict: 'id' }).select('id').single();
             if (saveError) throw saveError;
           }
@@ -83,6 +86,7 @@ export default function WorkspaceDialog({ kind, data, user, initialProjectId, on
               <label>Tagline<input name="tagline" maxLength={200} placeholder="A short description" /></label>
             </div>
             <label>Project summary<textarea name="summary" rows={3} maxLength={4000} placeholder="What are you building?" /></label>
+            <label>Current phase<input name="current_phase" maxLength={120} placeholder="Planning, Research, Design, Build…" /></label>
             <label>Repository URL<input name="github_repo" type="url" placeholder="https://github.com/…" /></label>
             <div className="dash-form-grid">
               <label>Figma URL<input name="figma_url" type="url" placeholder="https://figma.com/…" /></label>
@@ -90,8 +94,8 @@ export default function WorkspaceDialog({ kind, data, user, initialProjectId, on
             </div>
           </>}
           {kind === 'milestone' && <>
-            <label>Project<select name="squad_id" required defaultValue={initialProjectId || data.squads[0]?.id}>
-              {data.squads.map(squad => <option key={squad.id} value={squad.id}>{squad.title}</option>)}
+            <label>Project<select name="squad_id" required defaultValue={projects.some(project => project.id === initialProjectId) ? initialProjectId : projects[0]?.id}>
+              {projects.map(squad => <option key={squad.id} value={squad.id}>{squad.title}</option>)}
             </select></label>
             <label>Milestone name<input name="name" required maxLength={160} autoFocus placeholder="What needs to be delivered?" /></label>
             <label>Phase<input name="phase" required maxLength={120} placeholder="Project phase" /></label>

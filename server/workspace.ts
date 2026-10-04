@@ -30,7 +30,7 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
       const project = found.data;
       const owner = project.leader_email?.toLowerCase() === user.email?.toLowerCase();
       const mentor = project.mentor_id === user.id || project.mentor_id?.toLowerCase() === user.email?.toLowerCase();
-      if (['project.update', 'project.archive', 'member.add', 'member.remove', 'milestone.delete'].includes(text(input.action)) && !owner) throw new ApiError(403, 'Only the project lead can make this change.');
+      if (['project.update', 'project.archive', 'member.add', 'member.update', 'member.remove', 'milestone.delete'].includes(text(input.action)) && !owner) throw new ApiError(403, 'Only the project lead can make this change.');
       if (input.action === 'project.update') {
         const values: Record<string, unknown> = {
           title: field(input, 'title', 160, true), tagline: field(input, 'tagline', 200), domain: field(input, 'domain', 120), summary: field(input, 'summary', 4000), current_phase: field(input, 'current_phase', 120),
@@ -48,19 +48,26 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
         const result = await client.from('pms_squads').update(values).eq('id', projectId).eq('leader_email', project.leader_email).select('id').single(); databaseError(result.error);
       } else if (input.action === 'project.archive') {
         const result = await client.from('pms_squads').update({ status: input.restore === true ? 'PENDING' : 'ARCHIVED', updated_at: new Date().toISOString() }).eq('id', projectId).select('id').single(); databaseError(result.error);
-      } else if (input.action === 'member.add') {
+      } else if (input.action === 'member.add' || input.action === 'member.update') {
         const email = field(input, 'email', 254, true)!.toLowerCase();
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, 'Enter a valid member email.');
         const existing = await admin.from('squad_members').select('id').eq('squad_id', projectId).eq('email', email); databaseError(existing.error);
-        if (existing.data?.length) throw new ApiError(409, 'This member is already on the team.');
-        const result = await admin.from('squad_members').insert({ squad_id: projectId, email, name: field(input, 'name', 160, true), role: field(input, 'role', 100) || 'Member', skills: text(input.skills).split(',').map(value => value.trim()).filter(Boolean).slice(0, 12) }); databaseError(result.error);
+        const memberId = input.action === 'member.update' ? field(input, 'memberId', 100, true)! : null;
+        if (existing.data?.some(item => item.id !== memberId)) throw new ApiError(409, 'This member is already on the team.');
+        const record = { squad_id: projectId, email, name: field(input, 'name', 160, true), role: field(input, 'role', 100) || 'Member', skills: [...new Set((field(input, 'skills', 500) || '').split(',').map(value => value.trim()).filter(Boolean))].slice(0, 12) };
+        const result = memberId ? await admin.from('squad_members').update(record).eq('squad_id', projectId).eq('id', memberId).select('id').single() : await admin.from('squad_members').insert(record).select('id').single(); databaseError(result.error);
       } else if (input.action === 'member.remove') {
         const result = await admin.from('squad_members').delete().eq('squad_id', projectId).eq('id', field(input, 'memberId', 100, true)!); databaseError(result.error);
-      } else if (['milestone.update', 'milestone.delete', 'milestone.review'].includes(text(input.action))) {
+      } else if (['milestone.update', 'milestone.delete', 'milestone.review', 'milestone.submit'].includes(text(input.action))) {
         const id = field(input, 'milestoneId', 100, true)!;
         const milestone = await client.from('milestones').select('id,status').eq('id', id).eq('squad_id', projectId).maybeSingle(); databaseError(milestone.error);
         if (!milestone.data) throw new ApiError(404, 'Milestone not found.');
-        if (input.action === 'milestone.review') {
+        if (input.action === 'milestone.submit') {
+          if (['APPROVED', 'COMPLETED', 'COMPLETE', 'DONE', 'ARCHIVED', 'CANCELLED', 'CANCELED', 'REJECTED'].includes(milestone.data.status || '')) throw new ApiError(409, 'Completed or inactive milestones cannot be submitted.');
+          const withdraw = input.withdraw === true;
+          if (withdraw !== (milestone.data.status === 'SUBMITTED')) throw new ApiError(409, 'The milestone status changed. Refresh before trying again.');
+          const result = await client.from('milestones').update({ status: withdraw ? 'PENDING' : 'SUBMITTED', submitted_at: withdraw ? null : new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', id).eq('squad_id', projectId).eq('status', milestone.data.status).select('id').single(); databaseError(result.error);
+        } else if (input.action === 'milestone.review') {
           if (!mentor) throw new ApiError(403, 'Only this project’s assigned mentor can review submissions.');
           if (milestone.data.status !== 'SUBMITTED') throw new ApiError(409, 'Only a submitted milestone can be reviewed.');
           const score = input.score === '' || input.score === null || input.score === undefined ? null : Number(input.score);
@@ -69,12 +76,12 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
         } else if (input.action === 'milestone.delete') {
           const result = await client.from('milestones').delete().eq('id', id).eq('squad_id', projectId); databaseError(result.error);
         } else {
-          if (['APPROVED', 'SUBMITTED'].includes(milestone.data.status || '')) throw new ApiError(409, 'Withdraw a submission before editing it. Approved milestones are read-only.');
+          if (['APPROVED', 'COMPLETED', 'COMPLETE', 'DONE', 'SUBMITTED', 'ARCHIVED', 'CANCELLED', 'CANCELED', 'REJECTED'].includes(milestone.data.status || '')) throw new ApiError(409, 'Withdraw a submission before editing it. Completed and inactive milestones are read-only.');
           const start = date(input.start_date); const due = date(input.due_date);
           if (start && due && start > due) throw new ApiError(400, 'Due date must be on or after the start date.');
           const links = text(input.links).split('\n').map(value => value.trim()).filter(Boolean);
           if (links.length > 20) throw new ApiError(400, 'Attach at most 20 submission links.');
-          const result = await client.from('milestones').update({ name: field(input, 'name', 160, true), phase: field(input, 'phase', 120, true), description: field(input, 'description', 4000), start_date: start, due_date: due, submission_files: links.map((url, index) => ({ name: `Submission ${index + 1}`, url: external(url) })), updated_at: new Date().toISOString() }).eq('id', id).eq('squad_id', projectId).select('id').single(); databaseError(result.error);
+          const result = await client.from('milestones').update({ name: field(input, 'name', 160, true), phase: field(input, 'phase', 120, true), description: field(input, 'description', 4000), start_date: start, due_date: due, submission_files: links.map((url, index) => ({ name: `Submission ${index + 1}`, url: external(url) })), updated_at: new Date().toISOString() }).eq('id', id).eq('squad_id', projectId).eq('status', milestone.data.status).select('id').single(); databaseError(result.error);
         }
       } else throw new ApiError(400, 'Unknown project operation.');
       jsonResponse(response, { saved: true });

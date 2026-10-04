@@ -5,6 +5,14 @@ export interface LibraryEntry {
   id: string; user_id: string; kind: 'research' | 'resource' | 'document'; title: string;
   url: string | null; notes: string; tags: string[]; project_id: string | null; created_at: string; updated_at: string;
 }
+export function readBlackbookDraft(notes: string, sectionNames: string[]) {
+  try {
+    const value = JSON.parse(notes);
+    if (!value || value.version !== 1 || typeof value.title !== 'string' || typeof value.report !== 'string' || !value.sections || typeof value.sections !== 'object') return null;
+    const sections = Object.fromEntries(sectionNames.map(name => [name, typeof value.sections[name] === 'string' ? value.sections[name] : '']));
+    return { title: value.title, report: value.report, sections };
+  } catch { return null; }
+}
 export function buildBlackbook(project: Squad, data: DashboardData, sections: Record<string, string>, references: LibraryEntry[]) {
   const tasks = data.milestones.filter(task => task.squad_id === project.id);
   const members = data.members.filter(member => member.squad_id === project.id);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronRight, CircleHelp, Command, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, Link2, LogOut, Menu, Monitor, Moon, PanelLeftClose, Plus, RefreshCw, Search, School, Sparkles, Sun, UserRound, Users, X } from 'lucide-react';
@@ -33,10 +33,11 @@ export default function Dashboard({ user }: { user: User }) {
   const location = useLocation();
   const view = location.pathname.replace(/^\/dashboard\/?/, '').replace(/\/$/, '') || 'overview';
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem('placepms:sidebar') === 'collapsed');
   const [dark, setDark] = useState(() => localStorage.getItem('placepms:theme') === 'dark');
   const [showDeadlines, setShowDeadlines] = useState(false);
   const [showCommand, setShowCommand] = useState(false);
+  const commandDialog = useRef<HTMLDialogElement>(null);
   const [commandQuery, setCommandQuery] = useState('');
   const [dialog, setDialog] = useState<'project' | 'milestone' | 'profile' | null>(null);
   const [notice, setNotice] = useState('');
@@ -56,15 +57,20 @@ export default function Dashboard({ user }: { user: User }) {
   useEffect(() => { document.title = `${pageTitle} | PlacePMS`; }, [pageTitle]);
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date()), 60_000); return () => window.clearInterval(timer); }, []);
   useEffect(() => {
-    if (!mobileOpen && !showDeadlines) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { setMobileOpen(false); setShowDeadlines(false); setShowCommand(false); }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setShowCommand(true); }
-      if (event.key === '/' && !['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement).tagName)) { event.preventDefault(); setShowCommand(true); }
+      if (document.querySelector('dialog[open]') && !commandDialog.current?.open) return;
+      const typing = (event.target as HTMLElement).isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes((event.target as HTMLElement).tagName);
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); setShowCommand(current => !current); }
+      if (!typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        if (event.key === '/') { event.preventDefault(); setShowCommand(true); }
+        if (event.key.toLowerCase() === 'n' && !commandDialog.current?.open) { event.preventDefault(); setDialog('project'); }
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [mobileOpen, showDeadlines]);
+  }, []);
+  useEffect(() => { if (showCommand) commandDialog.current?.showModal(); else commandDialog.current?.close(); }, [showCommand]);
   useEffect(() => {
     if (!notice) return;
     const timeout = setTimeout(() => setNotice(''), 6500);
@@ -74,14 +80,15 @@ export default function Dashboard({ user }: { user: User }) {
   const saved = async (message: string) => { setNotice(message); await refresh(); };
   const closeMenus = () => { setMobileOpen(false); setShowDeadlines(false); setShowCommand(false); };
   const commandSearch = commandQuery.trim().toLowerCase();
-  const commandPages = navigation.filter(item => !commandSearch || item.label.toLowerCase().includes(commandSearch));
+  const commandPages = [...navigation, { slug: 'portfolio', label: 'Portfolio', icon: UserRound, section: 'CAREER' }].filter(item => !commandSearch || item.label.toLowerCase().includes(commandSearch));
   const commandProjects = data.squads.filter(project => !commandSearch || `${project.title} ${project.domain || ''}`.toLowerCase().includes(commandSearch)).slice(0, 4);
+  const commandMilestones = commandSearch ? data.milestones.filter(task => `${task.name} ${task.phase}`.toLowerCase().includes(commandSearch)).slice(0, 4) : [];
   const goToCommand = (path: string) => { navigate(path); setCommandQuery(''); setShowCommand(false); };
 
   return <div className={`dashboard ${dark ? 'dashboard-dark' : ''} ${collapsed ? 'dashboard-collapsed' : ''}`}>
     {mobileOpen && <button className="dash-sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
     <aside className={`dash-sidebar ${mobileOpen ? 'is-open' : ''}`} aria-label="Workspace navigation">
-       <div className="dash-brand"><NavLink to="/dashboard" onClick={closeMenus} aria-label="PlacePMS overview"><img src={dark ? '/PlacePMS-Logo-White.svg' : '/PlacePMS-Logo-Vector.svg'} alt="PlacePMS" /></NavLink><span className="dash-brand-mark"><Sparkles size={14} /></span><button className="dash-icon-button dash-mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={18} /></button><button className="dash-icon-button dash-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => setCollapsed(!collapsed)}><PanelLeftClose size={16} /></button></div>
+       <div className="dash-brand"><NavLink to="/dashboard" onClick={closeMenus} aria-label="PlacePMS overview"><img src={dark ? '/PlacePMS-Logo-White.svg' : '/PlacePMS-Logo-Vector.svg'} alt="PlacePMS" /></NavLink><span className="dash-brand-mark"><Sparkles size={14} /></span><button className="dash-icon-button dash-mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={18} /></button><button className="dash-icon-button dash-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => { setCollapsed(!collapsed); localStorage.setItem('placepms:sidebar', collapsed ? 'expanded' : 'collapsed'); }}><PanelLeftClose size={16} /></button></div>
        <button className="dash-institution" onClick={() => { navigate('/dashboard/portfolio'); closeMenus(); }} title={college}><span><School size={19} /></span><div><strong>{college}</strong><small>Academic workspace</small></div><ChevronRight size={14} /></button>
        <button className="dash-create-button" onClick={() => setDialog('project')}><span><Plus size={15} /></span><strong>New project</strong><kbd>N</kbd></button>
        <nav className="dash-navigation">{navigation.map((item, index) => <span key={item.slug || 'overview'}>{(index === 0 || item.section !== navigation[index - 1].section) && <span className={`dash-nav-caption ${item.section === 'ACCOUNT' ? 'dash-career-caption' : ''}`}>{item.section}</span>}<NavLink to={`/dashboard${item.slug ? `/${item.slug}` : ''}`} end title={item.label} onClick={closeMenus} className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><item.icon size={17} /><span>{item.label}</span>{item.slug === 'tasks' && data.milestones.some(task => !['COMPLETED', 'COMPLETE', 'DONE', 'APPROVED'].includes((task.status || '').toUpperCase())) && <b className="dash-nav-count">{data.milestones.filter(task => !['COMPLETED', 'COMPLETE', 'DONE', 'APPROVED'].includes((task.status || '').toUpperCase())).length}</b>}</NavLink></span>)}<span className="dash-nav-caption dash-career-caption">CAREER</span><NavLink to="/dashboard/portfolio" onClick={closeMenus} title="Portfolio" className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><UserRound size={17} /><span>Portfolio</span></NavLink></nav>
@@ -113,7 +120,7 @@ export default function Dashboard({ user }: { user: User }) {
         <footer className="dash-footer"><span>PlacePMS <span>·</span> Your academic workspace</span><span>{updatedAt ? `Last refreshed ${updatedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : 'Connecting to your workspace'}</span></footer>
       </main>
     </div>
-    {showCommand && <div className="dash-command-overlay" role="dialog" aria-modal="true" aria-label="Search workspace" onMouseDown={event => { if (event.target === event.currentTarget) setShowCommand(false); }}><div className="dash-command"><div className="dash-command-input"><Search size={18} /><input autoFocus value={commandQuery} onChange={event => setCommandQuery(event.target.value)} placeholder="Jump to a page or project…" aria-label="Search pages and projects" /><kbd>ESC</kbd></div>{!commandSearch && <p className="dash-command-hint">Search your workspace or use <strong>⌘ K</strong> anytime.</p>}{commandPages.length > 0 && <div className="dash-command-section"><span>Pages</span>{commandPages.slice(0, 6).map(item => <button key={item.slug} onClick={() => goToCommand(`/dashboard${item.slug ? `/${item.slug}` : ''}`)}><item.icon size={16} /><span>{item.label}</span><ArrowUpRight size={14} /></button>)}</div>}{commandProjects.length > 0 && <div className="dash-command-section"><span>Projects</span>{commandProjects.map(project => <button key={project.id} onClick={() => goToCommand(`/dashboard/projects/${encodeURIComponent(project.id)}`)}><FolderKanban size={16} /><span>{project.title}<small>{project.domain || project.current_phase || 'Project workspace'}</small></span><ArrowUpRight size={14} /></button>)}</div>}{commandSearch && !commandPages.length && !commandProjects.length && <div className="dash-command-empty"><Search size={24} /><strong>No matches found</strong><span>Try a page name or project title.</span></div>}</div></div>}
+    {showCommand && <dialog ref={commandDialog} className="dash-command-overlay workspace-command-dialog" aria-label="Search workspace" onCancel={event => { event.preventDefault(); setShowCommand(false); }} onClick={event => { if (event.target === event.currentTarget) setShowCommand(false); }}><div className="dash-command"><div className="dash-command-input"><Search size={18} /><input autoFocus value={commandQuery} onChange={event => setCommandQuery(event.target.value)} placeholder="Jump to a page, project or milestone…" aria-label="Search pages and projects" /><button className="dash-icon-button" aria-label="Close workspace search" onClick={() => setShowCommand(false)}><X size={17} /></button></div>{!commandSearch && <p className="dash-command-hint">Search with <strong>Ctrl/⌘ K</strong> or <strong>/</strong>. Create a project with <strong>N</strong>.</p>}{commandPages.length > 0 && <div className="dash-command-section"><span>Pages</span>{commandPages.slice(0, commandSearch ? 15 : 6).map(item => <button key={item.slug} onClick={() => goToCommand(`/dashboard${item.slug ? `/${item.slug}` : ''}`)}><item.icon size={16} /><span>{item.label}</span><ArrowUpRight size={14} /></button>)}</div>}{commandProjects.length > 0 && <div className="dash-command-section"><span>Projects</span>{commandProjects.map(project => <button key={project.id} onClick={() => goToCommand(`/dashboard/projects/${encodeURIComponent(project.id)}`)}><FolderKanban size={16} /><span>{project.title}<small>{project.domain || project.current_phase || 'Project workspace'}</small></span><ArrowUpRight size={14} /></button>)}</div>}{commandMilestones.length > 0 && <div className="dash-command-section"><span>Milestones</span>{commandMilestones.map(task => <button key={task.id} onClick={() => goToCommand(`/dashboard/projects/${encodeURIComponent(task.squad_id)}#milestone-${encodeURIComponent(task.id)}`)}><CheckSquare size={16} /><span>{task.name}<small>{task.phase} · {task.due_date || 'Unscheduled'}</small></span><ArrowUpRight size={14} /></button>)}</div>}{commandSearch && !commandPages.length && !commandProjects.length && !commandMilestones.length && <div className="dash-command-empty"><Search size={24} /><strong>No matches found</strong><span>Try a page, project, or milestone name.</span></div>}</div></dialog>}
     {dialog && <WorkspaceDialog kind={dialog} data={data} user={user} initialProjectId={view.startsWith('projects/') ? decodeURIComponent(view.slice(9)) : undefined} onClose={() => setDialog(null)} onSaved={saved} />}
   </div>;
 }

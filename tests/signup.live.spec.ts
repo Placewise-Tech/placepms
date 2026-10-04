@@ -64,7 +64,7 @@ test('real temporary login requires a password change and invalidates the tempor
     await page.getByLabel('Confirm password').fill(newPassword);
     await page.getByRole('button', { name: 'Save password & open workspace' }).click();
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expect(page.getByRole('heading', { name: /Workspace/ }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Your projects', exact: true })).toBeVisible({ timeout: 30_000 });
     const updated = await admin.auth.admin.getUserById(userId);
     expect(updated.error).toBeNull();
     expect(updated.data.user?.app_metadata.must_change_password).toBe(false);

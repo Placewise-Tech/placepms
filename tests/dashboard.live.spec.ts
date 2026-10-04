@@ -38,6 +38,20 @@ test('real authentication, database writes, refresh, navigation, and mobile layo
     await page.getByRole('dialog').getByRole('button', { name: 'Create project', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByRole('heading', { name: projectTitle, exact: true })).toBeVisible();
+    await page.getByRole('heading', { name: projectTitle, exact: true }).getByRole('link').click();
+    await page.getByRole('button', { name: 'Edit project', exact: true }).click();
+    await page.getByLabel('Current phase', { exact: true }).fill('Localhost validation');
+    await page.getByRole('button', { name: 'Save project', exact: true }).click();
+    await expect(page.getByText(/Phase: Localhost validation/)).toBeVisible();
+    await page.getByRole('button', { name: 'Add member', exact: true }).click();
+    await page.getByLabel('Member name').fill('Isolated verification member');
+    await page.getByLabel('Member email').fill(`member-${userId}@example.com`);
+    await page.getByRole('button', { name: 'Save member', exact: true }).click();
+    await page.getByRole('button', { name: 'Edit Isolated verification member', exact: true }).click();
+    await page.getByLabel('Team role').fill('Verification lead');
+    await page.getByLabel('Skills (comma-separated)').fill('Testing, Research');
+    await page.getByRole('button', { name: 'Save member', exact: true }).click();
+    await expect(page.getByText(`member-${userId}@example.com · Verification lead`)).toBeVisible();
     await page.getByRole('link', { name: 'My Tasks', exact: true }).click();
     await page.getByRole('button', { name: 'Add milestone', exact: true }).click();
     await page.getByLabel('Milestone name').fill('Verify saved records');
@@ -45,6 +59,12 @@ test('real authentication, database writes, refresh, navigation, and mobile layo
     await page.getByLabel('Due date').fill('2026-12-15');
     await page.getByRole('dialog').getByRole('button', { name: 'Add milestone', exact: true }).click();
     await expect(page.getByRole('dialog')).toHaveCount(0);
+    await page.getByRole('link', { name: 'Details & submission links', exact: true }).click();
+    await page.getByRole('button', { name: 'Submit for review', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Withdraw submission', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Withdraw submission', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Submit for review', exact: true })).toBeVisible();
+    await page.goto('/dashboard/tasks');
     await page.getByRole('button', { name: 'Submit Verify saved records' }).click();
     await expect(page.getByRole('button', { name: 'Withdraw submission for Verify saved records' })).toBeVisible();
     // Only the isolated test record is approved, simulating the mentor's action.
@@ -56,6 +76,25 @@ test('real authentication, database writes, refresh, navigation, and mobile layo
     await page.getByRole('link', { name: 'Overview', exact: true }).click();
     await expect(page.locator('.dash-stat').filter({ hasText: 'Completed milestones' }).locator(':scope > strong')).toHaveText('1');
     await page.screenshot({ path: '/tmp/omnirush/placepms-dashboard-desktop.png', fullPage: true });
+    await page.goto('/dashboard/research');
+    await page.getByRole('button', { name: 'Add research', exact: true }).click();
+    await page.getByLabel('Title', { exact: true }).fill('Isolated research evidence');
+    await page.getByLabel('Notes / document content').fill('Reference recorded during localhost verification.');
+    await page.getByRole('combobox', { name: 'Project', exact: true }).selectOption(ownProject!.id);
+    await page.getByRole('button', { name: 'Save entry', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Isolated research evidence' })).toBeVisible();
+    await page.getByLabel('Search library').fill('Reference recorded');
+    await expect(page.getByRole('heading', { name: 'Isolated research evidence' })).toBeVisible();
+    await page.goto('/dashboard/blackbook');
+    await page.getByRole('textbox', { name: 'Methodology', exact: true }).fill('Saved report draft verified against the live database.');
+    await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Draft saved');
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: 'Methodology', exact: true })).toHaveValue('Saved report draft verified against the live database.');
+    await page.getByRole('button', { name: 'Generate report from saved records' }).click();
+    await expect(page.getByLabel('Generated report')).toHaveValue(/Isolated research evidence/);
+    await page.getByRole('button', { name: 'Save to Documents', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Report saved to Documents');
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(page.getByRole('button', { name: 'Open navigation' })).toBeVisible();
     await page.getByRole('button', { name: 'Open navigation' }).click();
@@ -75,6 +114,7 @@ test('real authentication, database writes, refresh, navigation, and mobile layo
     await expect(page).toHaveURL(/\/login$/);
     expect(consoleErrors).toEqual([]);
   } finally {
+    await admin.from('workspace_library').delete().eq('user_id', userId);
     const { data: squads } = await admin.from('pms_squads').select('id').eq('leader_email', email);
     if (squads?.length) {
       const ids = squads.map(squad => squad.id);
