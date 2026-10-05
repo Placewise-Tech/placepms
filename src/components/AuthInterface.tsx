@@ -69,7 +69,7 @@ export default function AuthInterface({ isOpen, onClose, initialMode = 'signin',
             {mode === 'signin' ? <label className="auth-check"><input type="checkbox" checked={rememberMe} onChange={event => setRememberMe(event.target.checked)} />Keep me signed in on this device</label> : <label className="auth-check"><input type="checkbox" required checked={agreeTerms} onChange={event => setAgreeTerms(event.target.checked)} /><span>I agree to the PlacePMS <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>.</span></label>}
             <button className="auth-submit" type="submit">{isLoading ? <><LoaderCircle className="auth-spinner" size={17} />{mode === 'signin' ? 'Verifying credentials…' : 'Creating workspace…'}</> : <>{mode === 'signin' ? 'Sign In to Workspace' : 'Create PlacePMS Account'}<ArrowUpRight size={17} /></>}</button>
           </fieldset></form>
-          <div className="auth-login-hint"><KeyRound size={14} /><p>{mode === 'signin' ? 'New here? Enter your emailed 6-digit login code in the Password field.' : 'We’ll email a 6-digit login code. Set your password after signing in.'}</p></div>
+          <div className="auth-login-hint"><KeyRound size={14} /><p>{mode === 'signin' ? 'Admin, teacher, staff, and student accounts use this login. Your account opens the correct dashboard automatically. For a new account, enter your emailed 6-digit code in the Password field.' : 'We’ll email a 6-digit login code. Teacher and staff access is assigned by your administrator.'}</p></div>
         </>}
       </div><footer className="auth-form-footer"><ShieldCheck size={13} /><span>Your account, authenticated with Supabase.</span><span>Projects. People. Possibilities.</span></footer>
     </section>

@@ -5,7 +5,7 @@ export class WorkspaceApiError extends Error {
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
 
-export async function workspaceRequest<T>(endpoint: 'integrations' | 'sessions' | 'workspace', body: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+export async function workspaceRequest<T>(endpoint: 'integrations' | 'sessions' | 'workspace' | 'management', body: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   if (!supabase) throw new Error('Supabase is not configured.');
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) throw new WorkspaceApiError('Please sign in again.', 401);

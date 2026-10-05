@@ -3,6 +3,7 @@ import type { User } from '@supabase/supabase-js';
 import { X } from 'lucide-react';
 import { isInactive, safeExternalUrl, type DashboardData } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
+import { workspaceRole } from '../../lib/workspace-roles';
 
 interface Props {
   kind: 'project' | 'milestone' | 'profile';
@@ -49,7 +50,7 @@ export default function WorkspaceDialog({ kind, data, user, initialProjectId, on
             if (['github_repo', 'figma_url', 'miro_url'].some(field => value(field) && !safeExternalUrl(value(field)))) throw new Error('Use valid HTTP or HTTPS URLs for project tools.');
             const { error: saveError } = await supabase.from('pms_squads').insert({
               title: value('title'), tagline: optional('tagline'), domain: optional('domain'),
-              summary: optional('summary'), leader_email: user.email, current_phase: optional('current_phase'),
+              summary: optional('summary'), leader_email: workspaceRole(user)==='admin'?value('leader_email') || user.email:user.email, current_phase: optional('current_phase'),
               github_repo: optional('github_repo'), figma_url: optional('figma_url'), miro_url: optional('miro_url'),
             }).select('id').single();
             if (saveError) throw saveError;
@@ -81,6 +82,7 @@ export default function WorkspaceDialog({ kind, data, user, initialProjectId, on
         <fieldset disabled={saving}>
           {kind === 'project' && <>
             <label>Project title<input name="title" required maxLength={160} autoFocus placeholder="Give your project a name" /></label>
+            {workspaceRole(user)==='admin' && <label>Project lead email<input name="leader_email" type="email" required maxLength={254} defaultValue={user.email}/></label>}
             <div className="dash-form-grid">
               <label>Domain<input name="domain" maxLength={120} placeholder="Your area of work" /></label>
               <label>Tagline<input name="tagline" maxLength={200} placeholder="A short description" /></label>

@@ -100,7 +100,7 @@ export async function registerAccount(input: unknown, ip: string, services: Sign
   return successMessage;
 }
 
-function createServices(env: NodeJS.ProcessEnv): SignupServices {
+export function createServices(env: NodeJS.ProcessEnv): SignupServices {
   const secret = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
   const smtpUser = env.BREVO_SMTP_USER;
   const smtpPassword = env.BREVO_SMTP_PASSWORD;
@@ -166,7 +166,11 @@ export function createSignupHandler(env: NodeJS.ProcessEnv = process.env) {
       const forwarded = request.headers['x-forwarded-for'];
       // Vercel supplies this header. Locally, ignore client-supplied proxy headers.
       const ip = env.VERCEL === '1' && typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : request.socket.remoteAddress || 'local';
-      const message = await registerAccount(input, ip, createServices(env));
+      const services = createServices(env);
+      const registration = await services.admin.rpc('workspace_signup_open');
+      if (registration.error) throw new SignupError(503, 'Apply the workspace management migration to configure registration.');
+      if (registration.data !== true) throw new SignupError(403, 'Public registration is closed. Contact your administrator for an account.');
+      const message = await registerAccount(input, ip, services);
       response.statusCode = 202;
       response.end(JSON.stringify({ message }));
     } catch (cause) {

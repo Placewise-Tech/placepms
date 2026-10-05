@@ -3,6 +3,9 @@ import type { ServerResponse } from 'node:http';
 import { ApiError, digest, providerName, seal, unseal, type Provider } from './integration-security.js';
 import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, serverClients, type Request } from './workspace-http.js';
 import { commitDetail, connectionAccount, githubCommitStatsPage, inspectDesign, inspectGitHub, listResources, object, repositoryFiles, text, type Credential } from './providers.js';
+import { assertFeature, managementError } from './management.js';
+import { detectCommitAI } from '../src/lib/github-ai.js';
+import { repositoryPath } from './integration-security.js';
 
 type Admin = ReturnType<typeof serverClients>['admin'];
 const providers: Provider[] = ['github', 'figma', 'miro'];
@@ -99,6 +102,7 @@ async function completeOAuth(request: Request, response: ServerResponse, url: UR
   const active = await admin.rpc('workspace_session_active', { p_user_id: pending.data.user_id, p_session_id: pending.data.session_id });
   databaseError(active.error);
   if (active.data !== true) throw new ApiError(401, 'Your PlacePMS session ended. Sign in and reconnect.');
+  await assertFeature(admin,pending.data.user_id,provider);
   const code = url.searchParams.get('code');
   if (!code || code.length > 4096) throw new ApiError(400, 'Authorization code is missing.');
   const values = { grant_type: 'authorization_code', code, redirect_uri: callbackUrl(provider, env), ...(provider !== 'miro' ? { code_verifier: unseal(pending.data.verifier, `${pending.data.user_id}:${provider}:state`, env) } : {}) };
@@ -118,7 +122,7 @@ export function createIntegrationsHandler(env: NodeJS.ProcessEnv = process.env) 
     try {
       if (callback) { await completeOAuth(request, response, url, env); return; }
       const input = await jsonBody(request);
-      const { user, admin, sessionId } = await authenticate(request, env);
+      const { user, admin, client, sessionId } = await authenticate(request, env);
       const rate = await admin.rpc('claim_workspace_request', { p_user_id: user.id }); databaseError(rate.error);
       if (rate.data !== true) throw new ApiError(429, 'Too many integration requests. Please wait a minute.');
       if (input.action === 'status') {
@@ -127,6 +131,7 @@ export function createIntegrationsHandler(env: NodeJS.ProcessEnv = process.env) 
         jsonResponse(response, { connections: result.data, oauth: Object.fromEntries(providers.map(provider => [provider, Boolean(env[`${provider.toUpperCase()}_CLIENT_ID`] && env[`${provider.toUpperCase()}_CLIENT_SECRET`])])) }); return;
       }
       const provider = providerName(input.provider);
+      if (input.action !== 'disconnect') await assertFeature(admin,user.id,provider);
       if (input.action === 'connect-token') {
         const token = text(input.token).trim();
         if (token.length < 10 || token.length > 4096 || /\s/.test(token)) throw new ApiError(400, 'Enter a valid provider access token.');
@@ -149,9 +154,26 @@ export function createIntegrationsHandler(env: NodeJS.ProcessEnv = process.env) 
       }
       if (provider === 'github' && input.action === 'files') { jsonResponse(response, await repositoryFiles(input, credential)); return; }
       if (provider === 'github' && input.action === 'commit') { jsonResponse(response, await commitDetail(input, credential)); return; }
-      if (provider === 'github' && input.action === 'commit-stats') { jsonResponse(response, await githubCommitStatsPage(input, credential)); return; }
+      if (provider === 'github' && input.action === 'commit-stats') {
+        const result=await githubCommitStatsPage(input,credential);
+        if (typeof input.reportId==='string' && /^[a-f0-9-]{36}$/i.test(input.reportId)) {
+          const saved=await admin.rpc('workspace_report_change_stats',{p_owner:user.id,p_report:input.reportId,p_repository:repositoryPath(input.target),p_stats:result.commits}); managementError(saved.error);
+        }
+        jsonResponse(response,result); return;
+      }
       if (input.action === 'inspect') {
-        jsonResponse(response, provider === 'github' ? await inspectGitHub(input, credential) : await inspectDesign(provider, input, credential!)); return;
+        const report=provider === 'github' ? await inspectGitHub(input,credential) : await inspectDesign(provider,input,credential!);
+        if (report.github) {
+          let projectId: string | null=null;
+          if (typeof input.projectId==='string' && input.projectId) {
+            const project=await clientForProject(client, input.projectId, report.repository || '');
+            projectId=project;
+          }
+          const payload={ ...report,github:{ ...report.github,commits:report.github.commits.map(commit=>({ ...commit,aiAssistance:detectCommitAI(commit) })) } };
+          const saved=await admin.rpc('workspace_save_repository_report',{p_owner:user.id,p_project:projectId,p_payload:payload}); managementError(saved.error);
+          if (typeof saved.data==='string') report.savedReportId=saved.data;
+        }
+        jsonResponse(response,report); return;
       }
       throw new ApiError(400, 'Unknown integration action.');
     } catch (cause) {
@@ -162,4 +184,11 @@ export function createIntegrationsHandler(env: NodeJS.ProcessEnv = process.env) 
       } else errorResponse(response, cause);
     }
   };
+}
+
+async function clientForProject(client: Admin, projectId: string, repository: string) {
+  if (projectId.length>100) throw new ApiError(400,'Choose a valid project.');
+  const result=await client.from('pms_squads').select('id,github_repo').eq('id',projectId).maybeSingle(); databaseError(result.error);
+  if (!result.data || !result.data.github_repo || repositoryPath(result.data.github_repo).toLowerCase()!==repositoryPath(repository).toLowerCase()) throw new ApiError(403,'Choose an accessible project linked to this repository.');
+  return result.data.id as string;
 }

@@ -9,12 +9,15 @@ const user = { id, aud: 'authenticated', role: 'authenticated', email, app_metad
 const accessToken = `${Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify({ sub: id, session_id: sessionId, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.test-signature`;
 const session = { access_token: accessToken, refresh_token: 'test-refresh', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer', user };
 
-async function workspace(page: Page, options: { githubAnalytics?: boolean; failStatsOnce?: boolean; githubIntelligence?: boolean; providerDetails?: boolean } = {}) {
+async function workspace(page: Page, options: { githubAnalytics?: boolean; failStatsOnce?: boolean; githubIntelligence?: boolean; providerDetails?: boolean; managedRole?: 'admin' | 'teacher' | 'staff' } = {}) {
   const project = { id: 'sq-fixture', title: 'Connected Capstone', summary: 'Real project summary', tagline: 'A connected workspace', domain: 'Education', leader_email: email, mentor_id: null, mentor_name: null, github_repo: 'https://github.com/fixture/repo', figma_url: 'https://figma.com/design/Abc123/App', miro_url: 'https://miro.com/app/board/board123/', current_phase: 'Build', status: 'PENDING', created_at: '2026-01-01T00:00:00Z' };
   const milestone: Record<string, any> = { id: 'm-fixture', squad_id: project.id, name: 'Project delivery', phase: 'Build', description: 'Fixture delivery evidence', status: 'PENDING', due_date: date, start_date: null, submission_files: [], mentor_feedback: null, score: null };
   const members: Record<string, unknown>[] = [];
   const library: Record<string, unknown>[] = [{ id: 'reference-1', user_id: id, kind: 'research', title: 'Saved academic reference', url: 'https://example.test/paper', notes: 'A reviewed reference', tags: ['research'], project_id: project.id, created_at: date, updated_at: date }];
   const connections: Record<string, unknown>[] = [];
+  const accounts: Record<string, any>[] = [];
+  const settings = { registration_enabled: true, features: { github: true, figma: true, miro: true, research: true, resource: true, document: true, blackbook: true } };
+  const authUser = { ...user, app_metadata: { ...user.app_metadata, ...(options.managedRole ? { workspace_role: options.managedRole } : {}) } };
   let sessions = [{ id: sessionId, created_at: date, last_active_at: date, ip: '127.0.0.1', user_agent: 'Chrome/140 Linux', current_session: true }, { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', created_at: date, last_active_at: date, ip: '192.0.2.10', user_agent: 'Firefox/120 Windows', current_session: false }];
   const calls: Record<string, unknown>[] = [];
   let failStats = options.failStatsOnce === true;
@@ -32,8 +35,8 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
     standards: [{ name: 'README', present: true, url: 'https://github.com/fixture/repo/blob/main/README.md' }, { name: 'License', present: true, url: 'https://github.com/fixture/repo/blob/main/LICENSE' }, { name: 'Contribution guide', present: false, url: '' }], communityHealth: 75,
   };
   intelligence.runs.push({ id: 'run-3', name: 'Lint', branch: 'main', sha: 'c'.repeat(40), event: 'push', status: 'completed', conclusion: 'timed_out', url: 'https://github.com/fixture/repo/actions/runs/3', startedAt: '2026-01-02T10:00:00Z', updatedAt: '2026-01-02T10:03:00Z' });
-  await page.route('**/auth/v1/token**', route => route.fulfill({ json: session }));
-  await page.route('**/auth/v1/user', route => route.fulfill({ json: user }));
+  await page.route('**/auth/v1/token**', route => route.fulfill({ json: { ...session, user: authUser } }));
+  await page.route('**/auth/v1/user', route => route.fulfill({ json: authUser }));
   await page.route('**/auth/v1/logout**', route => route.fulfill({ status: 204 }));
   await page.route('**/rest/v1/**', async route => {
     const request = route.request(); const url = new URL(request.url()); const table = url.pathname.split('/').pop();
@@ -62,6 +65,18 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
     const input = route.request().postDataJSON(); calls.push(input);
     if (input.action === 'revoke') { sessions = sessions.filter(item => input.others ? item.current_session : item.id !== input.sessionId); return route.fulfill({ json: { revoked: 1, currentRevoked: false } }); }
     return route.fulfill({ json: { sessions, currentSessionId: sessionId } });
+  });
+  await page.route('**/api/management', route => {
+    const input = route.request().postDataJSON(); calls.push(input);
+    if (input.action === 'overview') return route.fulfill({ json: { counts: { accounts: accounts.length + 1, projects: 1, milestones: 1, connections: connections.length, reports: 0, mentors: 0 }, settings } });
+    if (input.action === 'accounts.list') {
+      const items = accounts.filter(account => (!input.role || account.role === input.role) && (!input.search || `${account.full_name} ${account.email}`.toLowerCase().includes(input.search.toLowerCase())));
+      return route.fulfill({ json: { items, total: items.length } });
+    }
+    if (input.action === 'accounts.create') accounts.push({ id: '22222222-2222-4222-8222-222222222222', enabled: true, ...input });
+    if (input.action === 'accounts.update') Object.assign(accounts.find(account => account.id === input.id)!, input);
+    if (input.action === 'settings.update') Object.assign(settings, { registration_enabled: input.registration_enabled, features: input.features });
+    return route.fulfill({ json: { role: options.managedRole || 'student', enabled: true, can_mentor: false, settings } });
   });
   await page.route('**/api/workspace', async route => {
     const input = route.request().postDataJSON(); calls.push(input);
@@ -113,13 +128,14 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
       sections: input.provider === 'github' ? [{ title: 'Commit history', items: [{ id: 'a'.repeat(40), title: 'Implement feature', kind: 'commit', date }] }] : [{ title: input.provider === 'figma' ? 'Pages' : 'Board items', items: [{ id: 'item1', title: input.provider === 'figma' ? 'Login frame' : 'Roadmap sticky note' }] }],
     } });
   });
-  await page.goto('/login');
+  await page.goto(options.managedRole ? `/${options.managedRole}/login` : '/login');
   await page.getByLabel('Institutional Email').fill(email);
   await page.getByLabel(/^Password/).fill('fixture-password');
   await page.getByRole('button', { name: 'Sign In to Workspace', exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: 'Your projects', exact: true })).toBeVisible();
-  return { calls, library, connections, project, milestone, members, githubCommits };
+  await expect(page).toHaveURL(new RegExp(`/${options.managedRole || 'dashboard'}$`));
+  const heading = options.managedRole === 'admin' ? 'Administration control center' : options.managedRole === 'teacher' ? 'Teacher workspace' : options.managedRole === 'staff' ? 'Staff workspace' : 'Your projects';
+  await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
+  return { calls, library, connections, project, milestone, members, githubCommits, settings, accounts };
 }
 
 async function readDownload(download: Download) {
@@ -128,6 +144,70 @@ async function readDownload(download: Download) {
   const chunks: Buffer[] = []; for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   return Buffer.concat(chunks).toString('utf8');
 }
+
+test('dashboard refresh replaces milestones and members without retaining removed records', async ({ page }) => {
+  const { members } = await workspace(page);
+  await page.goto('/dashboard/projects/sq-fixture');
+  await page.getByRole('tab', { name: 'Milestones', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Project delivery', exact: true })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Refresh dashboard', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Refresh dashboard', exact: true })).toBeEnabled();
+  await expect(page.getByRole('heading', { name: 'Project delivery', exact: true })).toHaveCount(1);
+
+  members.push({ id: 'refresh-member', squad_id: 'sq-fixture', name: 'Refresh member', email: 'refresh@example.test', role: 'Student', skills: [] });
+  await page.getByRole('button', { name: 'Refresh dashboard', exact: true }).click();
+  await page.getByRole('tab', { name: 'Team', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Refresh member', exact: true })).toHaveCount(1);
+  members.splice(0);
+  await page.route('**/rest/v1/milestones**', route => route.fulfill({ json: [] }));
+  await page.getByRole('button', { name: 'Refresh dashboard', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Refresh member', exact: true })).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Milestones', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Project delivery', exact: true })).toHaveCount(0);
+});
+
+test('administrators create mentor accounts, update permissions, and save feature controls', async ({ page }) => {
+  const { calls, accounts, settings } = await workspace(page, { managedRole: 'admin' });
+  await page.getByRole('link', { name: 'Accounts & Mentors', exact: true }).click();
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  const create = page.getByRole('dialog', { name: 'Create account', exact: true });
+  await create.getByLabel('Full name', { exact: true }).fill('Managed Teacher');
+  await create.getByLabel('Account email', { exact: true }).fill('teacher@example.test');
+  await create.getByLabel('Institution', { exact: true }).fill('Example University');
+  await create.getByLabel('Department', { exact: true }).fill('Computing');
+  await create.getByRole('button', { name: 'Create & email account', exact: true }).click();
+  await expect(create).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Managed Teacher', exact: true })).toBeVisible();
+  expect(accounts[0]).toMatchObject({ role: 'teacher', can_mentor: true, email: 'teacher@example.test' });
+
+  await page.getByRole('button', { name: 'Manage account', exact: true }).click();
+  const edit = page.getByRole('dialog', { name: 'Manage account', exact: true });
+  await edit.getByRole('combobox', { name: 'Account role', exact: true }).selectOption('student');
+  await expect(edit.getByLabel('Eligible for mentor assignment', { exact: true })).toBeDisabled();
+  await edit.getByRole('button', { name: 'Save permissions', exact: true }).click();
+  await expect(edit).toHaveCount(0);
+  expect(accounts[0]).toMatchObject({ role: 'student', can_mentor: false, enabled: true });
+
+  await page.getByRole('link', { name: 'Feature Controls', exact: true }).click();
+  await page.getByLabel('Allow public account registration', { exact: true }).uncheck();
+  await page.getByLabel('GitHub analysis', { exact: true }).uncheck();
+  await page.getByRole('button', { name: 'Save controls', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Feature controls saved.' })).toBeVisible();
+  expect(settings.registration_enabled).toBe(false);
+  expect(settings.features.github).toBe(false);
+  expect(calls.some(call => call.action === 'accounts.update' && call.role === 'student' && call.can_mentor === false)).toBe(true);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.locator('.dash-main').evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+});
+
+for (const managedRole of ['teacher', 'staff'] as const) test(`${managedRole} login and project links stay in the assigned workspace`, async ({ page }) => {
+  await workspace(page, { managedRole });
+  await page.getByRole('link', { name: 'Open workspace', exact: true }).first().click();
+  await expect(page).toHaveURL(new RegExp(`/${managedRole}/projects$`));
+  await expect(page.getByRole('navigation', { name: 'Administration management', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Open project workspace', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/${managedRole}/projects/sq-fixture$`));
+});
 
 test('nebula workspace intelligence drills into CI, releases, conventions, and persisted layout preferences', async ({ page }) => {
   const { connections } = await workspace(page, { githubAnalytics: true, githubIntelligence: true });

@@ -7,6 +7,7 @@ import './workspace.css'
 import './auth.css'
 import './studio.css'
 import './nebula.css'
+import './management.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(

@@ -2,6 +2,7 @@ import type { ServerResponse } from 'node:http';
 import { ApiError } from './integration-security.js';
 import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, type Request } from './workspace-http.js';
 import { text } from './providers.js';
+import { managementAccount, managementError } from './management.js';
 
 function field(input: Record<string, unknown>, name: string, max: number, required = false) {
   const value = text(input[name]).trim();
@@ -23,25 +24,34 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
   return async (request: Request, response: ServerResponse) => {
     try {
       const input = await jsonBody(request); const { user, admin, client } = await authenticate(request, env);
+      const account = await managementAccount(admin,user.id); const administrator = account.role === 'admin';
       const projectId = field(input, 'projectId', 100, true)!;
       const found = await client.from('pms_squads').select('id,leader_email,mentor_id,mentor_name').eq('id', projectId).maybeSingle();
       databaseError(found.error);
       if (!found.data) throw new ApiError(403, 'You do not have access to this project.');
       const project = found.data;
-      const owner = project.leader_email?.toLowerCase() === user.email?.toLowerCase();
-      const mentor = project.mentor_id === user.id || project.mentor_id?.toLowerCase() === user.email?.toLowerCase();
+      const owner = administrator || project.leader_email?.toLowerCase() === user.email?.toLowerCase();
+      const mentor = administrator || ((!account.managed || account.can_mentor) && (project.mentor_id === user.id || project.mentor_id?.toLowerCase() === user.email?.toLowerCase()));
       if (['project.update', 'project.archive', 'member.add', 'member.update', 'member.remove', 'milestone.delete'].includes(text(input.action)) && !owner) throw new ApiError(403, 'Only the project lead can make this change.');
       if (input.action === 'project.update') {
         const values: Record<string, unknown> = {
           title: field(input, 'title', 160, true), tagline: field(input, 'tagline', 200), domain: field(input, 'domain', 120), summary: field(input, 'summary', 4000), current_phase: field(input, 'current_phase', 120),
           github_repo: external(field(input, 'github_repo', 2000)), figma_url: external(field(input, 'figma_url', 2000)), miro_url: external(field(input, 'miro_url', 2000)), updated_at: new Date().toISOString(),
         };
+        if (typeof input.leader_email === 'string' && administrator) {
+          const email = input.leader_email.trim().toLowerCase();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length>254) throw new ApiError(400,'Enter a valid project lead email.');
+          values.leader_email=email;
+        }
         if (typeof input.mentor_email === 'string') {
           const email = input.mentor_email.trim().toLowerCase();
+          if ((email || input.clear_mentor === true) && !administrator) throw new ApiError(403,'Only an administrator can assign or remove mentors.');
           if (email) {
-            if (email === user.email?.toLowerCase()) throw new ApiError(400, 'Choose a mentor other than yourself.');
+            if (email === String(values.leader_email || project.leader_email).toLowerCase()) throw new ApiError(400, 'Choose a mentor other than the project lead.');
             const result = await admin.from('profiles').select('id,full_name').eq('email', email).maybeSingle(); databaseError(result.error);
             if (!result.data) throw new ApiError(400, 'That mentor needs a registered PlacePMS profile first.');
+            const eligibility = await admin.from('workspace_accounts').select('enabled,can_mentor').eq('user_id',result.data.id).maybeSingle(); managementError(eligibility.error);
+            if (!eligibility.data?.enabled || !eligibility.data.can_mentor) throw new ApiError(400,'Choose an enabled teacher or staff account with mentoring enabled.');
             values.mentor_id = result.data.id; values.mentor_name = result.data.full_name || email;
           } else if (input.clear_mentor === true) { values.mentor_id = null; values.mentor_name = null; }
         }

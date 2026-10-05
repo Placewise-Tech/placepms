@@ -6,6 +6,7 @@ import { createSignupHandler } from './server/signup.ts'
 import { createIntegrationsHandler } from './server/integrations.ts'
 import { createSessionsHandler } from './server/sessions.ts'
 import { createWorkspaceHandler } from './server/workspace.ts'
+import { createManagementHandler } from './server/management.ts'
 
 // Only public settings reach the browser. Also accepts the labelled keys in
 // the original .env file; private keys are used only by the server middleware.
@@ -66,6 +67,8 @@ export default defineConfig(({ mode }) => {
         server.middlewares.use('/api/sessions', (request, response) => { void sessions(request, response) })
         const workspace = createWorkspaceHandler(serverEnv)
         server.middlewares.use('/api/workspace', (request, response) => { void workspace(request, response) })
+        const management = createManagementHandler(serverEnv)
+        server.middlewares.use('/api/management', (request, response) => { void management(request, response) })
       },
     }],
     server: { watch: { usePolling: true, interval: 500 } },

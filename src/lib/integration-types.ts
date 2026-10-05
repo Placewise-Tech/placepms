@@ -22,6 +22,7 @@ export interface InsightItem {
   details?: { label: string; value: string | number }[];
 }
 export interface Inspection {
+  savedReportId?: string;
   provider: IntegrationProvider;
   title: string;
   description: string;

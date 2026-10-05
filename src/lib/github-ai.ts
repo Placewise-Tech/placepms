@@ -1,4 +1,4 @@
-import type { GitHubIdentity } from './integration-types';
+import type { GitHubIdentity } from './integration-types.js';
 
 export interface AICommitMetadata {
   message: string;

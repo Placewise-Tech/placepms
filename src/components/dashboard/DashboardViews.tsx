@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { ArrowUpRight, BookOpen, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, Download, FileText, FolderKanban, GraduationCap, Link2, Orbit, Plus, Search, Sparkles, Users } from 'lucide-react';
 import type { DashboardData, Milestone, Squad } from '../../lib/dashboard-data';
 import { getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
@@ -12,12 +12,14 @@ import BlackbookView from './BlackbookView';
 import CalendarView from './CalendarView';
 import ProjectDetails from './ProjectDetails';
 import WorkspaceInsights from './WorkspaceInsights';
-import { PagedCards, RecordPager, WorkspaceSections } from './WorkspaceUI';
+import { PagedCards, RecordPager, WorkspaceSections, WorkspaceLink as Link } from './WorkspaceUI';
+import ManagementWorkspace, { ManagementOverview } from './ManagementWorkspace';
+import { workspaceRole, type FeatureKey } from '../../lib/workspace-roles';
 import { milestoneCsv, milestoneMatches, profileCompletion, sortMilestones } from '../../lib/workspace-insights';
 import { downloadText } from '../../lib/workspace-api';
 import { reportHtml } from '../../lib/workspace-library';
 
-interface Props { view: string; data: DashboardData; user: User; onCreate: (kind: 'project' | 'milestone' | 'profile') => void; onSaved: (message: string) => Promise<void> }
+interface Props { view: string; data: DashboardData; user: User; features?: Partial<Record<FeatureKey,boolean>>; onCreate: (kind: 'project' | 'milestone' | 'profile') => void; onSaved: (message: string) => Promise<void> }
 function formatDate(value: string | null, withTime = false) {
   if (!value) return 'No date set'; const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
   return Number.isNaN(date.getTime()) ? 'Date unavailable' : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', ...(withTime ? { hour: 'numeric', minute: '2-digit' } as const : {}) }).format(date);
@@ -59,7 +61,7 @@ function TaskList({ tasks, data, onSaved }: { tasks: Milestone[]; data: Dashboar
   })}{tasks.length > 8 && <RecordPager page={current} total={tasks.length} size={8} onChange={setPage} noun="milestones" />}</div>;
 }
 
-export default function DashboardViews({ view, data, user, onCreate, onSaved }: Props) {
+export default function DashboardViews({ view, data, user, features, onCreate, onSaved }: Props) {
   const [params, setParams] = useSearchParams(); const [query, setQuery] = useState(''); const [sort, setSort] = useState('due');
   const [projectSort, setProjectSort] = useState('newest'); const [projectStatus, setProjectStatus] = useState('active'); const [projectPage, setProjectPage] = useState(1);
   const [taskLayout, setTaskLayout] = useState('list'); const [boardColumn, setBoardColumn] = useState('Planned'); const [section, setSection] = useState('projects');
@@ -69,6 +71,10 @@ export default function DashboardViews({ view, data, user, onCreate, onSaved }: 
   const search = query.trim().toLowerCase(); const projectAction = <button className="dash-button dash-button-primary" onClick={() => onCreate('project')}><Plus size={15} />Create project</button>;
   const taskAction = <button className="dash-button dash-button-primary" disabled={!data.squads.some(project => !isInactive(project.status))} onClick={() => onCreate('milestone')}><Plus size={15} />Add milestone</button>;
   const projectError = data.errors.some(error => ['Projects', 'Team projects', 'Memberships', 'Mentorship'].includes(error.section)); const taskError = projectError || data.errors.some(error => error.section === 'Milestones');
+  const role=workspaceRole(user); const feature=({repositories:'github',reports:'github',figma:'figma',miro:'miro',research:'research',resources:'resource',documents:'document',blackbook:'blackbook'} as Record<string,FeatureKey>)[view];
+  if (role!=='admin' && feature && features?.[feature]===false) return <EmptyState title="Feature disabled" description="Your administrator has disabled this feature. Contact them to request access."/>;
+  if (view==='reports' && role!=='student' || role==='admin' && ['accounts','settings','connections','audit'].includes(view)) return <ManagementWorkspace view={view} user={user} onSaved={onSaved}/>;
+  if (view==='overview' && role!=='student') return <ManagementOverview data={data} user={user}/>;
   if (['integrations', 'repositories', 'figma', 'miro'].includes(view)) return <IntegrationWorkspace view={view} data={data} onChanged={() => onSaved('')} />;
   if (view === 'sessions') return <SessionsView />;
   if (['research', 'resources', 'documents'].includes(view)) return <LibraryView kind={view === 'research' ? 'research' : view === 'resources' ? 'resource' : 'document'} data={data} user={user} />;

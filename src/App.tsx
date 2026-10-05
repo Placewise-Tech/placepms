@@ -5,6 +5,7 @@ import HomePage from './components/HomePage';
 import PasswordRecovery from './components/PasswordRecovery';
 import RecoveryHelp from './components/RecoveryHelp';
 import { useAuth } from './hooks/useAuth';
+import { managedPath, workspaceRoot, WorkspaceRootContext } from './lib/workspace-roles';
 
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
 const AuthInterface = lazy(() => import('./components/AuthInterface'));
@@ -21,10 +22,11 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const isAuthOpen = location.pathname === '/login' || location.pathname === '/signup';
+  const isAuthOpen = location.pathname === '/login' || location.pathname === '/signup' || /^\/(admin|teacher|staff)\/login$/.test(location.pathname);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [authRole, setAuthRole] = useState<AuthRole>('student');
   const mustChangePassword = session?.user.app_metadata.must_change_password === true;
+  const root = session ? workspaceRoot(session.user) : '/dashboard';
   useEffect(() => {
     if (passwordRecovery || recoveryError || location.pathname === '/reset-password') document.title = 'Reset password | PlacePMS';
     else if (!session) document.title = `${isAuthOpen ? location.pathname === '/signup' ? 'Create account' : 'Sign in' : 'Your Connected Academic Project Workspace'} | PlacePMS`;
@@ -43,11 +45,14 @@ export default function App() {
     if (location.pathname === '/reset-password' && !mustChangePassword) return;
     if (session) {
       if (mustChangePassword && location.pathname !== '/set-password') navigate('/set-password', { replace: true });
-      else if (!mustChangePassword && !passwordRecovery && !location.pathname.startsWith('/dashboard')) navigate('/dashboard', { replace: true });
-    } else if (location.pathname.startsWith('/dashboard') || location.pathname === '/set-password') {
+      else if (!mustChangePassword && !passwordRecovery) {
+        const target = managedPath.test(location.pathname) && !isAuthOpen ? location.pathname.replace(managedPath, `${root}${location.pathname.match(managedPath)?.[0].endsWith('/') ? '/' : ''}`) : root;
+        if (target !== location.pathname) navigate(`${target}${location.search}${location.hash}`, { replace: true });
+      }
+    } else if ((!isAuthOpen && managedPath.test(location.pathname)) || location.pathname === '/set-password') {
       navigate('/login', { replace: true });
     }
-  }, [session, authLoading, passwordRecovery, recoveryError, mustChangePassword, location.pathname, location.search, location.hash, navigate]);
+  }, [session, authLoading, passwordRecovery, recoveryError, mustChangePassword, root, isAuthOpen, location.pathname, location.search, location.hash, navigate]);
 
   const openAuth = (mode: AuthMode, role: AuthRole = 'student') => {
     setAuthMode(mode);
@@ -56,9 +61,9 @@ export default function App() {
   };
 
   if (authLoading) return <WorkspaceLoading />;
-  if (recoveryError || (location.pathname === '/reset-password' && !passwordRecovery && !mustChangePassword)) return <RecoveryHelp message={recoveryError || 'Open the password-reset link from your email. If your reset session has ended, request a new link below.'} signedIn={Boolean(session)} onBack={() => { finishPasswordRecovery(); navigate(session ? '/dashboard' : '/login', { replace: true }); }} />;
-  if ((passwordRecovery || mustChangePassword) && session) return <PasswordRecovery requiredSetup={mustChangePassword} email={session.user.email} onComplete={() => { finishPasswordRecovery(); navigate('/dashboard', { replace: true }); }} onSignOut={() => navigate('/login', { replace: true })} />;
-  if (session) return <Suspense fallback={<WorkspaceLoading />}><Dashboard key={session.user.id} user={session.user} /></Suspense>;
+  if (recoveryError || (location.pathname === '/reset-password' && !passwordRecovery && !mustChangePassword)) return <RecoveryHelp message={recoveryError || 'Open the password-reset link from your email. If your reset session has ended, request a new link below.'} signedIn={Boolean(session)} onBack={() => { finishPasswordRecovery(); navigate(session ? root : '/login', { replace: true }); }} />;
+  if ((passwordRecovery || mustChangePassword) && session) return <PasswordRecovery requiredSetup={mustChangePassword} email={session.user.email} onComplete={() => { finishPasswordRecovery(); navigate(root, { replace: true }); }} onSignOut={() => navigate('/login', { replace: true })} />;
+  if (session) return <WorkspaceRootContext.Provider value={root}><Suspense fallback={<WorkspaceLoading />}><Dashboard key={session.user.id} user={session.user} /></Suspense></WorkspaceRootContext.Provider>;
 
   return <div className="app-nebula min-h-full flex flex-col flex-1 relative font-sans">
     {sessionError && <div className="auth-feedback auth-feedback-error" role="alert">{sessionError}</div>}
@@ -66,7 +71,7 @@ export default function App() {
       key={authRole}
       isOpen={isAuthOpen}
       onClose={() => navigate('/')}
-      initialMode={location.pathname === '/signup' ? 'signup' : location.pathname === '/login' ? 'signin' : authMode}
+      initialMode={location.pathname === '/signup' ? 'signup' : location.pathname.endsWith('/login') ? 'signin' : authMode}
       initialRole={authRole}
     /></Suspense>}
     <AnimatePresence mode="wait">

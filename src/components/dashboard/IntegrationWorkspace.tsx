@@ -37,7 +37,7 @@ export default function IntegrationWorkspace({ view, data, onChanged }: { view: 
     return () => { clearTimeout(timer); controller.abort(); };
   }, [provider, access, connectionKey, authorized]);
   const operation = async (name: string, work: () => Promise<void>) => { if ((name === 'commit' || name === 'files') && !inspector) setInspectorTrigger(document.activeElement as HTMLElement); setBusy(name); setError(''); setNotice(''); try { await work(); } catch (cause) { if (mounted.current && !analysisAbort.current?.signal.aborted) setError(errorMessage(cause)); } finally { if (mounted.current) setBusy(''); } };
-  const request = <T,>(action: string, extra: Record<string, unknown> = {}, signal?: AbortSignal) => workspaceRequest<T>('integrations', { action, provider, access: provider === 'github' ? access : 'connected', target, branch, days, ...extra }, signal);
+  const request = <T,>(action: string, extra: Record<string, unknown> = {}, signal?: AbortSignal) => workspaceRequest<T>('integrations', { action, provider, access: provider === 'github' ? access : 'connected', target, branch, days, projectId:query.get('project'), reportId:report?.savedReportId, ...extra }, signal);
   const inspect = (extra: Record<string, unknown> = {}) => operation('inspect', async () => {
     const result = await request<Inspection>('inspect', extra); if (!mounted.current) return;
     setReport(result); setFiles(null); setCommit(null); setInspector(null); setAnalysisProgress(''); setScreen('analysis'); setSection('0');

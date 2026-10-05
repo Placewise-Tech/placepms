@@ -1,6 +1,15 @@
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { trapDialogTab } from '../../lib/dialog-focus';
+import { Link as RouterLink, type LinkProps } from 'react-router-dom';
+import { useWorkspaceRoot } from '../../lib/workspace-roles';
+
+export function WorkspaceLink({to,...props}: LinkProps) {
+  const root=useWorkspaceRoot();
+  const route=(path:string)=>path.replace(/^\/dashboard(?=\/|\?|#|$)/,root);
+  const target=typeof to==='string'?route(to):{...to,pathname:to.pathname?route(to.pathname):to.pathname};
+  return <RouterLink {...props} to={target}/>;
+}
 
 export interface WorkspaceSection { id: string; label: string; shortLabel?: string; count?: number; content: ReactNode; disabled?: boolean }
 

@@ -32,6 +32,7 @@ async function fixture(t) {
     }
     if (url.pathname.endsWith('/workspace_session_active')) return Response.json(active);
     if (url.pathname.endsWith('/claim_workspace_request')) return Response.json(true);
+    if (url.pathname.endsWith('/workspace_feature_access')) return Response.json(true);
     if (url.pathname.endsWith('/workspace_claim_token_refresh')) return Response.json(true);
     if (url.pathname.endsWith('/integration_connections')) {
       if (method === 'POST') { connections.set(`${body.user_id}:${body.provider}`, { id: 'connection-id', ...body }); return Response.json(null, { status: 201 }); }

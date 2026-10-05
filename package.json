@@ -9,6 +9,7 @@
     "lint": "oxlint",
     "test": "tsx --test tests/*.test.mjs",
     "test:e2e": "playwright test",
+    "bootstrap:admin": "tsx scripts/bootstrap-admin.ts",
     "preview": "vite preview"
   },
   "dependencies": {

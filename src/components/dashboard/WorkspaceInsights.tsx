@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle2, ChevronRight, Clock3, GraduationCap, Link2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { WorkspaceLink as Link } from './WorkspaceUI';
 import type { DashboardData } from '../../lib/dashboard-data';
 import { milestoneMatches, profileCompletion, projectHealth, sortMilestones } from '../../lib/workspace-insights';
 import { RecordPager, WorkspaceSections } from './WorkspaceUI';
