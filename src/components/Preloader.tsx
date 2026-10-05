@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 const defaultWords = [
   "नमस्ते",
@@ -32,11 +33,12 @@ interface PreloaderProps {
 export default function Preloader({
   words = defaultWords,
   onComplete,
-  brandColor = "#FFFFFF",
-  bgColor = "#2D7F62"
+  brandColor = "#BDFF74",
+  bgColor = "#060706"
 }: PreloaderProps) {
   const [index, setIndex] = useState(0);
   const [dimension, setDimension] = useState({ width: 0, height: 0 });
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     const handleResize = () => {
@@ -56,6 +58,7 @@ export default function Preloader({
   }, []);
 
   useEffect(() => {
+    if (reducedMotion) { onComplete?.(); return; }
     if (index === words.length - 1) {
       const timer = setTimeout(() => {
         onComplete?.();
@@ -68,7 +71,7 @@ export default function Preloader({
     }, index === 0 ? 800 : 160);
 
     return () => clearTimeout(timer);
-  }, [index, words.length, onComplete]);
+  }, [index, words.length, onComplete, reducedMotion]);
 
   const initialCurve = `M0 0 L${dimension.width} 0 L${dimension.width} ${dimension.height} Q${dimension.width / 2} ${dimension.height + 300} 0 ${dimension.height} L0 0`;
   const targetCurve = `M0 0 L${dimension.width} 0 L${dimension.width} ${dimension.height} Q${dimension.width / 2} ${dimension.height} 0 ${dimension.height} L0 0`;
@@ -79,7 +82,7 @@ export default function Preloader({
         initial: { top: 0 },
         exit: {
           top: "-100vh",
-          transition: { duration: 0.8, ease: [0.76, 0, 0.24, 1], delay: 0.2 }
+          transition: { duration: reducedMotion ? 0 : 0.8, ease: [0.76, 0, 0.24, 1], delay: reducedMotion ? 0 : 0.2 }
         }
       }}
       initial="initial"

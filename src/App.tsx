@@ -13,7 +13,7 @@ type AuthMode = 'signin' | 'signup';
 type AuthRole = 'student' | 'faculty' | 'college' | 'recruiter';
 
 function WorkspaceLoading() {
-  return <div className="workspace-gate" role="status"><img src="/PlacePMS-Logo-Vector.svg" alt="PlacePMS" width="140" /><p>Opening your workspace…</p></div>;
+  return <div className="workspace-gate" role="status"><img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" width="140" /><p>Opening your workspace…</p></div>;
 }
 
 export default function App() {

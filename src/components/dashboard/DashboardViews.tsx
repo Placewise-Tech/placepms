@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, FileText, FolderKanban, GraduationCap, Link2, Plus, Search, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, FileText, FolderKanban, GraduationCap, Link2, Orbit, Plus, Search, Sparkles, Users } from 'lucide-react';
 import type { DashboardData, Milestone, Squad } from '../../lib/dashboard-data';
 import { getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
@@ -121,9 +121,9 @@ export default function DashboardViews({ view, data, user, onCreate, onSaved }: 
   if (view === 'overview') return <>
     <section className="dash-hero">
       <div className="dash-hero-copy">
-        <span className="dash-eyebrow"><Sparkles size={13} /> YOUR ACADEMIC HQ</span>
-        <h2>Make progress visible.</h2>
-        <p>Bring your projects, people, research, and next deadline into one calm workspace.</p>
+        <span className="dash-eyebrow"><Sparkles size={13} /> YOUR NEXT CHAPTER</span>
+        <h2>Big ideas.<br /><span>Real momentum.</span></h2>
+        <p>A space to build something that matters.</p>
         <div className="dash-hero-actions">
           {projectAction}
           <button className="dash-button dash-button-ghost" disabled={!data.squads.length} onClick={() => onCreate('milestone')}><Plus size={15} />Add a milestone</button>
@@ -131,12 +131,20 @@ export default function DashboardViews({ view, data, user, onCreate, onSaved }: 
         </div>
       </div>
       <div className="dash-hero-insight">
-        <div className="dash-hero-glow" aria-hidden="true" />
-        <div className="dash-hero-insight-top"><span>Workspace momentum</span><Sparkles size={16} /></div>
-        <div className="dash-hero-progress"><div className="dash-hero-progress-track"><span style={{ width: `${stats.completion}%` }} /></div><strong>{taskError ? '—' : `${stats.completion}%`}</strong></div>
-        <p>{nextDeadline ? <><strong>Next up:</strong> {nextDeadline.name}<small>{nextProject?.title || 'Project'} · Due {nextDeadline.due_date}</small></> : 'Add a milestone to see your next focus here.'}</p>
+        <div className="dash-momentum-orbit" aria-hidden="true"><span /><Orbit size={16} /><Sparkles size={14} /></div>
+        <div className="dash-momentum-ring" role="img" aria-label={taskError ? 'Milestone completion unavailable' : `${stats.completion}% of milestones completed`}>
+          <svg viewBox="0 0 144 144" aria-hidden="true"><circle className="dash-ring-track" cx="72" cy="72" r="61" /><circle className="dash-ring-value" cx="72" cy="72" r="61" pathLength="100" strokeDasharray={`${taskError ? 0 : stats.completion} 100`} /></svg>
+          <div><span>WORKSPACE MOMENTUM</span><strong>{taskError ? '—' : `${stats.completion}%`}</strong><small>milestones delivered</small></div>
+        </div>
+        <p>{nextDeadline ? <><strong>Next up:</strong> {nextDeadline.name}<small>{nextProject?.title || 'Project'} · Due {nextDeadline.due_date}</small></> : 'Your next move starts with a milestone.'}</p>
       </div>
     </section>
+    <nav className="dash-launchpad" aria-label="Quick access">{[
+      { path: 'projects', label: 'Project spaces', icon: FolderKanban },
+      { path: 'tasks', label: 'Your next steps', icon: CheckCircle2 },
+      { path: 'research', label: 'Idea library', icon: BookOpen },
+      { path: 'blackbook', label: 'Build your story', icon: FileText },
+    ].map(({ path, label, icon: Icon }) => <Link to={`/dashboard/${path}`} key={path}><Icon size={16} /><span>{label}</span><ArrowUpRight size={13} /></Link>)}</nav>
     <div className="dash-stats">
       {[
         { label: 'Active projects', value: projectError ? '—' : stats.activeProjects, description: 'Projects in your workspace', icon: <FolderKanban size={19} />, color: 'green', link: 'projects' },
