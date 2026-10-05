@@ -19,6 +19,7 @@ export interface InsightItem {
   value?: number;
   path?: string;
   kind?: string;
+  details?: { label: string; value: string | number }[];
 }
 export interface Inspection {
   provider: IntegrationProvider;
@@ -72,6 +73,16 @@ export interface GitHubWorkItem {
   labels: string[];
   draft: boolean;
 }
+export type GitHubIntelligenceSource = 'workflows' | 'runs' | 'releases' | 'standards';
+export interface GitHubRepositoryIntelligence {
+  capturedAt: string;
+  coverage: Record<GitHubIntelligenceSource, { available: boolean; hasMore: boolean }>;
+  workflows: { id: string; name: string; path: string; state: string; url: string; updatedAt: string }[];
+  runs: { id: string; name: string; branch: string; sha: string; event: string; status: string; conclusion: string; url: string; startedAt: string; updatedAt: string }[];
+  releases: { id: string; title: string; tag: string; body: string; url: string; author: string; publishedAt: string; draft: boolean; prerelease: boolean; assets: number }[];
+  standards: { name: string; present: boolean; url: string }[];
+  communityHealth?: number;
+}
 export interface GitHubAnalysis {
   repository: {
     name: string; defaultBranch: string; visibility: string; archived: boolean;
@@ -90,6 +101,7 @@ export interface GitHubAnalysis {
   contributors: { login: string; commits: number; url: string }[];
   pulls: GitHubWorkItem[];
   issues: GitHubWorkItem[];
+  intelligence?: GitHubRepositoryIntelligence;
 }
 export interface GitHubStatsPage {
   commits: { sha: string; stats: GitHubCommitStats }[];

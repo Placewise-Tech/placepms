@@ -1,5 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-import type { GitHubCommit } from '../src/lib/integration-types';
+import { test, expect, type Download, type Page } from '@playwright/test';
+import type { GitHubCommit, GitHubRepositoryIntelligence } from '../src/lib/integration-types';
 
 const id = '11111111-1111-4111-8111-111111111111';
 const sessionId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -9,7 +9,7 @@ const user = { id, aud: 'authenticated', role: 'authenticated', email, app_metad
 const accessToken = `${Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify({ sub: id, session_id: sessionId, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.test-signature`;
 const session = { access_token: accessToken, refresh_token: 'test-refresh', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer', user };
 
-async function workspace(page: Page, options: { githubAnalytics?: boolean; failStatsOnce?: boolean } = {}) {
+async function workspace(page: Page, options: { githubAnalytics?: boolean; failStatsOnce?: boolean; githubIntelligence?: boolean; providerDetails?: boolean } = {}) {
   const project = { id: 'sq-fixture', title: 'Connected Capstone', summary: 'Real project summary', tagline: 'A connected workspace', domain: 'Education', leader_email: email, mentor_id: null, mentor_name: null, github_repo: 'https://github.com/fixture/repo', figma_url: 'https://figma.com/design/Abc123/App', miro_url: 'https://miro.com/app/board/board123/', current_phase: 'Build', status: 'PENDING', created_at: '2026-01-01T00:00:00Z' };
   const milestone: Record<string, any> = { id: 'm-fixture', squad_id: project.id, name: 'Project delivery', phase: 'Build', description: 'Fixture delivery evidence', status: 'PENDING', due_date: date, start_date: null, submission_files: [], mentor_feedback: null, score: null };
   const members: Record<string, unknown>[] = [];
@@ -24,6 +24,14 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
     { sha: 'b'.repeat(40), message: 'Merge feature branch', url: 'https://github.com/fixture/private-repo/commit/b', author: identity('Bob Example', 'bob'), committer: identity('Bob Example', 'bob'), authoredAt: '2026-01-03T15:00:00Z', committedAt: '2026-01-03T16:00:00Z', parents: ['a'.repeat(40), 'c'.repeat(40)], verified: false, verificationReason: 'unsigned' },
     { sha: 'c'.repeat(40), message: 'Add repository tests', url: 'https://github.com/fixture/private-repo/commit/c', author: identity('Alice Example', 'alice'), committer: identity('Alice Example', 'alice'), authoredAt: '2026-01-02T08:00:00Z', committedAt: '2026-01-02T09:00:00Z', parents: [], verified: false, verificationReason: 'unsigned' },
   ];
+  const intelligence: GitHubRepositoryIntelligence = {
+    capturedAt: '2026-01-04T20:00:00Z', coverage: { workflows: { available: true, hasMore: false }, runs: { available: true, hasMore: true }, releases: { available: true, hasMore: false }, standards: { available: true, hasMore: false } },
+    workflows: [{ id: 'ci', name: 'Build & test', path: '.github/workflows/ci.yml', state: 'active', url: 'https://github.com/fixture/repo/actions/workflows/ci.yml', updatedAt: '2026-01-04T10:06:00Z' }],
+    runs: [{ id: 'run-1', name: 'Build & test', branch: 'main', sha: 'a'.repeat(40), event: 'push', status: 'completed', conclusion: 'success', url: 'https://github.com/fixture/repo/actions/runs/1', startedAt: '2026-01-04T10:00:00Z', updatedAt: '2026-01-04T10:06:00Z' }, { id: 'run-2', name: 'Build & test', branch: 'develop', sha: 'b'.repeat(40), event: 'pull_request', status: 'completed', conclusion: 'failure', url: 'https://github.com/fixture/repo/actions/runs/2', startedAt: '2026-01-03T10:00:00Z', updatedAt: '2026-01-03T10:04:00Z' }],
+    releases: [{ id: 'release-1', title: 'Connected intelligence v1', tag: 'v1.0.0', body: 'Release evidence from GitHub.\n<script>window.releaseInjection = true</script>', author: 'alice', publishedAt: '2026-01-04T12:00:00Z', url: 'https://github.com/fixture/repo/releases/tag/v1.0.0', draft: false, prerelease: false, assets: 2 }],
+    standards: [{ name: 'README', present: true, url: 'https://github.com/fixture/repo/blob/main/README.md' }, { name: 'License', present: true, url: 'https://github.com/fixture/repo/blob/main/LICENSE' }, { name: 'Contribution guide', present: false, url: '' }], communityHealth: 75,
+  };
+  intelligence.runs.push({ id: 'run-3', name: 'Lint', branch: 'main', sha: 'c'.repeat(40), event: 'push', status: 'completed', conclusion: 'timed_out', url: 'https://github.com/fixture/repo/actions/runs/3', startedAt: '2026-01-02T10:00:00Z', updatedAt: '2026-01-02T10:03:00Z' });
   await page.route('**/auth/v1/token**', route => route.fulfill({ json: session }));
   await page.route('**/auth/v1/user', route => route.fulfill({ json: user }));
   await page.route('**/auth/v1/logout**', route => route.fulfill({ status: 204 }));
@@ -94,9 +102,11 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
       const repository = String(input.target || 'fixture/private-repo');
       return route.fulfill({ json: { provider: 'github', title: repository, description: 'Authorized repository analysis', url: `https://github.com/${repository}`, repository, branch: 'main', branches: ['main', 'develop'], nextPage: currentPage === 1 ? 2 : undefined, metrics: [], sections: [], warnings: [],
         github: { repository: { name: repository, defaultBranch: 'main', visibility: 'Private', archived: false, createdAt: '2025-01-01T00:00:00Z', pushedAt: '2026-01-04T10:30:00Z', sizeKb: 1024, license: 'MIT License', topics: ['education'], stars: 2, forks: 1, openIssuesAndPulls: 2 }, branch: 'main', window: { days, since: days === 'all' ? null : since.toISOString(), until }, pages: [currentPage], nextPage: currentPage === 1 ? 2 : undefined, commitsAvailable: true,
+          ...(options.githubIntelligence && currentPage === 1 ? { intelligence } : {}),
           commits: currentPage === 1 ? githubCommits.slice(0, 2) : githubCommits.slice(1), languages: [{ name: 'TypeScript', bytes: 300 }, { name: 'CSS', bytes: 100 }], branches: [{ name: 'main', sha: 'a'.repeat(40), protected: true }], contributors: [{ login: 'alice', commits: 20, url: 'https://github.com/alice' }], pulls: [{ number: 4, title: 'Feature pull request', url: 'https://github.com/fixture/private-repo/pull/4', author: 'alice', createdAt: '2026-01-02T08:00:00Z', updatedAt: '2026-01-03T08:00:00Z', labels: ['enhancement'], draft: false }], issues: [] },
       } });
     }
+    if (options.providerDetails && input.provider !== 'github') return route.fulfill({ json: { provider: input.provider, title: `${input.provider} detailed analysis`, description: 'Returned provider metadata', url: 'https://example.test/resource', metrics: [{ label: 'Returned records', value: 2 }], warnings: [], sampleNotice: 'This analysis describes only returned records.', sections: [{ title: input.provider === 'figma' ? 'Frames & layers' : 'Board items', items: [{ id: 'node-1', title: input.provider === 'figma' ? 'Login frame' : 'Roadmap sticky note', kind: input.provider === 'figma' ? 'FRAME' : 'sticky_note', description: 'Literal <script>window.providerInjection = true</script> provider content.', details: [{ label: 'Width', value: input.provider === 'figma' ? 0 : 200 }, { label: 'Height', value: 240 }, { label: 'Position X', value: -120 }], url: 'https://example.test/resource/node-1' }, { id: 'node-2', title: 'Supporting text', kind: 'TEXT', description: 'Another returned record' }] }] } });
     return route.fulfill({ json: {
       provider: input.provider, title: input.provider === 'github' ? 'fixture/repo' : `${input.provider} project analysis`, description: 'Provider report', url: 'https://example.test/resource', repository: 'fixture/repo', branch: 'main', branches: ['main', 'develop'],
       metrics: [{ label: 'Stars', value: 0 }, { label: 'Commits on this page', value: 1 }], warnings: [], sampleNotice: 'Analysis of up to 100 commits on this page.',
@@ -109,8 +119,140 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
   await page.getByRole('button', { name: 'Sign In to Workspace', exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Your projects', exact: true })).toBeVisible();
-  return { calls, library, connections, project, milestone, members };
+  return { calls, library, connections, project, milestone, members, githubCommits };
 }
+
+async function readDownload(download: Download) {
+  const stream = await download.createReadStream();
+  if (!stream) throw new Error('The export could not be read.');
+  const chunks: Buffer[] = []; for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  return Buffer.concat(chunks).toString('utf8');
+}
+
+test('nebula workspace intelligence drills into CI, releases, conventions, and persisted layout preferences', async ({ page }) => {
+  const { connections } = await workspace(page, { githubAnalytics: true, githubIntelligence: true });
+  await expect(page.locator('.dashboard')).toHaveClass(/workspace-compact/);
+  await page.getByRole('button', { name: 'Use comfortable layout', exact: true }).click();
+  await page.reload(); await expect(page.getByRole('button', { name: 'Use compact layout', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Use compact layout', exact: true }).click();
+  connections.push({ provider: 'github', account: 'ci-fixture', mode: 'oauth', updated_at: date, expires_at: null });
+  await page.goto('/dashboard/repositories');
+  await page.getByLabel('Repository URL or owner/repository').fill('fixture/repo');
+  await page.getByRole('button', { name: 'Inspect repository', exact: true }).click();
+  await page.getByRole('tab', { name: 'Insights', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Understand the work behind the commits.', exact: true })).toBeVisible();
+  await expect(page.getByText('Complete 14-day history required', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Load next 100 commits', exact: true }).click();
+  await page.getByRole('tab', { name: 'CI & workflows', exact: true }).click();
+  await expect(page.locator('.intel-metric').filter({ hasText: 'Successful runs' }).locator('strong')).toHaveText('1');
+  await expect(page.locator('.intel-metric').filter({ hasText: 'Failed runs' }).locator('strong')).toHaveText('2');
+  await page.getByLabel('Filter workflow runs').selectOption('failure');
+  await expect(page.locator('.intel-records > article')).toHaveCount(2);
+  await expect(page.locator('.intel-records')).toContainText('develop');
+  await expect(page.locator('.intel-records')).toContainText('timed out');
+  await page.getByRole('tab', { name: 'Workflows', exact: true }).click();
+  await expect(page.getByText('.github/workflows/ci.yml', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Releases', exact: true }).click();
+  await page.getByRole('button', { name: 'Inspect release notes', exact: true }).click();
+  const release = page.getByRole('dialog', { name: 'Connected intelligence v1', exact: true });
+  await expect(release).toContainText('Release evidence from GitHub.');
+  expect(await page.evaluate(() => (window as any).releaseInjection)).toBeUndefined();
+  await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
+  await page.getByRole('tab', { name: 'Conventions', exact: true }).click();
+  await expect(page.getByText('GitHub profile: 75%', { exact: true })).toBeVisible();
+  await expect(page.locator('.intel-conventions > div').filter({ hasText: 'Contribution guide' })).toContainText('Not reported');
+  await page.getByRole('tab', { name: 'Delivery signals', exact: true }).click();
+  await page.locator('.dash-main').evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: '/tmp/omnirush/placepms-nebula-intelligence.png', animations: 'disabled' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.locator('.dash-main').evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+});
+
+for (const provider of ['figma', 'miro']) test(`${provider} advanced analysis filters metadata and opens safe detailed record inspectors`, async ({ page }) => {
+  await workspace(page, { providerDetails: true });
+  await page.goto(`/dashboard/${provider}`);
+  await page.getByRole('button', { name: /^Access token/ }).click();
+  await page.getByLabel(`${provider === 'figma' ? 'Figma' : 'Miro'} access token`).fill(`${provider}-readonly-fixture-token`);
+  await page.getByRole('button', { name: 'Verify & connect', exact: true }).click();
+  await page.getByLabel(provider === 'figma' ? 'Figma file URL or file key' : 'Miro board URL or board ID').fill(provider === 'figma' ? 'Abc123' : 'board123');
+  await page.getByRole('button', { name: provider === 'figma' ? 'Inspect design' : 'Inspect board', exact: true }).click();
+  const section = provider === 'figma' ? 'Frames & layers' : 'Board items';
+  await page.getByLabel(`Filter ${section} type`).selectOption(provider === 'figma' ? 'FRAME' : 'sticky_note');
+  await page.getByLabel(`Search ${section}`).fill('-120');
+  await expect(page.locator('.studio-card-grid > article')).toHaveCount(1);
+  const name = provider === 'figma' ? 'Login frame' : 'Roadmap sticky note';
+  await page.getByRole('button', { name: `Inspect ${name}`, exact: true }).click();
+  const inspector = page.getByRole('dialog', { name, exact: true });
+  await expect(inspector.locator('.studio-facts > div').filter({ hasText: /^Width/ }).locator('dd')).toHaveText(provider === 'figma' ? '0' : '200');
+  await expect(inspector).toContainText('Literal <script>window.providerInjection = true</script> provider content.');
+  expect(await page.evaluate(() => (window as any).providerInjection)).toBeUndefined();
+  const download = page.waitForEvent('download'); await inspector.getByRole('button', { name: 'Export record', exact: true }).click();
+  expect(JSON.parse(await readDownload(await download)).id).toBe('node-1');
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await inspector.evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+  await page.screenshot({ path: `/tmp/omnirush/placepms-nebula-${provider}-inspector.png`, animations: 'disabled' });
+});
+
+test('AI-assisted commits are flagged in any inspected repository with scoped counts, evidence, filters, and exports', async ({ page }) => {
+  const { githubCommits, calls } = await workspace(page, { githubAnalytics: true });
+  githubCommits[0].message += '\n\nCo-authored-by: Claude Opus 4.6 <noreply@anthropic.com>';
+  githubCommits[1].message = 'Merge AI feature branch';
+  githubCommits[2].message += '\n\nAI-Assisted: true\nAI-Tool: Codex CLI';
+  await page.goto('/dashboard/repositories');
+  await page.getByRole('button', { name: /^Public repository/ }).click();
+  await page.getByLabel('Repository URL or owner/repository').fill('another-owner/ai-evidence');
+  await page.getByRole('button', { name: 'Inspect repository', exact: true }).click();
+  const summary = page.getByRole('status', { name: 'AI-assisted commit summary', exact: true });
+  await expect(summary).toContainText('AI-assisted detected');
+  await expect(summary).toContainText('1 of 2 loaded commits');
+  await expect(page.locator('.github-coverage')).toContainText('Partial history');
+  await page.getByRole('button', { name: 'Show AI-assisted commits', exact: true }).click();
+  await expect(page.getByLabel('Commit type')).toHaveValue('ai');
+  await expect(page.locator('.github-commit')).toHaveCount(1);
+  await page.locator('.github-commit .github-ai-evidence > summary').click();
+  await expect(page.locator('.github-commit .github-ai-evidence')).toContainText('Co-author trailer');
+  await expect(page.locator('.github-commit .github-ai-evidence')).toContainText('Co-authored-by: Claude Opus 4.6 <noreply@anthropic.com>');
+  await page.getByRole('button', { name: 'Load next 100 commits', exact: true }).click();
+  await expect(summary).toContainText('2 of 3 loaded commits');
+  await expect(page.locator('.github-commit')).toHaveCount(2);
+  await page.getByLabel('Contributor filter').selectOption('github:bob');
+  await expect(page.locator('.github-commit')).toHaveCount(0);
+  await expect(summary).toContainText('2 of 3 loaded commits');
+  await page.getByLabel('Contributor filter').selectOption('');
+  const csvDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export filtered commits', exact: true }).click();
+  const csv = await readDownload(await csvDownload);
+  expect(csv).toContain('AI marker status'); expect(csv).toContain('Claude'); expect(csv).toContain('OpenAI Codex');
+  expect(csv).not.toContain('Merge AI feature branch');
+  await page.getByRole('button', { name: 'Inspect files & diff', exact: true }).first().click();
+  const inspector = page.getByRole('dialog', { name: 'Commit aaaaaaa', exact: true });
+  await expect(inspector.getByText('AI-assisted', { exact: true })).toBeVisible();
+  await inspector.locator('.github-ai-evidence > summary').click();
+  await expect(inspector.locator('.github-ai-evidence')).toContainText('noreply@anthropic.com');
+  await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
+  await page.getByLabel('Commit type').selectOption('all');
+  await page.getByLabel('Contributor filter').selectOption('github:bob');
+  await page.getByRole('button', { name: 'Inspect files & diff', exact: true }).click();
+  await expect(page.getByRole('dialog').locator('.github-ai-evidence')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
+  const jsonDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Export analysis', exact: true }).click();
+  const exported = JSON.parse(await readDownload(await jsonDownload));
+  expect(exported.github.repository.name).toBe('another-owner/ai-evidence');
+  expect(exported.github.commits.filter((item: any) => item.aiAssistance.flagged)).toHaveLength(2);
+  expect(exported.github.commits.find((item: any) => item.sha === 'b'.repeat(40)).aiAssistance.flagged).toBe(false);
+  expect(calls.filter(call => call.action === 'inspect' || call.action === 'commit').every(call => call.target === 'another-owner/ai-evidence')).toBe(true);
+  await page.getByLabel('Contributor filter').selectOption('');
+  await page.getByRole('tab', { name: 'Activity', exact: true }).click();
+  await page.locator('.dash-main').evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: '/tmp/omnirush/placepms-ai-analysis-desktop.png', animations: 'disabled' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('.dash-main').evaluate(element => { element.scrollTop = 0; });
+  await expect(summary).toBeInViewport({ ratio: 1 });
+  await expect(page.getByRole('img', { name: 'Commit activity graph', exact: true })).toBeInViewport({ ratio: 1 });
+  expect(await page.locator('.dash-main').evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+  await page.screenshot({ path: '/tmp/omnirush/placepms-ai-analysis-mobile.png', animations: 'disabled' });
+});
 
 test('GitHub offers three access modes, public analysis, commit diffs, files and private PAT browsing', async ({ page }) => {
   const { calls } = await workspace(page);

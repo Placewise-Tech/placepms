@@ -1,5 +1,6 @@
 import type { GitHubAnalysis, GitHubCommit, GitHubIdentity, GitHubStatsPage } from './integration-types';
 import { csvExport } from './workspace-insights';
+import { detectCommitAI } from './github-ai';
 
 const dayMs = 86_400_000;
 export const commitTime = (commit: GitHubCommit) => commit.committedAt || commit.authoredAt;
@@ -20,7 +21,7 @@ export function mergeGitHubAnalysis(current: GitHubAnalysis, next: GitHubAnalysi
   if (!next.commitsAvailable) throw new Error('Commit history could not be loaded. Please retry the next page.');
   const commits = new Map(current.commits.map(commit => [commit.sha, commit]));
   for (const commit of next.commits) commits.set(commit.sha, { ...commit, stats: commits.get(commit.sha)?.stats || commit.stats });
-  return { ...next, commitsAvailable: current.commitsAvailable && next.commitsAvailable, pages: [...new Set([...current.pages, ...next.pages])].sort((a, b) => a - b),
+  return { ...next, intelligence: next.intelligence ?? current.intelligence, commitsAvailable: current.commitsAvailable && next.commitsAvailable, pages: [...new Set([...current.pages, ...next.pages])].sort((a, b) => a - b),
     commits: [...commits.values()].sort((a, b) => commitTime(b).localeCompare(commitTime(a)) || a.sha.localeCompare(b.sha)) };
 }
 export function applyGitHubStats(analysis: GitHubAnalysis, result: GitHubStatsPage): GitHubAnalysis {
@@ -119,7 +120,7 @@ export function githubActivity(analysis: GitHubAnalysis, author = '') {
 }
 export function githubCommitCsv(commits: GitHubCommit[]) {
   return csvExport([
-    ['SHA', 'Message', 'Author name', 'Author GitHub', 'Author email', 'Authored at (UTC)', 'Committer name', 'Committer GitHub', 'Committed at (UTC)', 'Merge', 'Verified signature', 'Additions', 'Deletions', 'Change stats loaded', 'URL'],
-    ...commits.map(commit => [commit.sha, commit.message, commit.author.name, commit.author.login, commit.author.email, commit.authoredAt, commit.committer.name, commit.committer.login, commit.committedAt, commit.parents.length > 1, commit.verified, commit.stats?.additions, commit.stats?.deletions, Boolean(commit.stats), commit.url]),
+    ['SHA', 'Message', 'Author name', 'Author GitHub', 'Author email', 'Authored at (UTC)', 'Committer name', 'Committer GitHub', 'Committed at (UTC)', 'Merge', 'Verified signature', 'Additions', 'Deletions', 'Change stats loaded', 'URL', 'AI marker status', 'AI tools', 'AI evidence'],
+    ...commits.map(commit => { const ai = detectCommitAI(commit); return [commit.sha, commit.message, commit.author.name, commit.author.login, commit.author.email, commit.authoredAt, commit.committer.name, commit.committer.login, commit.committedAt, commit.parents.length > 1, commit.verified, commit.stats?.additions, commit.stats?.deletions, Boolean(commit.stats), commit.url, ai.flagged ? 'AI-assisted' : 'No marker found', ai.tools.join('; '), ai.evidence.map(item => `${item.source}: ${item.value}`).join('\n')]; }),
   ]);
 }

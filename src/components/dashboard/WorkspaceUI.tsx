@@ -2,7 +2,7 @@ import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 're
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { trapDialogTab } from '../../lib/dialog-focus';
 
-export interface WorkspaceSection { id: string; label: string; count?: number; content: ReactNode; disabled?: boolean }
+export interface WorkspaceSection { id: string; label: string; shortLabel?: string; count?: number; content: ReactNode; disabled?: boolean }
 
 export function WorkspaceSections({ sections, value, onChange, label }: { sections: WorkspaceSection[]; value: string; onChange: (value: string) => void; label: string }) {
   const id = useId();
@@ -15,7 +15,7 @@ export function WorkspaceSections({ sections, value, onChange, label }: { sectio
       const index = event.key === 'Home' ? 0 : event.key === 'End' ? available.length - 1 : (current + (event.key === 'ArrowRight' ? 1 : -1) + available.length) % available.length;
       event.preventDefault(); onChange(available[index].id);
       document.getElementById(`${id}-tab-${encodeURIComponent(available[index].id)}`)?.focus();
-    }}>{sections.map(section => <button key={section.id} id={`${id}-tab-${encodeURIComponent(section.id)}`} type="button" role="tab" aria-selected={section.id === active.id} aria-controls={`${id}-panel`} tabIndex={section.id === active.id ? 0 : -1} disabled={section.disabled} onClick={() => onChange(section.id)}>{section.label}{section.count !== undefined && <span aria-hidden="true">{section.count}</span>}</button>)}</div>
+    }}>{sections.map(section => <button key={section.id} id={`${id}-tab-${encodeURIComponent(section.id)}`} type="button" role="tab" aria-label={section.label} aria-selected={section.id === active.id} aria-controls={`${id}-panel`} tabIndex={section.id === active.id ? 0 : -1} disabled={section.disabled} onClick={() => onChange(section.id)}>{section.shortLabel ? <><span className="studio-tab-label studio-tab-long">{section.label}</span><span className="studio-tab-label studio-tab-short" aria-hidden="true">{section.shortLabel}</span></> : section.label}{section.count !== undefined && <span aria-hidden="true">{section.count}</span>}</button>)}</div>
     <div key={active.id} id={`${id}-panel`} className="studio-tab-panel" role="tabpanel" aria-labelledby={`${id}-tab-${encodeURIComponent(active.id)}`} tabIndex={0}>{active.content}</div>
   </div>;
 }

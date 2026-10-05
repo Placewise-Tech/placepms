@@ -33,8 +33,8 @@ interface PreloaderProps {
 export default function Preloader({
   words = defaultWords,
   onComplete,
-  brandColor = "#BDFF74",
-  bgColor = "#060706"
+  brandColor = "#70E7FF",
+  bgColor = "#060B19"
 }: PreloaderProps) {
   const [index, setIndex] = useState(0);
   const [dimension, setDimension] = useState({ width: 0, height: 0 });

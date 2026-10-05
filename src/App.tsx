@@ -60,7 +60,7 @@ export default function App() {
   if ((passwordRecovery || mustChangePassword) && session) return <PasswordRecovery requiredSetup={mustChangePassword} email={session.user.email} onComplete={() => { finishPasswordRecovery(); navigate('/dashboard', { replace: true }); }} onSignOut={() => navigate('/login', { replace: true })} />;
   if (session) return <Suspense fallback={<WorkspaceLoading />}><Dashboard key={session.user.id} user={session.user} /></Suspense>;
 
-  return <div className="min-h-full flex flex-col flex-1 bg-[#F8FAFC] text-[#0F172A] relative font-sans">
+  return <div className="app-nebula min-h-full flex flex-col flex-1 relative font-sans">
     {sessionError && <div className="auth-feedback auth-feedback-error" role="alert">{sessionError}</div>}
     {isAuthOpen && <Suspense fallback={<WorkspaceLoading />}><AuthInterface
       key={authRole}
