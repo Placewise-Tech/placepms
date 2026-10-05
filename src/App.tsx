@@ -63,7 +63,7 @@ export default function App() {
   return <div className="min-h-full flex flex-col flex-1 bg-[#F8FAFC] text-[#0F172A] relative font-sans">
     {sessionError && <div className="auth-feedback auth-feedback-error" role="alert">{sessionError}</div>}
     {isAuthOpen && <Suspense fallback={<WorkspaceLoading />}><AuthInterface
-      key={`${location.pathname}:${authRole}`}
+      key={authRole}
       isOpen={isAuthOpen}
       onClose={() => navigate('/')}
       initialMode={location.pathname === '/signup' ? 'signup' : location.pathname === '/login' ? 'signin' : authMode}

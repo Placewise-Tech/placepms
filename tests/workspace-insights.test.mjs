@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { csvExport, milestoneMatches, projectHealth, sortMilestones } from '../src/lib/workspace-insights.ts';
-import { readBlackbookDraft } from '../src/lib/workspace-library.ts';
+import { readBlackbookDraft, reportBlocks, reportHtml } from '../src/lib/workspace-library.ts';
 
 test('attention filters preserve overdue review and revision work without reviving completed milestones', () => {
   const today = '2026-10-04';
@@ -35,4 +35,18 @@ test('saved report drafts restore authored sections and reject corrupt or unsupp
   const notes = JSON.stringify({ version: 1, title: 'Capstone', sections: { Abstract: 'Authored work', Methodology: 42 }, report: '# Report' });
   assert.deepEqual(readBlackbookDraft(notes, ['Abstract', 'Methodology']), { title: 'Capstone', sections: { Abstract: 'Authored work', Methodology: '' }, report: '# Report' });
   for (const value of ['not json', 'null', '{}', '{"version":2}', '[]']) assert.equal(readBlackbookDraft(value, ['Abstract']), null);
+});
+
+test('academic report previews and HTML retain evidence tables, escaped pipes, Unicode, and literal unsafe markup', () => {
+  const content = '# Capstone\r\n\r\n## Evidence\r\n- Team: नमस्ते\r\n\r\n| Delivery | Feedback |\r\n| --- | --- |\r\n| Build \\| review | <img src=x onerror=alert(1)> |\r\n\r\nAuthored line one\r\nAuthored line two';
+  const blocks = reportBlocks(content);
+  assert.deepEqual(blocks.find(block => block.kind === 'table'), { kind: 'table', headers: ['Delivery', 'Feedback'], rows: [['Build | review', '<img src=x onerror=alert(1)>']] });
+  assert.equal(blocks.at(-1).text, 'Authored line one\nAuthored line two');
+  const html = reportHtml('<script>unsafe</script>', content);
+  assert.ok(html.includes('<h1>Capstone</h1>'));
+  assert.ok(html.includes('<th>Delivery</th>'));
+  assert.ok(html.includes('<td>Build | review</td>'));
+  assert.ok(html.includes('नमस्ते'));
+  assert.ok(html.includes('&lt;img src=x onerror=alert(1)&gt;'));
+  assert.ok(!html.includes('<img') && !html.includes('<script>'));
 });

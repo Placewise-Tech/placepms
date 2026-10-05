@@ -125,11 +125,15 @@ test('GitHub offers three access modes, public analysis, commit diffs, files and
   await expect(page.getByRole('heading', { name: 'fixture/repo', exact: true })).toBeVisible();
   expect(calls.some(call => call.action === 'inspect' && call.access === 'public')).toBe(true);
   await page.getByRole('button', { name: 'Implement feature', exact: true }).click();
-  await page.getByText('src/app.ts', { exact: false }).click();
+  await page.getByRole('button', { name: /src\/app\.ts/ }).click();
   await expect(page.getByText('+const feature = true;', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
   await page.getByRole('button', { name: 'Browse repository files' }).click();
   await page.getByRole('button', { name: /README.md/ }).click();
-  await expect(page.getByText('# Project\nDocumentation from GitHub', { exact: true })).toBeVisible();
+  await expect(page.getByText('# Project', { exact: true })).toBeVisible();
+  await expect(page.getByText('Documentation from GitHub', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
+  await page.getByRole('tab', { name: 'Setup & inspect', exact: true }).click();
   await page.getByRole('button', { name: /^Personal access token/ }).click();
   await page.getByLabel('GitHub access token').fill('fixture-private-readonly-token');
   await page.getByRole('button', { name: 'Verify & connect' }).click();
@@ -137,7 +141,7 @@ test('GitHub offers three access modes, public analysis, commit diffs, files and
   await expect(page.getByLabel('GitHub access token')).toHaveValue('');
   expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain('fixture-private-readonly-token');
   await page.getByRole('button', { name: 'Browse my repositories' }).click();
-  await expect(page.getByRole('button', { name: 'fixture/private-repo' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'fixture/private-repo', exact: true })).toBeVisible();
 });
 
 test('authorized GitHub analytics show graphs, merge paginated history, filter contributors, and inspect exact commit details', async ({ page }) => {
@@ -146,10 +150,16 @@ test('authorized GitHub analytics show graphs, merge paginated history, filter c
   connections.push({ provider: 'github', account: 'my-github-account', mode: 'oauth', updated_at: date, expires_at: null });
   await page.goto('/dashboard/integrations?connected=github');
   await page.getByLabel('Commit window').selectOption('7');
+  await page.getByRole('tab', { name: 'Resource browser', exact: true }).click();
   await page.getByRole('button', { name: 'fixture/private-repo', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Who contributed, what changed, and when' })).toBeVisible();
   await expect(page.getByRole('img', { name: 'Commit activity graph', exact: true })).toBeVisible();
+  await page.locator('.dash-main').evaluate(element => { element.scrollTop = 0; });
+  await expect(page.getByRole('img', { name: 'Commit activity graph', exact: true })).toBeInViewport({ ratio: 1 });
+  await page.screenshot({ path: '/tmp/omnirush/placepms-github-analysis.png', animations: 'disabled' });
+  await page.getByRole('tab', { name: 'Languages', exact: true }).click();
   await expect(page.getByRole('img', { name: /Language distribution: TypeScript 75.0%/ })).toBeVisible();
+  await page.getByRole('tab', { name: 'Timeline', exact: true }).click();
   await expect(page.locator('.github-coverage')).toContainText('2 unique commits loaded');
   await expect(page.locator('.github-coverage')).toContainText('Partial history');
   await page.getByRole('button', { name: 'Load next 100 commits', exact: true }).click();
@@ -161,8 +171,10 @@ test('authorized GitHub analytics show graphs, merge paginated history, filter c
   expect(inspectCalls[1].page).toBe(2);
   await page.getByRole('button', { name: 'Analyze changes for loaded commits', exact: true }).click();
   await expect(page.locator('.github-coverage')).toContainText('Change statistics for 3/3 commits');
+  await page.getByRole('tab', { name: 'Code changes', exact: true }).click();
   await expect(page.getByRole('img', { name: 'Code additions graph for measured commits', exact: true })).toBeVisible();
   await expect(page.getByText('+36 additions', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Heatmap', exact: true }).click();
   await page.getByLabel('Contributor filter').selectOption('github:alice');
   await page.getByRole('button', { name: '2026-01-04, 1 commits', exact: true }).click();
   await expect(page.locator('.github-commit')).toHaveCount(1);
@@ -171,17 +183,101 @@ test('authorized GitHub analytics show graphs, merge paginated history, filter c
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export filtered commits', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('github-commits.csv');
-  await page.getByRole('button', { name: 'Inspect files & diff', exact: true }).click();
+  const inspectButton = page.getByRole('button', { name: 'Inspect files & diff', exact: true });
+  await inspectButton.scrollIntoViewIfNeeded();
+  const beforeInspection = await page.locator('.dash-main').evaluate(element => element.scrollTop);
+  await inspectButton.click();
+  await expect(page.getByRole('dialog', { name: /^Commit/ })).toBeVisible();
+  expect(await page.locator('.dash-main').evaluate(element => element.scrollTop)).toBe(beforeInspection);
   await expect(page.locator('#github-commit-detail')).toContainText('Committed by Bob Example (@bob)');
-  await page.locator('#github-commit-detail').getByText('src/app.ts', { exact: false }).click();
+  await page.locator('#github-commit-detail').getByRole('button', { name: /src\/app\.ts/ }).click();
   await expect(page.getByText('+const feature = true;', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Contributors', exact: true }).click();
+  await page.getByRole('tab', { name: 'Identity & verification', exact: true }).click();
+  await expect(page.getByText('alice@example.test', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Files & diff', exact: true }).click();
+  await page.screenshot({ path: '/tmp/omnirush/placepms-commit-inspector.png', animations: 'disabled' });
+  await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
+  await expect(inspectButton).toBeFocused();
+  await page.getByRole('tab', { name: 'Contributors', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Contributor breakdown' })).toBeVisible();
   await expect(page.getByRole('row').filter({ hasText: 'Alice Example' })).toContainText('66.7%');
-  await page.getByRole('button', { name: 'Repository', exact: true }).click();
+  await page.getByRole('tab', { name: 'Repository', exact: true }).click();
   await expect(page.getByText('MIT License', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Pull requests', exact: true }).click();
   await expect(page.getByRole('link', { name: '#4 Feature pull request', exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('tab', { name: 'Activity', exact: true }).click();
+  await page.getByRole('tab', { name: 'Timeline', exact: true }).click();
+  await expect(page.getByLabel('Contributor filter')).toBeHidden();
+  await page.getByRole('button', { name: 'Show analysis controls', exact: true }).click();
+  await expect(page.getByLabel('Contributor filter')).toHaveValue('github:alice');
+  await page.getByLabel('Contributor filter').selectOption('');
+  await page.getByRole('button', { name: 'Hide analysis controls', exact: true }).click();
+  await expect(page.getByLabel('Contributor filter')).toBeHidden();
+  expect(await page.locator('.dash-main').evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+  await page.locator('.dash-main').evaluate(element => { element.scrollTop = 0; });
+  await page.screenshot({ path: '/tmp/omnirush/placepms-github-analysis-mobile.png', animations: 'disabled' });
+  await expect(page.getByRole('img', { name: 'Commit activity graph', exact: true })).toBeInViewport({ ratio: 1 });
   expect(errors).toEqual([]);
+});
+
+test('focused studio views support keyboard tabs, library inspection, structured report previews, and device details', async ({ page }) => {
+  const { library } = await workspace(page);
+  const projectsTab = page.getByRole('tab', { name: 'Projects & deadlines', exact: true });
+  await projectsTab.focus(); await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: 'Focus & readiness', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: 'Workspace readiness', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your projects', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Library', exact: true }).click();
+  await page.getByRole('link', { name: 'Research', exact: true }).click();
+  await page.getByRole('button', { name: 'Read Saved academic reference', exact: true }).click();
+  const reader = page.getByRole('dialog', { name: 'Saved academic reference', exact: true });
+  await expect(reader.getByText('A reviewed reference', { exact: true })).toBeVisible();
+  await reader.getByRole('button', { name: 'Close inspector', exact: true }).click();
+  await page.screenshot({ path: '/tmp/omnirush/placepms-research-studio.png', animations: 'disabled' });
+  await page.getByRole('button', { name: 'Delete Saved academic reference', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Delete library entry', exact: true }).getByRole('button', { name: 'Delete entry', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Saved academic reference', exact: true })).toHaveCount(0);
+  expect(library.some(entry => entry.id === 'reference-1')).toBe(false);
+  await page.goto('/dashboard/blackbook');
+  await page.getByRole('button', { name: /Methodology/ }).click();
+  await page.getByLabel('Methodology', { exact: true }).fill('A documented and reproducible evaluation.');
+  await page.screenshot({ path: '/tmp/omnirush/placepms-blackbook-studio.png', animations: 'disabled' });
+  await page.getByRole('button', { name: 'Generate report from saved records', exact: true }).click();
+  await page.getByRole('tab', { name: 'Presentation preview', exact: true }).click();
+  await expect(page.locator('#blackbook-print').getByRole('cell', { name: 'Project delivery', exact: true })).toBeVisible();
+  await expect(page.locator('#blackbook-print').getByText('A documented and reproducible evaluation.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.getByRole('status')).toContainText('Draft saved');
+  await page.goto('/dashboard/sessions');
+  await page.getByRole('button', { name: 'View Firefox on Windows session details', exact: true }).click();
+  const details = page.getByRole('dialog', { name: 'Firefox on Windows', exact: true });
+  await expect(details.getByText('192.0.2.10', { exact: true })).toBeVisible();
+  await details.getByRole('button', { name: 'Close inspector', exact: true }).click();
+  await page.screenshot({ path: '/tmp/omnirush/placepms-session-studio.png', animations: 'disabled' });
+  await page.getByRole('tab', { name: 'Other devices', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Chrome on Linux', exact: true })).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Firefox on Windows', exact: true })).toBeVisible();
+});
+
+test('project and portfolio pagination expose every record without an unbounded card list', async ({ page }) => {
+  const { project } = await workspace(page);
+  const projects = Array.from({ length: 9 }, (_, index) => ({ ...project, id: index ? `page-project-${index}` : project.id, title: `Focused project ${String(index + 1).padStart(2, '0')}` }));
+  await page.route('**/rest/v1/pms_squads**', route => route.fulfill({ json: projects }));
+  await page.goto('/dashboard/projects');
+  await expect(page.locator('.dash-project-card')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Next projects page', exact: true }).click();
+  await expect(page.locator('.dash-project-card')).toHaveCount(3);
+  await expect(page.getByRole('heading', { name: 'Focused project 09', exact: true })).toBeVisible();
+  await page.getByLabel('Search projects').fill('Focused project 08');
+  await expect(page.locator('.dash-project-card')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Career', exact: true }).click();
+  await page.getByRole('link', { name: 'Portfolio', exact: true }).click();
+  await page.getByRole('tab', { name: 'Project showcase', exact: true }).click();
+  await expect(page.locator('.dash-project-card')).toHaveCount(6);
+  await page.getByRole('button', { name: 'Next projects page', exact: true }).click();
+  await expect(page.locator('.dash-project-card')).toHaveCount(3);
+  await expect(page.getByRole('heading', { name: 'Focused project 09', exact: true })).toBeVisible();
 });
 
 test('GitHub change analysis preserves partial results and retries only missing statistics', async ({ page }) => {
@@ -200,7 +296,7 @@ test('GitHub change analysis preserves partial results and retries only missing 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('.dashboard')).toHaveClass(/dashboard-dark/);
   for (const tab of ['Activity', 'Contributors', 'Commits', 'Repository']) {
-    await page.getByRole('button', { name: tab, exact: true }).click();
+    await page.getByRole('tab', { name: tab, exact: true }).click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), `overflow in GitHub ${tab}`).toBe(false);
   }
 });
@@ -215,7 +311,8 @@ for (const provider of ['github', 'figma', 'miro']) test(`${provider} authorizat
   await expect(page.getByRole('status').filter({ hasText: `${label} connected to your account` })).toBeVisible();
   await expect(page.locator('.workspace-callout').getByText(`${provider}-personal-account`, { exact: true })).toBeVisible();
   if (provider !== 'figma') {
-    await expect(page.getByRole('button', { name: provider === 'github' ? 'fixture/private-repo' : 'My connected resource' })).toBeVisible();
+    await page.getByRole('tab', { name: 'Resource browser', exact: true }).click();
+    await expect(page.getByRole('button', { name: provider === 'github' ? 'fixture/private-repo' : 'My connected resource', exact: true })).toBeVisible();
     expect(calls.some(call => call.action === 'list' && call.provider === provider && call.access === 'oauth')).toBe(true);
   } else {
     await expect(page.getByLabel('Figma team / project ID')).toBeVisible();
@@ -233,6 +330,7 @@ for (const provider of ['figma', 'miro']) test(`${provider} can connect by token
   await page.getByRole('button', { name: provider === 'figma' ? 'Inspect design' : 'Inspect board', exact: true }).click();
   await expect(page.getByRole('heading', { name: `${provider} project analysis` })).toBeVisible();
   await expect(page.getByRole('heading', { name: provider === 'figma' ? 'Login frame' : 'Roadmap sticky note' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Setup & inspect', exact: true }).click();
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Connection removed');
 });
@@ -253,10 +351,12 @@ test('project leads can edit project details, manage members, and attach milesto
   await page.getByLabel('Project title', { exact: true }).fill('Updated Capstone');
   await page.getByRole('button', { name: 'Save project', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Updated Capstone', level: 2 })).toBeVisible();
+  await page.getByRole('tab', { name: 'Team', exact: true }).click();
   await page.getByRole('button', { name: 'Add member', exact: true }).click();
   await page.getByLabel('Member name').fill('Team Member'); await page.getByLabel('Member email').fill('member@example.test');
   await page.getByRole('button', { name: 'Save member', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Team Member' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Milestones', exact: true }).click();
   await page.getByRole('button', { name: 'Edit & attach files' }).click();
   await page.getByLabel('Submission document URLs (one per line)').fill('https://example.test/report.pdf');
   await page.getByRole('button', { name: 'Save milestone', exact: true }).click();
@@ -274,12 +374,13 @@ test('research library saves editable references and blackbook exports actual pr
   await page.getByRole('button', { name: 'Save entry', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'New reference' })).toBeVisible();
   await page.goto('/dashboard/blackbook');
+  await page.getByRole('button', { name: /Methodology/, exact: false }).click();
   await page.getByLabel('Methodology', { exact: true }).fill('We evaluated the actual project implementation.');
   await page.getByRole('button', { name: 'Generate report from saved records' }).click();
-  await expect(page.getByLabel('Generated report')).toHaveValue(/We evaluated the actual project implementation\./);
-  await expect(page.getByLabel('Generated report')).toHaveValue(/Saved academic reference/);
-  await expect(page.getByLabel('Generated report')).toHaveValue(/New reference/);
-  await expect(page.getByLabel('Generated report')).toHaveValue(/Project delivery/);
+  await expect(page.getByRole('textbox', { name: 'Generated report', exact: true })).toHaveValue(/We evaluated the actual project implementation\./);
+  await expect(page.getByRole('textbox', { name: 'Generated report', exact: true })).toHaveValue(/Saved academic reference/);
+  await expect(page.getByRole('textbox', { name: 'Generated report', exact: true })).toHaveValue(/New reference/);
+  await expect(page.getByRole('textbox', { name: 'Generated report', exact: true })).toHaveValue(/Project delivery/);
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Markdown', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('placepms-blackbook.md');
   await page.getByRole('button', { name: 'Save to Documents' }).click();
@@ -319,6 +420,7 @@ test('priority links apply task filters, board follows status changes, and expor
   const { milestone } = await workspace(page);
   milestone.due_date = '2020-01-01';
   await page.reload();
+  await page.getByRole('tab', { name: 'Focus & readiness', exact: true }).click();
   await page.getByRole('link', { name: '1 Overdue', exact: true }).click();
   await expect(page.getByLabel('Filter milestone status')).toHaveValue('overdue');
   await expect(page.getByRole('heading', { name: 'Project delivery', exact: true })).toBeVisible();
@@ -327,6 +429,7 @@ test('priority links apply task filters, board follows status changes, and expor
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await page.getByRole('button', { name: 'Board view', exact: true }).click();
   await page.getByRole('button', { name: 'Submit Project delivery', exact: true }).click();
+  await page.getByRole('tab', { name: 'In review', exact: true }).click();
   await expect(page.locator('.workspace-board-column').filter({ has: page.getByRole('heading', { name: /^In review/ }) }).getByRole('button', { name: 'Withdraw submission for Project delivery' })).toBeVisible();
   await page.getByLabel('Filter milestone status').selectOption('submitted');
   const download = page.waitForEvent('download');
@@ -338,6 +441,7 @@ test('priority links apply task filters, board follows status changes, and expor
 
 test('project workspace edits existing members and submits evidence in place', async ({ page }) => {
   const { calls } = await workspace(page); await page.goto('/dashboard/projects/sq-fixture');
+  await page.getByRole('tab', { name: 'Team', exact: true }).click();
   await page.getByRole('button', { name: 'Add member', exact: true }).click();
   await page.getByLabel('Member name').fill('Designer'); await page.getByLabel('Member email').fill('designer@example.test');
   await page.getByRole('button', { name: 'Save member', exact: true }).click();
@@ -345,6 +449,7 @@ test('project workspace edits existing members and submits evidence in place', a
   await page.getByLabel('Team role').fill('Design lead'); await page.getByLabel('Skills (comma-separated)').fill('Figma, Research');
   await page.getByRole('button', { name: 'Save member', exact: true }).click();
   await expect(page.getByText('designer@example.test · Design lead')).toBeVisible();
+  await page.getByRole('tab', { name: 'Milestones', exact: true }).click();
   await page.getByRole('button', { name: 'Submit for review', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Withdraw submission', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Edit & attach files' })).toBeDisabled();
@@ -373,18 +478,21 @@ test('assigned mentor sees review queue and saves a revision decision with a sco
 
 test('project-specific report drafts survive reload and update the same saved entry', async ({ page }) => {
   const { library } = await workspace(page); await page.goto('/dashboard/blackbook');
+  await page.getByRole('button', { name: /Methodology/ }).click();
   await expect(page.getByLabel('Methodology', { exact: true })).toBeEnabled();
   await page.getByLabel('Methodology', { exact: true }).fill('Our saved methodology survives reload.');
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Draft saved');
   await page.reload();
+  await page.getByRole('button', { name: /Methodology/ }).click();
   await expect(page.getByRole('textbox', { name: 'Methodology', exact: true })).toHaveValue('Our saved methodology survives reload.');
+  await page.getByRole('button', { name: /Abstract/ }).click();
   await page.getByLabel('Abstract', { exact: true }).fill('Updated project abstract.');
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Draft saved');
   expect(library.filter(item => (item.tags as string[]).includes('blackbook-draft'))).toHaveLength(1);
   await page.getByRole('button', { name: 'Generate report from saved records' }).click();
-  await expect(page.getByLabel('Generated report')).toHaveValue(/Updated project abstract/);
+  await expect(page.getByRole('textbox', { name: 'Generated report', exact: true })).toHaveValue(/Updated project abstract/);
 });
 
 test('library search includes notes, tags filter saved entries, and project links carry context', async ({ page }) => {
@@ -426,7 +534,8 @@ test('every dashboard section loads in light and dark themes on mobile without r
   await expect(page.locator('.dashboard')).toHaveClass(/dashboard-collapsed/);
   await expect(page.getByRole('button', { name: 'New project', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
-  await page.screenshot({ path: '/tmp/omnirush/placepms-dashboard-desktop.png', fullPage: true });
+  await expect(page.locator('.dash-sidebar')).toHaveCSS('width', '258px');
+  await page.screenshot({ path: '/tmp/omnirush/placepms-dashboard-desktop.png', fullPage: true, animations: 'disabled' });
   await page.setViewportSize({ width: 390, height: 844 });
   for (const slug of ['', 'projects', 'tasks', 'mentorship', 'calendar', 'documents', 'research', 'resources', 'blackbook', 'integrations', 'repositories', 'figma', 'miro', 'sessions', 'portfolio']) {
     await page.goto(`/dashboard${slug ? `/${slug}` : ''}`);
@@ -434,7 +543,7 @@ test('every dashboard section loads in light and dark themes on mobile without r
     await expect(page.locator('.dash-main h1')).toBeVisible();
     await expect(page.getByRole('status', { name: 'Loading dashboard' })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), `overflow on ${slug || 'overview'}`).toBe(false);
-    if (!slug) await page.screenshot({ path: '/tmp/omnirush/placepms-dashboard-mobile.png', fullPage: true });
+    if (!slug) await page.screenshot({ path: '/tmp/omnirush/placepms-dashboard-mobile.png', fullPage: true, animations: 'disabled' });
   }
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export portfolio', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('placepms-portfolio.html');

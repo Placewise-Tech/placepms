@@ -86,10 +86,10 @@ test('temporary login is gated across reloads and direct URLs until a new passwo
   await page.getByLabel('Confirm password').fill('My-personal-password-2026!');
   await page.getByRole('button', { name: 'Save password & open workspace' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole('heading', { name: /Workspace/ }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your projects', exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Set your own password' })).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: /Workspace/ }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your projects', exact: true })).toBeVisible();
 });
 
 test('a rejected password keeps the workspace locked', async ({ page }) => {
