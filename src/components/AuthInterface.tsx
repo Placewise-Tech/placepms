@@ -5,7 +5,7 @@ import { configurationError, setSessionPersistence, supabase } from '../lib/supa
 import { requestPasswordReset } from '../lib/password-reset';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { trapDialogTab } from '../lib/dialog-focus';
-import { roleLabels, workspaceRole } from '../lib/workspace-roles';
+import { roleLabels } from '../lib/workspace-roles';
 
 type RoleType = 'student' | 'faculty' | 'college' | 'recruiter';
 type AccessRole = 'admin' | 'teacher' | 'staff';
@@ -37,7 +37,12 @@ export default function AuthInterface({ isOpen, onClose, initialMode = 'signin',
     setError(''); setNotice(''); setIsLoading(true);
     try {
       setSessionPersistence(rememberMe);
-       if (mode === 'signin') { const result = await supabase.auth.signInWithPassword({ email: email.trim(), password }); if (result.error) throw result.error; if (accessRole && result.data.user && workspaceRole(result.data.user) !== accessRole) { await supabase.auth.signOut({ scope: 'local' }); throw new Error(`This account does not have ${roleLabels[accessRole]} access.`); } }
+      if (mode === 'signin') {
+        const result = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (result.error) throw result.error;
+        // App resolves the live managed role before opening a workspace. Cached
+        // auth metadata must not reject the installation owner's first login.
+      }
       else {
         const response = await fetch('/api/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), fullName: fullName.trim(), organization: organization.trim(), role, agreeTerms }) });
         const result = await response.json().catch(() => null);

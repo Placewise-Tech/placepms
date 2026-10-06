@@ -30,11 +30,15 @@ before(async()=>{
   }
   await db.query("insert into public.pms_squads values('assigned','student@example.test',$1),('elsewhere','other@example.test',$2)",[users.teacher,users.staff]);
   await db.exec("insert into public.milestones values('delivery','assigned','SUBMITTED',null,null),('other-delivery','elsewhere','SUBMITTED',null,null)");
-  for(const migration of ['202610030001_temporary_password_signup.sql','202610030002_workspace_integrations.sql','202610050001_workspace_management.sql','202610050001_workspace_management.sql','202610060001_admin_monitoring.sql'])await db.exec(readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
+  for(const migration of ['202610030001_temporary_password_signup.sql','202610030002_workspace_integrations.sql','202610050001_workspace_management.sql','202610050001_workspace_management.sql','202610060001_admin_monitoring.sql','202610060002_designated_admin_bootstrap.sql'])await db.exec(readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
   await db.query('select public.workspace_bootstrap_admin($1)',[users.admin]);
+  assert.equal((await db.query('select public.workspace_session_active($1,$2) as active',[users.admin,sessions.admin])).rows[0].active,true);
   await db.query("select public.workspace_register_account($1,$2,'teacher',true,'Teaching')",[users.admin,users.teacher]);
   await db.query("select public.workspace_register_account($1,$2,'staff',true,'Support')",[users.admin,users.staff]);
-  for(const role of ['admin','teacher','staff'])await db.query('insert into auth.sessions(id,user_id) values($1,$2)',[sessions[role],users[role]]);
+  for(const role of ['teacher','staff']) {
+    assert.equal((await db.query('select public.workspace_session_active($1,$2) as active',[users[role],sessions[role]])).rows[0].active,false);
+    await db.query('insert into auth.sessions(id,user_id) values($1,$2)',[sessions[role],users[role]]);
+  }
 });
 after(async()=>db.close());
 async function as(role,fn){
@@ -42,6 +46,10 @@ async function as(role,fn){
   await db.exec('set role authenticated');try{return await fn();}finally{await db.exec('reset role;reset request.jwt.claims;');}
 }
 
+test('first-admin bootstrap retains its session and refuses a second bootstrap',async()=>{
+  assert.equal((await db.query('select public.workspace_session_active($1,$2) as active',[users.admin,sessions.admin])).rows[0].active,true);
+  await assert.rejects(db.query('select public.workspace_bootstrap_admin($1)',[users.student]),/administrator already exists/);
+});
 test('privileged roles cannot be self-assigned through profile data, forged claims, or direct RPCs',async()=>{
   await as('student',async()=>{
     await db.exec("update public.profiles set role='admin' where email='student@example.test'");

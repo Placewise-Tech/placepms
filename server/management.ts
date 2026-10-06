@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError, providerName } from './integration-security.js';
 import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, type Request } from './workspace-http.js';
 import { createServices, temporaryLoginEmail, temporaryPassword } from './signup.js';
-import { featureLabels, type WorkspaceRole } from '../src/lib/workspace-roles.js';
+import { designatedAdministratorEmail, featureLabels, type WorkspaceRole } from '../src/lib/workspace-roles.js';
 import { text } from './providers.js';
 
 export function managementError(error: { code?: string; message?: string } | null) {
@@ -12,8 +12,22 @@ export function managementError(error: { code?: string; message?: string } | nul
   if (error.code === 'P0001') throw new ApiError(403, 'The management change was rejected. Keep your own admin access and select an eligible account.');
   databaseError(error);
 }
-export async function managementAccount(admin: SupabaseClient, userId: string) {
-  const result = await admin.from('workspace_accounts').select('role,enabled,can_mentor,department').eq('user_id',userId).maybeSingle(); managementError(result.error);
+function configuredAdministratorEmail(env: NodeJS.ProcessEnv = process.env) {
+  return (env.PLACEPMS_ADMIN_EMAIL || env.ADMIN_EMAIL || designatedAdministratorEmail).trim().toLowerCase();
+}
+
+export async function managementAccount(admin: SupabaseClient, userId: string, env: NodeJS.ProcessEnv = process.env, email = '') {
+  let result = await admin.from('workspace_accounts').select('role,enabled,can_mentor,department').eq('user_id',userId).maybeSingle(); managementError(result.error);
+  // Bootstrap the installation owner on first use when the database has no
+  // administrator yet. The RPC remains the authority and prevents a second
+  // administrator from being created through this convenience path.
+  if (email.trim().toLowerCase() === configuredAdministratorEmail(env) && result.data?.role !== 'admin' && result.data?.enabled !== false) {
+    const existingAdmin = await admin.from('workspace_accounts').select('user_id').eq('role','admin').limit(1); managementError(existingAdmin.error);
+    if (!existingAdmin.data?.length) {
+      const promoted = await admin.rpc('workspace_bootstrap_admin',{p_user_id:userId}); managementError(promoted.error);
+      result = await admin.from('workspace_accounts').select('role,enabled,can_mentor,department').eq('user_id',userId).maybeSingle(); managementError(result.error);
+    }
+  }
   if (result.data?.enabled === false) throw new ApiError(403,'This account has been disabled by an administrator.');
   return result.data ? { ...result.data, managed:true } : { role: 'student', enabled: true, can_mentor: false, department: '', managed:false };
 }
@@ -186,7 +200,7 @@ export async function createManagedAccount(input: Record<string,unknown>, actor:
 export function createManagementHandler(env: NodeJS.ProcessEnv=process.env, servicesFactory=createServices) {
   return async (request: Request,response: ServerResponse) => {
     try {
-      const input=await jsonBody(request); const { user,admin,client }=await authenticate(request,env); const account=await managementAccount(admin,user.id);
+      const input=await jsonBody(request); const { user,admin,client }=await authenticate(request,env); const account=await managementAccount(admin,user.id,env,user.email || '');
       const settings=await admin.from('workspace_settings').select('registration_enabled,features').eq('id',true).single(); managementError(settings.error);
       const administrator=account.role==='admin'; const educator=administrator || ['teacher','staff'].includes(account.role);
       if (input.action==='access') { jsonResponse(response,{ ...account,settings:settings.data }); return; }

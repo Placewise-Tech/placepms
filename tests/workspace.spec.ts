@@ -9,7 +9,7 @@ const user = { id, aud: 'authenticated', role: 'authenticated', email, app_metad
 const accessToken = `${Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify({ sub: id, session_id: sessionId, exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.test-signature`;
 const session = { access_token: accessToken, refresh_token: 'test-refresh', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer', user };
 
-async function workspace(page: Page, options: { githubAnalytics?: boolean; failStatsOnce?: boolean; githubIntelligence?: boolean; providerDetails?: boolean; managedRole?: 'admin' | 'teacher' | 'staff' } = {}) {
+async function workspace(page: Page, options: { githubAnalytics?: boolean; failStatsOnce?: boolean; githubIntelligence?: boolean; providerDetails?: boolean; managedRole?: 'admin' | 'teacher' | 'staff'; staleRoleMetadata?: boolean } = {}) {
   const project = { id: 'sq-fixture', title: 'Connected Capstone', summary: 'Real project summary', tagline: 'A connected workspace', domain: 'Education', leader_email: email, mentor_id: null, mentor_name: null, github_repo: 'https://github.com/fixture/repo', figma_url: 'https://figma.com/design/Abc123/App', miro_url: 'https://miro.com/app/board/board123/', current_phase: 'Build', status: 'PENDING', created_at: '2026-01-01T00:00:00Z' };
   const milestone: Record<string, any> = { id: 'm-fixture', squad_id: project.id, name: 'Project delivery', phase: 'Build', description: 'Fixture delivery evidence', status: 'PENDING', due_date: date, start_date: null, submission_files: [], mentor_feedback: null, score: null };
   const members: Record<string, unknown>[] = [];
@@ -17,7 +17,7 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
   const connections: Record<string, unknown>[] = [];
   const accounts: Record<string, any>[] = [];
   const settings = { registration_enabled: true, features: { github: true, figma: true, miro: true, research: true, resource: true, document: true, blackbook: true } };
-  const authUser = { ...user, app_metadata: { ...user.app_metadata, ...(options.managedRole ? { workspace_role: options.managedRole } : {}) } };
+  const authUser = { ...user, app_metadata: { ...user.app_metadata, ...(options.managedRole && !options.staleRoleMetadata ? { workspace_role: options.managedRole } : {}) } };
   let sessions = [{ id: sessionId, created_at: date, last_active_at: date, ip: '127.0.0.1', user_agent: 'Chrome/140 Linux', current_session: true }, { id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', created_at: date, last_active_at: date, ip: '192.0.2.10', user_agent: 'Firefox/120 Windows', current_session: false }];
   const calls: Record<string, unknown>[] = [];
   let failStats = options.failStatsOnce === true;
@@ -202,6 +202,29 @@ test('administrators create mentor accounts, update permissions, and save featur
   expect(calls.some(call => call.action === 'accounts.update' && call.role === 'student' && call.can_mentor === false)).toBe(true);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.locator('.dash-main').evaluate(element => element.scrollWidth > element.clientWidth)).toBe(false);
+});
+
+test('live admin access overrides cached student metadata for login, account management, and all-project queries', async ({ page }) => {
+  const { accounts } = await workspace(page, { managedRole: 'admin', staleRoleMetadata: true });
+  await expect(page.locator('.admin-workspace')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New project', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'Accounts & permissions', exact: true }).click();
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  const create = page.getByRole('dialog', { name: 'Create account', exact: true });
+  await create.getByLabel('Full name', { exact: true }).fill('Managed Staff');
+  await create.getByLabel('Account email', { exact: true }).fill('staff@example.test');
+  await create.getByLabel('Institution', { exact: true }).fill('Example University');
+  await create.getByLabel('Account role', { exact: true }).selectOption('staff');
+  await create.getByRole('button', { name: 'Create & email account', exact: true }).click();
+  await expect(create).toHaveCount(0);
+  expect(accounts[0]).toMatchObject({ role: 'staff', email: 'staff@example.test' });
+  const allProjectsRequest = page.waitForRequest(request => {
+    const url = new URL(request.url());
+    return url.pathname.endsWith('/pms_squads') && !url.searchParams.has('leader_email') && !url.searchParams.has('mentor_id') && !url.searchParams.has('id');
+  });
+  await page.reload();
+  await allProjectsRequest;
+  await expect(page.getByRole('heading', { name: 'Accounts & mentors', exact: true })).toBeVisible();
 });
 
 for (const managedRole of ['teacher', 'staff'] as const) test(`${managedRole} login and project links stay in the assigned workspace`, async ({ page }) => {

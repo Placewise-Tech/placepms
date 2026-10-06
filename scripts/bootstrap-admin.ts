@@ -1,10 +1,11 @@
 import { loadEnv } from 'vite';
 import { serverClients } from '../server/workspace-http.js';
 import { createManagedAccount, managementError } from '../server/management.js';
+import { designatedAdministratorEmail } from '../src/lib/workspace-roles.js';
 
 const argument=(name:string)=>{const index=process.argv.indexOf(name);return index<0?'':process.argv[index+1] || '';};
 async function main() {
-  const email=argument('--email').trim().toLowerCase();
+  const email=(argument('--email') || designatedAdministratorEmail).trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Usage: npm run bootstrap:admin -- --email you@example.com --name "Administrator name" --institution "Institution"');
   const env={...process.env,...loadEnv('development',process.cwd(),'')}; const {admin}=serverClients(env);
   const settings=await admin.from('workspace_settings').select('id').eq('id',true).single(); managementError(settings.error);

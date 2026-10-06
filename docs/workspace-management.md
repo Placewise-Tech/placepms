@@ -5,8 +5,8 @@
 1. Apply `supabase/migrations/202610050001_workspace_management.sql` in the project's
    Supabase SQL Editor, after the two existing migrations. It is transactional and
    re-applicable. Existing students, projects, and provider connections are retained.
-2. With the existing server and SMTP settings in local `.env`, initialize the first
-   administrator selected for this installation:
+2. The installation owner is `placewiseinfo@gmail.com`. With the existing server and
+   SMTP settings in local `.env`, initialize the first administrator explicitly:
 
    ```bash
    npm run bootstrap:admin -- --email placewiseinfo@gmail.com --name "Placewise Administrator" --institution "Placewise"
@@ -14,8 +14,11 @@
 
    An existing account is promoted without changing its password. A new account is
    emailed a six-digit first-login code and must choose a personal password. No
-   password, login code, or server credential is printed by the command. Once an
-   administrator exists, additional administrators are managed from the admin UI.
+   password, login code, or server credential is printed by the command. The same
+   email is also configured as the first-installation owner: after applying the
+   designated-admin migration, its first authenticated workspace request promotes
+   it automatically when no administrator exists. Once an administrator exists,
+   additional administrators are managed from the admin UI.
 3. Deploy the application with the existing `SUPABASE_SECRET_KEY` (or service-role
    key), Supabase public configuration, `APP_URL`, and Brevo SMTP configuration.
 
@@ -31,6 +34,12 @@ then opens at `/admin` and provides:
 - per-account project, milestone, session, connection, and saved-analysis detail;
 - provider connection metadata and saved Figma/Miro analysis snapshots without
   exposing provider credentials.
+
+Apply `supabase/migrations/202610060002_designated_admin_bootstrap.sql` after the
+monitoring migration when using automatic first-owner promotion. Sign out and sign
+back in after the first promotion if the browser still has an older cached session;
+the app now reads the managed account role from the server before choosing the
+dashboard.
 
 The monitor refreshes while the page is visible. Activity records are retained in
 `workspace_activity`; the table is service-owned and administrator access is

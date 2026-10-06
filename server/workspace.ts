@@ -24,7 +24,7 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
   return async (request: Request, response: ServerResponse) => {
     try {
       const input = await jsonBody(request); const { user, admin, client } = await authenticate(request, env);
-      const account = await managementAccount(admin,user.id); const administrator = account.role === 'admin';
+      const account = await managementAccount(admin,user.id,env,user.email || ''); const administrator = account.role === 'admin';
       const projectId = field(input, 'projectId', 100, true)!;
       const found = await client.from('pms_squads').select('id,leader_email,mentor_id,mentor_name').eq('id', projectId).maybeSingle();
       databaseError(found.error);

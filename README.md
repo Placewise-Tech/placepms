@@ -126,7 +126,9 @@ There is no invented project data or fallback provider analysis in the applicati
 ### Administrator monitoring
 
 Apply `supabase/migrations/202610060001_admin_monitoring.sql` after the workspace
-management migration to enable the administrator control center. Administrators get a
+management migration to enable the administrator control center. Apply
+`supabase/migrations/202610060002_designated_admin_bootstrap.sql` afterward to enable
+automatic first-owner promotion for `placewiseinfo@gmail.com`. Administrators get a
 separate `/admin` workspace with live account presence, minute-level route heartbeats,
 workspace-wide delivery analytics, activity history, per-user project and milestone
 drill-downs, provider connection metadata, and saved integration-analysis payloads.
