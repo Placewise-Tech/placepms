@@ -68,6 +68,10 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
   });
   await page.route('**/api/management', route => {
     const input = route.request().postDataJSON(); calls.push(input);
+    if (input.action === 'monitoring.overview') return route.fulfill({ json: {
+      counts: { accounts: accounts.length + 1, online: 1, idle: 0, offline: accounts.length, active_sessions: 1, projects: 1, milestones: 1, submitted: 0, completed: 0, connections: connections.length, reports: 0, ai_marked: 0, activity_24h: 0 },
+      users: [], activity: [], providerStats: [{ provider: 'github', accounts: connections.filter(item => item.provider === 'github').length, last_connected: null }, { provider: 'figma', accounts: 0, last_connected: null }, { provider: 'miro', accounts: 0, last_connected: null }], trends: Array.from({ length: 12 }, (_, index) => ({ at: new Date(Date.now() - (11 - index) * 3600000).toISOString(), count: 0 })), updated_at: new Date().toISOString(),
+    } });
     if (input.action === 'overview') return route.fulfill({ json: { counts: { accounts: accounts.length + 1, projects: 1, milestones: 1, connections: connections.length, reports: 0, mentors: 0 }, settings } });
     if (input.action === 'accounts.list') {
       const items = accounts.filter(account => (!input.role || account.role === input.role) && (!input.search || `${account.full_name} ${account.email}`.toLowerCase().includes(input.search.toLowerCase())));
@@ -133,7 +137,7 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
   await page.getByLabel(/^Password/).fill('fixture-password');
   await page.getByRole('button', { name: 'Sign In to Workspace', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/${options.managedRole || 'dashboard'}$`));
-  const heading = options.managedRole === 'admin' ? 'Administration control center' : options.managedRole === 'teacher' ? 'Teacher workspace' : options.managedRole === 'staff' ? 'Staff workspace' : 'Your projects';
+  const heading = options.managedRole === 'admin' ? 'Admin command center' : options.managedRole === 'teacher' ? 'Teacher workspace' : options.managedRole === 'staff' ? 'Staff workspace' : 'Your projects';
   await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   return { calls, library, connections, project, milestone, members, githubCommits, settings, accounts };
 }
@@ -168,7 +172,7 @@ test('dashboard refresh replaces milestones and members without retaining remove
 
 test('administrators create mentor accounts, update permissions, and save feature controls', async ({ page }) => {
   const { calls, accounts, settings } = await workspace(page, { managedRole: 'admin' });
-  await page.getByRole('link', { name: 'Accounts & Mentors', exact: true }).click();
+  await page.getByRole('link', { name: 'Accounts & permissions', exact: true }).click();
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   const create = page.getByRole('dialog', { name: 'Create account', exact: true });
   await create.getByLabel('Full name', { exact: true }).fill('Managed Teacher');
@@ -188,7 +192,7 @@ test('administrators create mentor accounts, update permissions, and save featur
   await expect(edit).toHaveCount(0);
   expect(accounts[0]).toMatchObject({ role: 'student', can_mentor: false, enabled: true });
 
-  await page.getByRole('link', { name: 'Feature Controls', exact: true }).click();
+  await page.getByRole('link', { name: 'Feature controls', exact: true }).click();
   await page.getByLabel('Allow public account registration', { exact: true }).uncheck();
   await page.getByLabel('GitHub analysis', { exact: true }).uncheck();
   await page.getByRole('button', { name: 'Save controls', exact: true }).click();

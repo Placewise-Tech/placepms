@@ -172,6 +172,10 @@ export function createIntegrationsHandler(env: NodeJS.ProcessEnv = process.env) 
           const payload={ ...report,github:{ ...report.github,commits:report.github.commits.map(commit=>({ ...commit,aiAssistance:detectCommitAI(commit) })) } };
           const saved=await admin.rpc('workspace_save_repository_report',{p_owner:user.id,p_project:projectId,p_payload:payload}); managementError(saved.error);
           if (typeof saved.data==='string') report.savedReportId=saved.data;
+        } else if (provider === 'figma' || provider === 'miro') {
+          const saved=await admin.from('workspace_provider_reports').insert({ owner_id:user.id, provider, title:report.title, url:report.url, payload:report }).select('id').maybeSingle();
+          databaseError(saved.error);
+          if (saved.data?.id) report.savedProviderReportId=saved.data.id;
         }
         jsonResponse(response,report); return;
       }

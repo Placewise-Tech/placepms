@@ -23,6 +23,7 @@ export interface InsightItem {
 }
 export interface Inspection {
   savedReportId?: string;
+  savedProviderReportId?: string;
   provider: IntegrationProvider;
   title: string;
   description: string;

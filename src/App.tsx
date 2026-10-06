@@ -5,9 +5,10 @@ import HomePage from './components/HomePage';
 import PasswordRecovery from './components/PasswordRecovery';
 import RecoveryHelp from './components/RecoveryHelp';
 import { useAuth } from './hooks/useAuth';
-import { managedPath, workspaceRoot, WorkspaceRootContext } from './lib/workspace-roles';
+import { managedPath, workspaceRole, workspaceRoot, WorkspaceRootContext } from './lib/workspace-roles';
 
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
+const AdminDashboard = lazy(() => import('./components/dashboard/AdminDashboard'));
 const AuthInterface = lazy(() => import('./components/AuthInterface'));
 
 type AuthMode = 'signin' | 'signup';
@@ -25,6 +26,7 @@ export default function App() {
   const isAuthOpen = location.pathname === '/login' || location.pathname === '/signup' || /^\/(admin|teacher|staff)\/login$/.test(location.pathname);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [authRole, setAuthRole] = useState<AuthRole>('student');
+  const accessRole = location.pathname.match(/^\/(admin|teacher|staff)\/login$/)?.[1] as 'admin' | 'teacher' | 'staff' | undefined;
   const mustChangePassword = session?.user.app_metadata.must_change_password === true;
   const root = session ? workspaceRoot(session.user) : '/dashboard';
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function App() {
   if (authLoading) return <WorkspaceLoading />;
   if (recoveryError || (location.pathname === '/reset-password' && !passwordRecovery && !mustChangePassword)) return <RecoveryHelp message={recoveryError || 'Open the password-reset link from your email. If your reset session has ended, request a new link below.'} signedIn={Boolean(session)} onBack={() => { finishPasswordRecovery(); navigate(session ? root : '/login', { replace: true }); }} />;
   if ((passwordRecovery || mustChangePassword) && session) return <PasswordRecovery requiredSetup={mustChangePassword} email={session.user.email} onComplete={() => { finishPasswordRecovery(); navigate(root, { replace: true }); }} onSignOut={() => navigate('/login', { replace: true })} />;
-  if (session) return <WorkspaceRootContext.Provider value={root}><Suspense fallback={<WorkspaceLoading />}><Dashboard key={session.user.id} user={session.user} /></Suspense></WorkspaceRootContext.Provider>;
+  if (session) return <WorkspaceRootContext.Provider value={root}><Suspense fallback={<WorkspaceLoading />}>{workspaceRole(session.user)==='admin' ? <AdminDashboard key={session.user.id} user={session.user} /> : <Dashboard key={session.user.id} user={session.user} />}</Suspense></WorkspaceRootContext.Provider>;
 
   return <div className="app-nebula min-h-full flex flex-col flex-1 relative font-sans">
     {sessionError && <div className="auth-feedback auth-feedback-error" role="alert">{sessionError}</div>}
@@ -73,6 +75,7 @@ export default function App() {
       onClose={() => navigate('/')}
       initialMode={location.pathname === '/signup' ? 'signup' : location.pathname.endsWith('/login') ? 'signin' : authMode}
       initialRole={authRole}
+      accessRole={accessRole}
     /></Suspense>}
     <AnimatePresence mode="wait">
       {isLoading && <Preloader onComplete={() => setIsLoading(false)} />}

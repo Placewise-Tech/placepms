@@ -1,7 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, BookOpen, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, Download, FileText, FolderKanban, GraduationCap, Link2, Orbit, Plus, Search, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, Download, FileText, FolderKanban, GraduationCap, Link2, Orbit, Plus, RefreshCw, Search, Sparkles, Users } from 'lucide-react';
 import type { DashboardData, Milestone, Squad } from '../../lib/dashboard-data';
 import { getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
@@ -14,9 +14,9 @@ import ProjectDetails from './ProjectDetails';
 import WorkspaceInsights from './WorkspaceInsights';
 import { PagedCards, RecordPager, WorkspaceSections, WorkspaceLink as Link } from './WorkspaceUI';
 import ManagementWorkspace, { ManagementOverview } from './ManagementWorkspace';
-import { workspaceRole, type FeatureKey } from '../../lib/workspace-roles';
+import { useWorkspaceRoot, workspaceRole, type FeatureKey } from '../../lib/workspace-roles';
 import { milestoneCsv, milestoneMatches, profileCompletion, sortMilestones } from '../../lib/workspace-insights';
-import { downloadText } from '../../lib/workspace-api';
+import { downloadText, errorMessage, workspaceRequest } from '../../lib/workspace-api';
 import { reportHtml } from '../../lib/workspace-library';
 
 interface Props { view: string; data: DashboardData; user: User; features?: Partial<Record<FeatureKey,boolean>>; onCreate: (kind: 'project' | 'milestone' | 'profile') => void; onSaved: (message: string) => Promise<void> }
@@ -33,6 +33,23 @@ function Status({ value }: { value: string | null }) {
 }
 function Panel({ title, subtitle, action, children, className = '' }: { title: string; subtitle?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return <section className={`dash-panel ${className}`}><div className="dash-panel-heading"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>{children}</section>;
+}
+
+interface RosterMilestone { id: string; name: string; status: string | null; score: number | null; submitted_at: string | null; due_date: string | null }
+interface RosterProject { id: string; title: string; phase: string | null; status: string | null; mentor: string | null; milestones: RosterMilestone[] }
+interface RosterStudent { id: string; email: string; full_name: string; college: string | null; program: string | null; batch: string | null; division: string | null; roll_number: string | null; enabled: boolean; projects: RosterProject[]; milestone_count: number; completed_count: number; review_count: number }
+interface RosterData { students: RosterStudent[]; projects: { id: string; title: string }[]; updated_at: string }
+
+function StudentRoster() {
+  const root = useWorkspaceRoot();
+  const [data, setData] = useState<RosterData | null>(null);
+  const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [query, setQuery] = useState(''); const [filter, setFilter] = useState('all');
+  const load = async () => { setLoading(true); setError(''); try { setData(await workspaceRequest<RosterData>('management', { action: 'educator.roster' })); } catch (cause) { setError(errorMessage(cause)); } finally { setLoading(false); } };
+  useEffect(() => { const initial = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(initial); }, []);
+  const search = query.trim().toLowerCase();
+  const students = (data?.students || []).filter(student => (!search || `${student.full_name} ${student.email} ${student.college || ''} ${student.program || ''} ${student.roll_number || ''} ${student.projects.map(project => project.title).join(' ')}`.toLowerCase().includes(search)) && (filter === 'all' || filter === 'review' && student.review_count > 0 || filter === 'active' && student.enabled || filter === 'complete' && student.milestone_count > 0 && student.completed_count === student.milestone_count));
+  const completed = students.reduce((sum, student) => sum + student.completed_count, 0); const inReview = students.reduce((sum, student) => sum + student.review_count, 0);
+  return <div className="workspace-stack"><div className="studio-section-intro roster-intro"><div><span className="dash-eyebrow"><GraduationCap size={13} /> STUDENT SUPPORT / ASSIGNED DATA</span><h2>Student roster</h2><p>One focused view of the students and deliveries connected to your assigned project workspaces.</p></div><span className="studio-card-icon"><Users size={25} /></span></div>{error && <div className="dash-alert dash-alert-error" role="alert">{error}</div>}<div className="intel-metrics"><div className="intel-metric"><span>Students in scope</span><strong>{data?.students.length ?? '—'}</strong><small>Students linked to assigned projects</small></div><div className="intel-metric"><span>Awaiting review</span><strong>{inReview || '0'}</strong><small>Submitted deliveries in this view</small></div><div className="intel-metric"><span>Approved milestones</span><strong>{completed || '0'}</strong><small>Evidence approved by mentors</small></div><div className="intel-metric"><span>Project spaces</span><strong>{data?.projects.length ?? '—'}</strong><small>Assigned project workspaces</small></div></div><section className="dash-panel roster-panel"><div className="workspace-actions roster-toolbar"><label className="dash-search"><Search size={15} /><input aria-label="Search student roster" placeholder="Search name, email, roll number or project…" value={query} onChange={event => setQuery(event.target.value)} /></label><select className="workspace-input" aria-label="Filter student roster" value={filter} onChange={event => setFilter(event.target.value)}><option value="all">All students</option><option value="review">Needs review</option><option value="active">Active accounts</option><option value="complete">Fully delivered</option></select><button className="dash-button" onClick={() => void load()} disabled={loading}><RefreshCw size={14} className={loading ? 'dash-spinning' : ''} />Refresh</button></div>{loading && !data ? <div className="dash-loading" role="status"><GraduationCap size={22} /><p>Loading assigned student data…</p></div> : <>{students.length ? <div className="student-roster-grid">{students.map(student => <article className="student-roster-card" key={student.id}><div className="student-roster-top"><span className="dash-avatar">{student.full_name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</span><span className={`dash-status ${student.enabled ? 'is-complete' : 'is-inactive'}`}>{student.enabled ? 'Active' : 'Disabled'}</span></div><h3>{student.full_name}</h3><p className="student-roster-email">{student.email}</p><div className="student-roster-facts"><span>{student.program || 'Program not set'}</span><span>{student.batch ? `Batch ${student.batch}` : student.college || 'Institution not set'}</span><span>{student.roll_number ? `Roll no. ${student.roll_number}` : student.division ? `Division ${student.division}` : 'Academic details not set'}</span></div><div className="student-roster-progress"><div><span>Delivery progress</span><strong>{student.milestone_count ? `${Math.round(student.completed_count / student.milestone_count * 100)}%` : '—'}</strong></div><span><i style={{ width: `${student.milestone_count ? student.completed_count / student.milestone_count * 100 : 0}%` }} /></span></div><div className="student-roster-projects">{student.projects.slice(0, 3).map(project => <div key={project.id}><span><strong>{project.title}</strong><small>{project.phase || 'Project workspace'} · {project.milestones.length} milestones</small></span>{project.milestones.some(milestone => milestone.status === 'SUBMITTED') && <b>Review</b>}</div>)}</div><div className="student-roster-actions">{student.projects[0] ? <Link className="dash-button" to={`${root}/projects/${encodeURIComponent(student.projects[0].id)}`}>Open project</Link> : <span className="workspace-muted">No project workspace</span>}<span>{student.review_count ? `${student.review_count} in review` : `${student.completed_count} approved`}</span></div></article>)}</div> : <EmptyState icon={<GraduationCap size={25} />} title="No students match this view" description="Students appear here when they are connected to one of your assigned project workspaces." />}</>}</section><p className="studio-section-note">Student details are scoped to your assigned projects. Last roster sync: {data ? formatDate(data.updated_at, true) : 'not available'}.</p></div>;
 }
 function ProjectCard({ project, data }: { project: Squad; data: DashboardData }) {
   const tasks = data.milestones.filter(task => task.squad_id === project.id && !isInactive(task.status)); const completed = tasks.filter(task => isComplete(task.status)).length;
@@ -75,6 +92,7 @@ export default function DashboardViews({ view, data, user, features, onCreate, o
   if (role!=='admin' && feature && features?.[feature]===false) return <EmptyState title="Feature disabled" description="Your administrator has disabled this feature. Contact them to request access."/>;
   if (view==='reports' && role!=='student' || role==='admin' && ['accounts','settings','connections','audit'].includes(view)) return <ManagementWorkspace view={view} user={user} onSaved={onSaved}/>;
   if (view==='overview' && role!=='student') return <ManagementOverview data={data} user={user}/>;
+  if (view==='students' && role!=='student') return <StudentRoster />;
   if (['integrations', 'repositories', 'figma', 'miro'].includes(view)) return <IntegrationWorkspace view={view} data={data} onChanged={() => onSaved('')} />;
   if (view === 'sessions') return <SessionsView />;
   if (['research', 'resources', 'documents'].includes(view)) return <LibraryView kind={view === 'research' ? 'research' : view === 'resources' ? 'resource' : 'document'} data={data} user={user} />;

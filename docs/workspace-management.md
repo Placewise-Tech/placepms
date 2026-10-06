@@ -19,6 +19,23 @@
 3. Deploy the application with the existing `SUPABASE_SECRET_KEY` (or service-role
    key), Supabase public configuration, `APP_URL`, and Brevo SMTP configuration.
 
+## Administrator monitoring
+
+After the management migration, apply
+`supabase/migrations/202610060001_admin_monitoring.sql`. The administrator workspace
+then opens at `/admin` and provides:
+
+- live account presence, active device counts, current routes, and a searchable
+  activity stream;
+- workspace-wide delivery analytics with completion, review, and overdue signals;
+- per-account project, milestone, session, connection, and saved-analysis detail;
+- provider connection metadata and saved Figma/Miro analysis snapshots without
+  exposing provider credentials.
+
+The monitor refreshes while the page is visible. Activity records are retained in
+`workspace_activity`; the table is service-owned and administrator access is
+enforced through the server API and administrator-gated database functions.
+
 ## One direct login
 
 All accounts use `/login` with email and password. `/admin/login`, `/teacher/login`,

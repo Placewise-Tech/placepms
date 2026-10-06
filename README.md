@@ -123,6 +123,17 @@ these features. See [Connected workspace setup](docs/workspace-integrations.md) 
 the provider app credentials, exact callback URLs, permissions, and feature limits.
 There is no invented project data or fallback provider analysis in the application.
 
+### Administrator monitoring
+
+Apply `supabase/migrations/202610060001_admin_monitoring.sql` after the workspace
+management migration to enable the administrator control center. Administrators get a
+separate `/admin` workspace with live account presence, minute-level route heartbeats,
+workspace-wide delivery analytics, activity history, per-user project and milestone
+drill-downs, provider connection metadata, and saved integration-analysis payloads.
+Provider credentials are never included in monitoring responses. The live monitor
+refreshes while the page is open and activity history is retained in
+`workspace_activity` for administrator review.
+
 ## Advanced dashboard
 
 - **Overview:** delivery priorities, overdue/revision/review counts, project health,

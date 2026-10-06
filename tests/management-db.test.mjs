@@ -30,7 +30,7 @@ before(async()=>{
   }
   await db.query("insert into public.pms_squads values('assigned','student@example.test',$1),('elsewhere','other@example.test',$2)",[users.teacher,users.staff]);
   await db.exec("insert into public.milestones values('delivery','assigned','SUBMITTED',null,null),('other-delivery','elsewhere','SUBMITTED',null,null)");
-  for(const migration of ['202610030001_temporary_password_signup.sql','202610030002_workspace_integrations.sql','202610050001_workspace_management.sql','202610050001_workspace_management.sql'])await db.exec(readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
+  for(const migration of ['202610030001_temporary_password_signup.sql','202610030002_workspace_integrations.sql','202610050001_workspace_management.sql','202610050001_workspace_management.sql','202610060001_admin_monitoring.sql'])await db.exec(readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
   await db.query('select public.workspace_bootstrap_admin($1)',[users.admin]);
   await db.query("select public.workspace_register_account($1,$2,'teacher',true,'Teaching')",[users.admin,users.teacher]);
   await db.query("select public.workspace_register_account($1,$2,'staff',true,'Support')",[users.admin,users.staff]);
@@ -58,6 +58,20 @@ test('administrators see every project, manage other leads, and cannot demote or
     await db.query("update public.pms_squads set leader_email='other@example.test' where id='elsewhere'");
     await assert.rejects(db.query('select public.workspace_update_account($1,$2,false,false,$3)',[users.admin,'student','']),/own administrator access/);
   });
+});
+test('administrators can read every active device while other roles cannot use the monitor',async()=>{
+  await as('student',async()=>{
+    await db.exec("update public.profiles set full_name='Student Activity Signal' where id='44444444-4444-4444-8444-444444444444'");
+    await assert.rejects(db.query('select public.workspace_monitoring_activity_summary()'),/Administrator access/);
+  });
+  await as('admin',async()=>{
+    const sessions=(await db.query('select user_id,id from public.workspace_admin_list_sessions()')).rows;
+    assert.ok(sessions.some(row=>row.user_id===users.admin));
+    await assert.rejects(db.query('select * from public.workspace_activity'),/permission denied/);
+    const summary=(await db.query('select public.workspace_monitoring_activity_summary() as value')).rows[0].value;
+    assert.ok(summary.activity_24h>=1);
+  });
+  await as('teacher',async()=>{await assert.rejects(db.query('select * from public.workspace_admin_list_sessions()'),/Administrator access/);});
 });
 test('teachers and staff are restricted to assigned projects and cannot choose their own mentor assignments',async()=>{
   await as('teacher',async()=>{
