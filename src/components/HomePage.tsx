@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown, ArrowRight, ArrowUpRight, BookOpen, Check, CheckCircle2, ChevronRight, Command, FileText, FolderKanban, GitBranch, GitFork as Github, Layers3, LayoutDashboard, Menu, Orbit, Pause, Play, Plus, Sparkles, Users, X } from 'lucide-react';
 import '../home.css';
 import { useReducedMotion } from '../hooks/useReducedMotion';
+import HomeTeam from './HomeTeam';
 
 type AuthMode = 'signin' | 'signup';
 type AuthRole = 'student' | 'faculty' | 'college' | 'recruiter';
@@ -62,7 +63,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
   const currentStep = workflow[step];
   const StepIcon = currentStep.icon;
   const openAuth = (mode: AuthMode, role: AuthRole = 'student') => { setMobileMenuOpen(false); onOpenAuth(mode, role); };
-  const nav = <><a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a><a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>The journey</a><a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a></>;
+  const nav = <><a href="#features" onClick={() => setMobileMenuOpen(false)}>Features</a><a href="#how-it-works" onClick={() => setMobileMenuOpen(false)}>The journey</a><a href="#team" onClick={() => setMobileMenuOpen(false)}>Our team</a><a href="#faq" onClick={() => setMobileMenuOpen(false)}>FAQ</a></>;
 
   return <div className={`home-page ${paused || reduced ? 'home-motion-paused' : ''}`}>
     <a className="home-skip" href="#home-main">Skip to content</a>
@@ -102,6 +103,8 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
         <Reveal><div className="home-section-heading"><span className="home-eyebrow">The journey</span><h2>From “what if”<br /><span>to “we did it”.</span></h2></div><div className="home-journey-steps" aria-label="Explore the project journey">{workflow.map((item, index) => <button key={item.title} aria-pressed={step === index} onClick={() => setStep(index)}><span>0{index + 1}</span><div><strong>{item.title}</strong><small>{item.description}</small></div><ArrowUpRight size={18} /></button>)}</div></Reveal>
         <Reveal className="home-journey-visual"><div className="home-journey-orbits" aria-hidden="true"><i /><i /><i /></div><AnimatePresence mode="wait" initial={false}><motion.div key={step} className="home-journey-center" initial={{ opacity: 0, scale: reduced ? 1 : 0.93 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? 0 : 0.25 }} aria-live="polite"><span className="home-journey-icon"><StepIcon size={37} /></span><span className="home-eyebrow">CHAPTER 0{step + 1}</span><h3>{currentStep.caption}</h3><div className="home-journey-tags">{currentStep.tags.map(tag => <span key={tag}>{tag}</span>)}</div></motion.div></AnimatePresence><span className="home-journey-coordinate" aria-hidden="true">IDEA / BUILD / IMPACT</span></Reveal>
       </div></section>
+
+      <HomeTeam motionPaused={paused || reduced} />
 
       <section id="faq" className="home-section home-faq-section"><div className="home-container home-faq-grid"><Reveal className="home-section-heading"><span className="home-eyebrow">A few useful answers</span><h2>Before liftoff.</h2></Reveal><Reveal className="home-faq">{faq.map(([question, answer]) => <details key={question}><summary>{question}<Plus size={18} /></summary><p>{answer}</p></details>)}</Reveal></div></section>
 
