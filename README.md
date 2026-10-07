@@ -165,9 +165,16 @@ refreshes while the page is open and activity history is retained in
   create a project, keyboard-contained search dialogs, persistent sidebar/theme
   preferences, live integration status, and auto-refreshed session details.
 
-The public homepage describes these available features, includes an interactive
-product preview and FAQ, and links to student/mentor sign-in. It uses dedicated
-responsive styles rather than relying on the old generated utility stylesheet.
+The public homepage includes a guided product tour, optional auto-playing project
+journey, active-section navigation, a reading-progress indicator, searchable FAQs,
+role-specific entry points, and four unique team portraits with role descriptions.
+Its workflow studio demonstrates project-health calculations, Blackbook generation,
+and calendar exports using explicitly labelled sample records and the same utilities
+as the workspace. Visitors can download the generated JSON, Markdown, and ICS files.
+Automatic demos pause offscreen, in background tabs, during account dialogs, and
+when page motion is paused; reduced-motion visitors can run workflows instantly.
+Motion preferences persist locally. The workflow studio is code-split, and the page
+uses dedicated responsive styles in `src/home.css` and `src/home-next.css`.
 
 ## Structure
 
