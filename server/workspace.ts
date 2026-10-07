@@ -3,6 +3,7 @@ import { ApiError } from './integration-security.js';
 import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, type Request } from './workspace-http.js';
 import { text } from './providers.js';
 import { managementAccount, managementError } from './management.js';
+import { createIdeaWorkspace } from './idea-workspace.js';
 
 function field(input: Record<string, unknown>, name: string, max: number, required = false) {
   const value = text(input[name]).trim();
@@ -25,6 +26,11 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
     try {
       const input = await jsonBody(request); const { user, admin, client } = await authenticate(request, env);
       const account = await managementAccount(admin,user.id,env,user.email || ''); const administrator = account.role === 'admin';
+      if (input.action === 'project.from-plan') {
+        const result = await createIdeaWorkspace(input.plan, user, client, admin);
+        jsonResponse(response, result);
+        return;
+      }
       const projectId = field(input, 'projectId', 100, true)!;
       const found = await client.from('pms_squads').select('id,leader_email,mentor_id,mentor_name').eq('id', projectId).maybeSingle();
       databaseError(found.error);

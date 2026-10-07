@@ -176,6 +176,41 @@ when page motion is paused; reduced-motion visitors can run workflows instantly.
 Motion preferences persist locally. The workflow studio is code-split, and the page
 uses dedicated responsive styles in `src/home.css` and `src/home-next.css`.
 
+### Idea → Workspace
+
+The homepage's **Build your idea** section turns a project idea, start date, timeline
+(1–24 weeks), and team size (1–8 people) into an editable plan. It includes objectives,
+five scheduled phases, deliverable milestones, suggested responsibilities, and a
+six-chapter Blackbook outline. Web, mobile, data/AI, hardware/IoT, and research plans
+have domain-aware starter templates, so the feature works without an AI API key.
+
+For AI-assisted generation, set server-only `IDEA_PLANNER_API_KEY` in local `.env`
+and the deployment environment. `OPENAI_API_KEY` is also accepted. Optional
+`IDEA_PLANNER_MODEL` (default `gpt-4.1-mini`) and `IDEA_PLANNER_BASE_URL` (default
+`https://api.openai.com/v1/`) support a compatible chat-completions provider.
+No provider key reaches the browser. AI responses are validated and use the selected
+schedule; provider errors fall back to an explicitly labelled starter plan. AI calls
+use namespaced, database-backed request limits from the existing signup migration.
+
+Valid edits are stored locally in this browser under `placepms:idea-plan:v1` and can
+be downloaded as Markdown. **Create a workspace with this plan** keeps the draft
+through signup, emailed-code login, and mandatory password setup on the same device.
+The signed-in dashboard offers **Create project from my plan**, which creates an
+owned project and pending milestones and saves the plan and Blackbook outline when
+those document features are enabled. Suggested responsibilities are planning notes;
+real teammates and mentor assignments are managed through the existing workspace.
+
+`project.from-plan` uses the authenticated user's database client and existing row
+policies. Stable record IDs let interrupted creation resume without creating duplicate
+projects, milestones, or documents, and preserve records already edited in the
+workspace. No additional database migration is required beyond the existing workspace
+migrations. A draft being imported is bound locally to that account.
+
+Verification: `npx tsx --test tests/idea-plan.test.mjs tests/idea-plan-handler.test.mjs
+tests/idea-workspace.test.mjs` covers schedules, persistence, provider fallback,
+authorization, and retry-safe imports. `npm run test:e2e -- tests/idea-planner.spec.ts`
+checks editing, downloads, mobile layouts, and the signup-to-project handoff.
+
 ## Structure
 
 - `src/App.tsx`: authenticated routing and lazy-loaded account/workspace screens.

@@ -28,3 +28,9 @@ dist-ssr
 *.zip
 playwright-report/
 test-results/
+
+# Raw assets
+/CEO.png
+/CTO.jpeg
+/Developer.jpeg
+/TCO.jpg

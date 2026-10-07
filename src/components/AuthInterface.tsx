@@ -6,6 +6,7 @@ import { requestPasswordReset } from '../lib/password-reset';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { trapDialogTab } from '../lib/dialog-focus';
 import { roleLabels } from '../lib/workspace-roles';
+import { readIdeaDraft, saveIdeaDraft } from '../lib/idea-draft';
 
 type RoleType = 'student' | 'faculty' | 'college' | 'recruiter';
 type AccessRole = 'admin' | 'teacher' | 'staff';
@@ -23,6 +24,7 @@ export default function AuthInterface({ isOpen, onClose, initialMode = 'signin',
   const reduced = useReducedMotion(); const [year] = useState(() => new Date().getFullYear());
   const heading = useRef<HTMLHeadingElement>(null);
   const interfaceDialog = useRef<HTMLDialogElement>(null);
+  const [ideaDraft] = useState(() => { const draft = readIdeaDraft(); return draft?.pending ? draft : null; });
   const switchMode = (value: 'signin' | 'signup') => {
     setError(''); setNotice(''); setIsSuccess(false); setPassword('');
     navigate(value === 'signin' ? '/login' : '/signup', { replace: true });
@@ -44,6 +46,7 @@ export default function AuthInterface({ isOpen, onClose, initialMode = 'signin',
         // auth metadata must not reject the installation owner's first login.
       }
       else {
+        if (ideaDraft && !ideaDraft.ownerId) saveIdeaDraft(ideaDraft.plan, { pending: true });
         const response = await fetch('/api/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.trim(), fullName: fullName.trim(), organization: organization.trim(), role, agreeTerms }) });
         const result = await response.json().catch(() => null);
         if (!response.ok || !result?.message) throw new Error(result?.error || 'Account email delivery is unavailable. Please try again later.');
@@ -64,7 +67,8 @@ export default function AuthInterface({ isOpen, onClose, initialMode = 'signin',
   return <dialog ref={interfaceDialog} className={`auth-interface auth-studio ${paused || reduced ? 'auth-motion-paused' : ''}`} aria-label={mode === 'signin' ? 'Sign in' : 'Create account'} onKeyDown={trapDialogTab} onCancel={event => { event.preventDefault(); if (!isLoading) onClose(); }}>
     <aside className="auth-showcase"><button className="auth-logo" aria-label="PlacePMS home" onClick={onClose}><img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" /></button><div className="auth-showcase-glow" aria-hidden="true" /><div className="auth-showcase-copy"><span className="auth-eyebrow"><Sparkles size={13} /> YOUR NEXT CHAPTER</span><h2>Built for ideas.<br /><span>Made for impact.</span></h2><p>Your team. Your projects. Your next big move.</p><div className="auth-universe" aria-hidden="true"><i /><i /><i /><span className="auth-universe-core"><Orbit size={43} /></span><span className="auth-universe-node auth-universe-project"><FolderKanban size={22} /></span><span className="auth-universe-node auth-universe-team"><Users size={22} /></span><span className="auth-universe-node auth-universe-done"><CheckCircle2 size={22} /></span><div className="auth-universe-caption"><span /><span>Everything in your orbit.</span></div></div></div><div className="auth-showcase-bottom"><span>© {year} PlacePMS</span><button aria-label={paused || reduced ? 'Play sign-in animations' : 'Pause sign-in animations'} disabled={reduced} onClick={() => setPaused(!paused)}>{paused || reduced ? <Play size={12} /> : <Pause size={12} />}{reduced ? 'Reduced motion' : paused ? 'Motion paused' : 'Motion on'}</button></div></aside>
     <section className="auth-form-shell"><header className="auth-topbar"><button className="auth-back" disabled={isLoading} onClick={onClose}><ArrowLeft size={15} />Back to Home</button><span><ShieldCheck size={14} /> {accessRole ? `${roleLabels[accessRole]} access` : 'Secure workspace access'}</span></header>
-      <div className="auth-card"><img className="auth-mobile-logo" src="/PlacePMS-Logo-White.svg" alt="PlacePMS" />
+       <div className="auth-card"><img className="auth-mobile-logo" src="/PlacePMS-Logo-White.svg" alt="PlacePMS" />
+        {ideaDraft && <div className="auth-idea-draft"><FolderKanban size={17} /><div><strong>Your project plan is coming with you</strong><span>{ideaDraft.plan.title} · {ideaDraft.plan.milestones.length} planned milestones</span><small>Saved on this device. Continue here after setting your password.</small></div></div>}
         {isSuccess ? <div className="auth-success"><span className="auth-success-icon"><Mail size={29} /></span><span className="auth-eyebrow">YOU’RE ONE STEP AWAY</span><h1 ref={heading} tabIndex={-1}>Check your email</h1><p>For a new account, we have sent a 6-digit login code to <strong>{email}</strong>.</p><ol>{['Sign in with the code in the Password field.', 'Choose your personal password.', 'Open your connected workspace.'].map((text, index) => <li key={text}><span>{index + 1}</span>{text}</li>)}</ol><button className="auth-submit" onClick={() => switchMode('signin')}>Back to Sign In <ArrowUpRight size={17} /></button><small>Check your spam folder too. Already registered? Use your existing password or Forgot password.</small></div> : <>
           <div className="auth-mode-tabs" aria-label="Account access"><button aria-pressed={mode === 'signin'} disabled={isLoading} onClick={() => switchMode('signin')}>Sign In</button><button aria-pressed={mode === 'signup'} disabled={isLoading} onClick={() => switchMode('signup')}>Create Account</button></div>
            <div className="auth-card-heading"><span className="auth-eyebrow">{mode === 'signin' ? accessRole ? `${roleLabels[accessRole].toUpperCase()} PORTAL` : 'WELCOME BACK' : 'A NEW BEGINNING'}</span><h1>{mode === 'signin' && accessRole ? `Sign in to your ${roleLabels[accessRole].toLowerCase()} workspace` : mode === 'signin' ? 'Sign In to Your Workspace' : 'Create Your PlacePMS Account'}</h1><p>{mode === 'signin' ? accessRole ? `Use your assigned ${roleLabels[accessRole].toLowerCase()} credentials to continue.` : 'Pick up where your next big idea left off.' : 'A connected home for your academic work.'}</p></div>

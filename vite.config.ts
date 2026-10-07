@@ -7,6 +7,7 @@ import { createIntegrationsHandler } from './server/integrations.ts'
 import { createSessionsHandler } from './server/sessions.ts'
 import { createWorkspaceHandler } from './server/workspace.ts'
 import { createManagementHandler } from './server/management.ts'
+import { createIdeaPlanHandler } from './server/idea-plan.ts'
 
 // Only public settings reach the browser. Also accepts the labelled keys in
 // the original .env file; private keys are used only by the server middleware.
@@ -47,7 +48,7 @@ export default defineConfig(({ mode }) => {
     try {
       privileged ||= JSON.parse(Buffer.from(value.split('.')[1] || '', 'base64url').toString()).role === 'service_role'
     } catch { /* Not a JWT. */ }
-    if (privileged || /SERVICE_ROLE|SECRET|BREVO|SMTP|PASSWORD|TOKEN|ENCRYPTION/i.test(name)) {
+    if (privileged || /SERVICE_ROLE|SECRET|BREVO|SMTP|PASSWORD|TOKEN|ENCRYPTION|^VITE_(?:OPENAI|IDEA_PLANNER)/i.test(name)) {
       throw new Error(`Remove the VITE_ prefix from the private environment variable ${name}.`)
     }
   }
@@ -69,6 +70,8 @@ export default defineConfig(({ mode }) => {
         server.middlewares.use('/api/workspace', (request, response) => { void workspace(request, response) })
         const management = createManagementHandler(serverEnv)
         server.middlewares.use('/api/management', (request, response) => { void management(request, response) })
+        const ideaPlan = createIdeaPlanHandler(serverEnv)
+        server.middlewares.use('/api/idea-plan', (request, response) => { void ideaPlan(request, response) })
       },
     }],
     server: { watch: { usePolling: true, interval: 500 } },
