@@ -1,5 +1,14 @@
 export type IdeaDomain = 'auto' | 'web' | 'mobile' | 'data' | 'iot' | 'research';
-export interface IdeaInput { idea: string; weeks: number; startDate: string; teamSize: number; domain: IdeaDomain }
+export interface IdeaInput {
+  idea: string;
+  weeks: number;
+  startDate: string;
+  teamSize: number;
+  domain: IdeaDomain;
+  audience?: string;
+  successCriteria?: string;
+  constraints?: string;
+}
 export interface IdeaPhase { id: string; title: string; startDate: string; dueDate: string }
 export interface IdeaMilestone { id: string; name: string; phase: string; description: string; startDate: string; dueDate: string }
 export interface IdeaRole { title: string; responsibility: string }
@@ -7,6 +16,7 @@ export interface IdeaChapter { title: string; prompt: string }
 export interface IdeaPlan {
   version: 1; id: string; idea: string; title: string; summary: string; domain: string;
   weeks: number; startDate: string; teamSize: number; source: 'starter' | 'ai';
+  audience: string; successCriteria: string; constraints: string;
   objectives: string[]; phases: IdeaPhase[]; milestones: IdeaMilestone[]; roles: IdeaRole[]; chapters: IdeaChapter[];
 }
 export const ideaDomains = [{ id: 'auto', label: 'Detect from my idea' }, { id: 'web', label: 'Web platform' }, { id: 'mobile', label: 'Mobile application' }, { id: 'data', label: 'Data & AI' }, { id: 'iot', label: 'IoT & hardware' }, { id: 'research', label: 'Research study' }] as const;
@@ -26,6 +36,10 @@ export function planEndDate(plan: Pick<IdeaPlan, 'startDate' | 'weeks'>) { retur
 function text(value: unknown, label: string, limit: number) {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > limit || [...value].some(char => char.charCodeAt(0) < 32 && !['\n', '\r', '\t'].includes(char))) throw new Error(`${label} must contain 1–${limit} characters.`);
   return value.trim();
+}
+function optionalText(value: unknown, label: string, limit: number) {
+  if (value === undefined || value === null || value === '') return '';
+  return text(value, label, limit);
 }
 function number(value: unknown, label: string, min: number, max: number) {
   if (typeof value !== 'number' || !Number.isInteger(value) || value < min || value > max) throw new Error(`${label} must be between ${min} and ${max}.`);
@@ -50,7 +64,16 @@ export function validateIdeaInput(value: unknown): IdeaInput {
   if (idea.length < 12) throw new Error('Describe your idea in at least 12 characters.');
   const domain = input.domain ?? 'auto';
   if (!ideaDomains.some(item => item.id === domain)) throw new Error('Choose a supported project domain.');
-  return { idea, weeks: number(input.weeks, 'Timeline in weeks', 1, 24), startDate: planDate(input.startDate), teamSize: number(input.teamSize, 'Team size', 1, 8), domain: domain as IdeaDomain };
+  return {
+    idea,
+    weeks: number(input.weeks, 'Timeline in weeks', 1, 24),
+    startDate: planDate(input.startDate),
+    teamSize: number(input.teamSize, 'Team size', 1, 8),
+    domain: domain as IdeaDomain,
+    audience: optionalText(input.audience, 'Intended audience', 240),
+    successCriteria: optionalText(input.successCriteria, 'Definition of success', 240),
+    constraints: optionalText(input.constraints, 'Constraints or must-haves', 400),
+  };
 }
 
 export function validateIdeaPlan(value: unknown): IdeaPlan {
@@ -75,6 +98,7 @@ export function validateIdeaPlan(value: unknown): IdeaPlan {
   const plan: IdeaPlan = {
     version: 1, id: id(input.id), idea: text(input.idea, 'Original idea', 1500), title: text(input.title, 'Project title', 160), summary: text(input.summary, 'Project summary', 800), domain: text(input.domain, 'Project domain', 120),
     startDate, weeks, teamSize: number(input.teamSize, 'Team size', 1, 8), source: input.source as IdeaPlan['source'],
+    audience: optionalText(input.audience, 'Intended audience', 240), successCriteria: optionalText(input.successCriteria, 'Definition of success', 240), constraints: optionalText(input.constraints, 'Constraints or must-haves', 400),
     objectives: list(input.objectives, 'objectives', 6).map(value => text(value, 'Objective', 160)), phases, milestones,
     roles: list(input.roles, 'suggested roles', 8).map(value => { const row = record(value); return { title: text(row.title, 'Role title', 60), responsibility: text(row.responsibility, 'Role responsibility', 160) }; }),
     chapters: list(input.chapters, 'report chapters', 8).map(value => { const row = record(value); return { title: text(row.title, 'Chapter title', 100), prompt: text(row.prompt, 'Chapter outline', 500) }; }),
@@ -121,11 +145,14 @@ export function generateStarterPlan(raw: IdeaInput, makeId: () => string): IdeaP
   let offset = 0;
   const phases = names.map((name, index) => { const phase = { id: makeId(), title: name, startDate: addPlanDays(input.startDate, offset), dueDate: addPlanDays(input.startDate, offset + lengths[index] - 1) }; offset += lengths[index]; return phase; });
   const milestoneNames = ['Problem statement & scope', domain.design, domain.build, domain.testing, 'Final report & project presentation'];
+  const audience = input.audience || 'the intended audience';
+  const successCriteria = input.successCriteria || 'measurable success criteria';
+  const constraints = input.constraints ? ` Work within these constraints: ${input.constraints}.` : '';
   const descriptions = [
-    `Define the audience, problem, objectives, and success criteria for ${title}. Agree on a realistic first-version scope.`,
+    `Define ${audience}, the problem, objectives, and success criteria for ${title}. Agree on a realistic first-version scope.`,
     `Design ${domain.focus}. Document the approach and collect feedback before implementation.`,
-    `Produce the first complete version of ${title}. Track decisions, contributions, and evidence against the agreed scope.`,
-    'Evaluate the work against the success criteria. Record results, address important issues, and document limitations.',
+    `Produce the first complete version of ${title}. Track decisions, contributions, and evidence against the agreed scope.${constraints}`,
+    `Evaluate the work against ${successCriteria}. Record results, address important issues, and document limitations.`,
     'Prepare the Blackbook report, demonstrate the outcomes, and organize the evidence for your final presentation.',
   ];
   const roles: IdeaRole[] = [
@@ -148,21 +175,23 @@ export function generateStarterPlan(raw: IdeaInput, makeId: () => string): IdeaP
     'Summarize the actual contribution, lessons learned, remaining limitations, and realistic next steps after the first version.',
   ];
   return validateIdeaPlan({
-    version: 1, id: makeId(), idea: input.idea, title, summary: `Develop ${title} as a ${input.weeks}-week ${domain.label.toLowerCase()} project. The plan focuses on ${domain.focus}, with a documented path from discovery to presentation.`,
+    version: 1, id: makeId(), idea: input.idea, title, summary: `Develop ${title} as a ${input.weeks}-week ${domain.label.toLowerCase()} project for ${audience}. The plan focuses on ${domain.focus}, with a documented path from discovery to presentation.${input.successCriteria ? ` Success will be assessed using ${input.successCriteria}.` : ''}${constraints}`,
+    audience: input.audience, successCriteria: input.successCriteria, constraints: input.constraints,
     domain: domain.label, weeks: input.weeks, startDate: input.startDate, teamSize: input.teamSize, source: 'starter',
-    objectives: [`Define a clear problem, audience, and first-version scope for ${title}.`.slice(0, 160), `Create a working outcome grounded in ${domain.focus}.`.slice(0, 160), 'Evaluate the outcome against measurable criteria and document the evidence.', 'Present the project through a structured report, demonstration, and portfolio-ready summary.'],
+    objectives: [`Define a clear problem, audience, and first-version scope for ${title}.`.slice(0, 160), `Create a working outcome grounded in ${domain.focus}.`.slice(0, 160), `Evaluate the outcome against ${successCriteria}.`.slice(0, 160), 'Present the project through a structured report, demonstration, and portfolio-ready summary.'],
     phases, milestones: phases.map((phase, index) => ({ id: makeId(), name: milestoneNames[index], phase: phase.title, description: descriptions[index], startDate: phase.startDate, dueDate: phase.dueDate })),
     roles: roles.slice(0, input.teamSize), chapters: ideaChapterNames.map((title, index) => ({ title, prompt: prompts[index] })),
   });
 }
 
 export function ideaProjectSummary(plan: IdeaPlan) {
-  return [plan.summary, '\nObjectives', ...plan.objectives.map(item => `• ${item}`), '\nSuggested team responsibilities', ...plan.roles.map(item => `• ${item.title}: ${item.responsibility}`)].join('\n');
+  return [plan.summary, '\nPlanning brief', `• Intended audience: ${plan.audience || 'To be confirmed'}`, `• Definition of success: ${plan.successCriteria || 'To be agreed with the team'}`, `• Constraints or must-haves: ${plan.constraints || 'None supplied'}`, '\nObjectives', ...plan.objectives.map(item => `• ${item}`), '\nSuggested team responsibilities', ...plan.roles.map(item => `• ${item.title}: ${item.responsibility}`)].join('\n');
 }
 export function planMarkdown(plan: IdeaPlan) {
   return [
     `# ${plan.title}`, '\n> Editable project plan — suggested work, not completed results.', '\n## Original idea', plan.idea,
     '\n## Project overview', plan.summary, `\n- Domain: ${plan.domain}`, `- Timeline: ${plan.weeks} weeks (${plan.startDate} to ${planEndDate(plan)})`, `- Planned team size: ${plan.teamSize}`,
+    '\n## Planning brief', `- Intended audience: ${plan.audience || 'To be confirmed'}`, `- Definition of success: ${plan.successCriteria || 'To be agreed with the team'}`, `- Constraints or must-haves: ${plan.constraints || 'None supplied'}`,
     '\n## Objectives', ...plan.objectives.map(item => `- ${item}`), '\n## Roadmap', ...plan.phases.map(item => `- ${item.title}: ${item.startDate} → ${item.dueDate}`),
     '\n## Milestones', ...plan.milestones.flatMap(item => [`### ${item.name}`, `${item.phase} · ${item.startDate} → ${item.dueDate}`, item.description]),
     '\n## Suggested team responsibilities', ...plan.roles.map(item => `- **${item.title}:** ${item.responsibility}`),

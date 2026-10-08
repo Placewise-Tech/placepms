@@ -19,8 +19,11 @@ export default function IdeaPlanEditor({ plan, onChange, disabled = false }: { p
     <div className="idea-editor-tabs" aria-label="Explore your project plan">{sections.map(({ id, label, icon: Icon }) => <button type="button" key={id} aria-pressed={section === id} onClick={() => setSection(id)}><Icon size={14} />{label}</button>)}</div>
     <fieldset disabled={disabled} className="idea-editor-fields">
       {section === 'overview' && <div className="idea-overview">
-        <label>Project title<input required maxLength={160} value={plan.title} onChange={event => update('title', event.target.value)} /></label>
-        <label>Project summary<textarea required rows={3} maxLength={800} value={plan.summary} onChange={event => update('summary', event.target.value)} /></label>
+       <label>Project title<input required maxLength={160} value={plan.title} onChange={event => update('title', event.target.value)} /></label>
+       <label>Project summary<textarea required rows={3} maxLength={800} value={plan.summary} onChange={event => update('summary', event.target.value)} /></label>
+        <div className="idea-editor-section-label"><strong>Project brief</strong><small>Confirm the context before you hand this plan to your workspace</small></div>
+        <div className="idea-brief-grid"><label>Intended audience<input maxLength={240} placeholder="Who benefits from this project?" value={plan.audience} onChange={event => update('audience', event.target.value)} /></label><label>Definition of success<input maxLength={240} placeholder="What observable outcome would count as progress?" value={plan.successCriteria} onChange={event => update('successCriteria', event.target.value)} /></label></div>
+        <label>Constraints or must-haves<input maxLength={400} placeholder="Important limits, dependencies, or requirements" value={plan.constraints} onChange={event => update('constraints', event.target.value)} /></label>
         <label>Project domain<input required maxLength={120} value={plan.domain} onChange={event => update('domain', event.target.value)} /></label>
         <div className="idea-editor-section-label"><strong>What you’re working towards</strong><small>Editable project objectives</small></div>
         <div className="idea-objectives">{plan.objectives.map((objective, index) => <label key={index}><span aria-hidden="true"><Check size={13} /></span><input aria-label={`Objective ${index + 1}`} required maxLength={160} value={objective} onChange={event => update('objectives', plan.objectives.map((item, position) => position === index ? event.target.value : item))} /></label>)}</div>
