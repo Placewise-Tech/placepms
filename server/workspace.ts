@@ -21,14 +21,39 @@ function date(value: unknown) {
   return value;
 }
 
+function invitationError(error: { code?: string; message?: string } | null) {
+  if (!error) return;
+  if (['PGRST202', 'PGRST205', '42P01', '42883', '42703'].includes(error.code || '')) throw new ApiError(503, 'Apply the project member invitations migration in Supabase to enable this feature.');
+  if (error.code === '42501') throw new ApiError(403, error.message || 'You cannot make this invitation change.');
+  if (error.code === '22023' || error.code === '22P02') throw new ApiError(400, error.message || 'Choose a valid registered user or invitation.');
+  if (error.code === 'P0001' || error.code === '23505') throw new ApiError(409, error.message || 'This invitation has already changed. Refresh and try again.');
+  databaseError(error);
+}
+function uuid(input: Record<string, unknown>, name: string) {
+  const value = field(input, name, 36, true)!;
+  if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)) throw new ApiError(400, 'Choose a valid registered user or invitation.');
+  return value;
+}
+
 export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
   return async (request: Request, response: ServerResponse) => {
     try {
       const input = await jsonBody(request); const { user, admin, client } = await authenticate(request, env);
       const account = await managementAccount(admin,user.id,env,user.email || ''); const administrator = account.role === 'admin';
-      if (input.action === 'project.from-plan') {
+      const action = text(input.action);
+      if (action === 'project.from-plan') {
         const result = await createIdeaWorkspace(input.plan, user, client, admin);
         jsonResponse(response, result);
+        return;
+      }
+      if (action === 'invitation.list') {
+        const result = await client.rpc('workspace_list_project_invitations'); invitationError(result.error);
+        jsonResponse(response, result.data);
+        return;
+      }
+      if (action === 'invitation.accept' || action === 'invitation.reject') {
+        const result = await client.rpc(action === 'invitation.accept' ? 'workspace_accept_project_invitation' : 'workspace_reject_project_invitation', { p_invitation_id: uuid(input, 'invitationId') });
+        invitationError(result.error); jsonResponse(response, result.data);
         return;
       }
       const projectId = field(input, 'projectId', 100, true)!;
@@ -38,8 +63,20 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
       const project = found.data;
       const owner = administrator || project.leader_email?.toLowerCase() === user.email?.toLowerCase();
       const mentor = administrator || ((!account.managed || account.can_mentor) && (project.mentor_id === user.id || project.mentor_id?.toLowerCase() === user.email?.toLowerCase()));
-      if (['project.update', 'project.archive', 'member.add', 'member.update', 'member.remove', 'milestone.delete'].includes(text(input.action)) && !owner) throw new ApiError(403, 'Only the project lead can make this change.');
-      if (input.action === 'project.update') {
+      if (['project.update', 'project.archive', 'member.add', 'member.update', 'member.remove', 'directory.search', 'invitation.send', 'milestone.delete'].includes(action) && !owner) throw new ApiError(403, 'Only the project lead can make this change.');
+      if (action === 'directory.search') {
+        const page = input.page === undefined ? 1 : Number(input.page);
+        if (!Number.isInteger(page) || page < 1 || page > 100000) throw new ApiError(400, 'Choose a valid registered-user page.');
+        const result = await client.rpc('workspace_project_directory', { p_project_id: projectId, p_search: field(input, 'query', 100) || '', p_page: page });
+        invitationError(result.error); jsonResponse(response, result.data);
+        return;
+      }
+      if (action === 'invitation.send') {
+        const result = await client.rpc('workspace_send_project_invitation', { p_project_id: projectId, p_invitee_id: uuid(input, 'inviteeId') });
+        invitationError(result.error); jsonResponse(response, result.data);
+        return;
+      }
+      if (action === 'project.update') {
         const values: Record<string, unknown> = {
           title: field(input, 'title', 160, true), tagline: field(input, 'tagline', 200), domain: field(input, 'domain', 120), summary: field(input, 'summary', 4000), current_phase: field(input, 'current_phase', 120),
           github_repo: external(field(input, 'github_repo', 2000)), figma_url: external(field(input, 'figma_url', 2000)), miro_url: external(field(input, 'miro_url', 2000)), updated_at: new Date().toISOString(),
@@ -62,18 +99,19 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
           } else if (input.clear_mentor === true) { values.mentor_id = null; values.mentor_name = null; }
         }
         const result = await client.from('pms_squads').update(values).eq('id', projectId).eq('leader_email', project.leader_email).select('id').single(); databaseError(result.error);
-      } else if (input.action === 'project.archive') {
+      } else if (action === 'project.archive') {
         const result = await client.from('pms_squads').update({ status: input.restore === true ? 'PENDING' : 'ARCHIVED', updated_at: new Date().toISOString() }).eq('id', projectId).select('id').single(); databaseError(result.error);
-      } else if (input.action === 'member.add' || input.action === 'member.update') {
-        const email = field(input, 'email', 254, true)!.toLowerCase();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new ApiError(400, 'Enter a valid member email.');
-        const existing = await admin.from('squad_members').select('id').eq('squad_id', projectId).eq('email', email); databaseError(existing.error);
-        const memberId = input.action === 'member.update' ? field(input, 'memberId', 100, true)! : null;
-        if (existing.data?.some(item => item.id !== memberId)) throw new ApiError(409, 'This member is already on the team.');
-        const record = { squad_id: projectId, email, name: field(input, 'name', 160, true), role: field(input, 'role', 100) || 'Member', skills: [...new Set((field(input, 'skills', 500) || '').split(',').map(value => value.trim()).filter(Boolean))].slice(0, 12) };
-        const result = memberId ? await admin.from('squad_members').update(record).eq('squad_id', projectId).eq('id', memberId).select('id').single() : await admin.from('squad_members').insert(record).select('id').single(); databaseError(result.error);
-      } else if (input.action === 'member.remove') {
-        const result = await admin.from('squad_members').delete().eq('squad_id', projectId).eq('id', field(input, 'memberId', 100, true)!); databaseError(result.error);
+      } else if (action === 'member.add') {
+        throw new ApiError(400, 'Invite a registered user and wait for them to accept before adding them to the team.');
+      } else if (action === 'member.update') {
+        const memberId = field(input, 'memberId', 100, true)!;
+        const existing = await client.from('squad_members').select('id,email').eq('squad_id', projectId).eq('id', memberId).maybeSingle(); databaseError(existing.error);
+        if (!existing.data) throw new ApiError(404, 'Team member not found.');
+        if (input.email !== undefined && field(input, 'email', 254, true)?.toLowerCase() !== existing.data.email.toLowerCase()) throw new ApiError(400, 'Invite a new user to change the team member identity.');
+        const record = { name: field(input, 'name', 160, true), role: field(input, 'role', 100) || 'Member', skills: [...new Set((field(input, 'skills', 500) || '').split(',').map(value => value.trim()).filter(Boolean))].slice(0, 12) };
+        const result = await client.from('squad_members').update(record).eq('squad_id', projectId).eq('id', memberId).select('id').single(); databaseError(result.error);
+      } else if (action === 'member.remove') {
+        const result = await client.from('squad_members').delete().eq('squad_id', projectId).eq('id', field(input, 'memberId', 100, true)!); databaseError(result.error);
       } else if (['milestone.update', 'milestone.delete', 'milestone.review', 'milestone.submit'].includes(text(input.action))) {
         const id = field(input, 'milestoneId', 100, true)!;
         const milestone = await client.from('milestones').select('id,status').eq('id', id).eq('squad_id', projectId).maybeSingle(); databaseError(milestone.error);

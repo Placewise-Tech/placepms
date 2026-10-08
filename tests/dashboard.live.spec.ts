@@ -45,14 +45,8 @@ test('real authentication, database writes, refresh, navigation, and mobile layo
     await expect(page.getByText('Localhost validation', { exact: true })).toBeVisible();
     await page.getByRole('tab', { name: 'Team', exact: true }).click();
     await page.getByRole('button', { name: 'Add member', exact: true }).click();
-    await page.getByLabel('Member name').fill('Isolated verification member');
-    await page.getByLabel('Member email').fill(`member-${userId}@example.com`);
-    await page.getByRole('button', { name: 'Save member', exact: true }).click();
-    await page.getByRole('button', { name: 'Edit Isolated verification member', exact: true }).click();
-    await page.getByLabel('Team role').fill('Verification lead');
-    await page.getByLabel('Skills (comma-separated)').fill('Testing, Research');
-    await page.getByRole('button', { name: 'Save member', exact: true }).click();
-    await expect(page.getByText(`member-${userId}@example.com · Verification lead`)).toBeVisible();
+    await expect(page.getByLabel('Search registered users')).toBeVisible();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
     await page.getByRole('link', { name: 'My Tasks', exact: true }).click();
     await page.getByRole('button', { name: 'Add milestone', exact: true }).click();
     await page.getByLabel('Milestone name').fill('Verify saved records');

@@ -40,6 +40,9 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
   await page.route('**/auth/v1/logout**', route => route.fulfill({ status: 204 }));
   await page.route('**/rest/v1/**', async route => {
     const request = route.request(); const url = new URL(request.url()); const table = url.pathname.split('/').pop();
+    if (table === 'workspace_project_directory') return route.fulfill({ json: { people: [{ id: '22222222-2222-4222-8222-222222222222', email: 'member@example.test', full_name: 'Team Member' }], total: 1 } });
+    if (table === 'workspace_send_project_invitation') { members.push({ id: 'member-fixture', squad_id: project.id, name: 'Team Member', email: 'member@example.test', role: 'Member', skills: [] }); return route.fulfill({ json: { saved: true, invitationId: '33333333-3333-4333-8333-333333333333' } }); }
+    if (table === 'workspace_list_project_invitations') return route.fulfill({ json: { invitations: [] } });
     if (table === 'workspace_library') {
       if (request.method() === 'POST') {
         const input = request.postDataJSON(); const row = { id: `library-${library.length + 1}`, created_at: date, updated_at: date, ...input }; library.push(row);
@@ -84,6 +87,9 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
   });
   await page.route('**/api/workspace', async route => {
     const input = route.request().postDataJSON(); calls.push(input);
+    if (input.action === 'invitation.list') return route.fulfill({ json: { invitations: [] } });
+    if (input.action === 'directory.search') return route.fulfill({ json: { people: [{ id: '22222222-2222-4222-8222-222222222222', email: 'member@example.test', full_name: 'Team Member' }], total: 1 } });
+    if (input.action === 'invitation.send') { members.push({ id: 'member-fixture', squad_id: project.id, name: 'Team Member', email: 'member@example.test', role: 'Member', skills: [] }); return route.fulfill({ json: { saved: true, invitationId: '33333333-3333-4333-8333-333333333333' } }); }
     if (input.action === 'project.update') Object.assign(project, input);
     if (input.action === 'project.archive') project.status = input.restore ? 'PENDING' : 'ARCHIVED';
     if (input.action === 'member.add') members.push({ ...input, id: 'member-fixture', squad_id: project.id, skills: input.skills.split(',') });
@@ -606,8 +612,8 @@ test('project leads can edit project details, manage members, and attach milesto
   await expect(page.getByRole('heading', { name: 'Updated Capstone', level: 2 })).toBeVisible();
   await page.getByRole('tab', { name: 'Team', exact: true }).click();
   await page.getByRole('button', { name: 'Add member', exact: true }).click();
-  await page.getByLabel('Member name').fill('Team Member'); await page.getByLabel('Member email').fill('member@example.test');
-  await page.getByRole('button', { name: 'Save member', exact: true }).click();
+  await page.getByLabel('Search registered users').fill('Team Member');
+  await page.getByRole('button', { name: 'Invite to project', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Team Member' })).toBeVisible();
   await page.getByRole('tab', { name: 'Milestones', exact: true }).click();
   await page.getByRole('button', { name: 'Edit & attach files' }).click();
@@ -696,12 +702,12 @@ test('project workspace edits existing members and submits evidence in place', a
   const { calls } = await workspace(page); await page.goto('/dashboard/projects/sq-fixture');
   await page.getByRole('tab', { name: 'Team', exact: true }).click();
   await page.getByRole('button', { name: 'Add member', exact: true }).click();
-  await page.getByLabel('Member name').fill('Designer'); await page.getByLabel('Member email').fill('designer@example.test');
-  await page.getByRole('button', { name: 'Save member', exact: true }).click();
-  await page.getByRole('button', { name: 'Edit Designer', exact: true }).click();
+  await page.getByLabel('Search registered users').fill('Team Member');
+  await page.getByRole('button', { name: 'Invite to project', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit Team Member', exact: true }).click();
   await page.getByLabel('Team role').fill('Design lead'); await page.getByLabel('Skills (comma-separated)').fill('Figma, Research');
   await page.getByRole('button', { name: 'Save member', exact: true }).click();
-  await expect(page.getByText('designer@example.test · Design lead')).toBeVisible();
+  await expect(page.getByText('member@example.test · Design lead')).toBeVisible();
   await page.getByRole('tab', { name: 'Milestones', exact: true }).click();
   await page.getByRole('button', { name: 'Submit for review', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Withdraw submission', exact: true })).toBeVisible();

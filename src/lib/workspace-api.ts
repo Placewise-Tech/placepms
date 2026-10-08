@@ -5,6 +5,21 @@ export class WorkspaceApiError extends Error {
   constructor(message: string, status: number) { super(message); this.status = status; }
 }
 
+export interface WorkspaceDirectoryPerson {
+  id: string;
+  email: string;
+  full_name: string | null;
+}
+
+export interface WorkspaceInvitation {
+  id: string;
+  projectId: string;
+  projectTitle: string;
+  inviterName: string;
+  inviterEmail: string;
+  createdAt: string;
+}
+
 export async function workspaceRequest<T>(endpoint: 'integrations' | 'sessions' | 'workspace' | 'management', body: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   if (!supabase) throw new Error('Supabase is not configured.');
   const { data, error } = await supabase.auth.getSession();
