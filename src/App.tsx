@@ -13,7 +13,6 @@ const AdminDashboard = lazy(() => import('./components/dashboard/AdminDashboard'
 const AuthInterface = lazy(() => import('./components/AuthInterface'));
 
 type AuthMode = 'signin' | 'signup';
-type AuthRole = 'student' | 'faculty' | 'college' | 'recruiter';
 
 function WorkspaceLoading() {
   return <div className="workspace-gate" role="status"><img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" width="140" /><p>Opening your workspace…</p></div>;
@@ -26,7 +25,6 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const isAuthOpen = location.pathname === '/login' || location.pathname === '/signup' || /^\/(admin|teacher|staff)\/login$/.test(location.pathname);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
-  const [authRole, setAuthRole] = useState<AuthRole>('student');
   const accessRole = location.pathname.match(/^\/(admin|teacher|staff)\/login$/)?.[1] as 'admin' | 'teacher' | 'staff' | undefined;
   const mustChangePassword = session?.user.app_metadata.must_change_password === true;
   const [authoritativeAccess, setAuthoritativeAccess] = useState<{ token: string; role: WorkspaceRole } | null>(null);
@@ -74,9 +72,8 @@ export default function App() {
     }
   }, [session, authLoading, passwordRecovery, recoveryError, mustChangePassword, accessLoading, root, isAuthOpen, location.pathname, location.search, location.hash, navigate]);
 
-  const openAuth = (mode: AuthMode, role: AuthRole = 'student') => {
+  const openAuth = (mode: AuthMode) => {
     setAuthMode(mode);
-    setAuthRole(role);
     navigate(mode === 'signin' ? '/login' : '/signup');
   };
 
@@ -89,11 +86,9 @@ export default function App() {
   return <div className="app-nebula min-h-full flex flex-col flex-1 relative font-sans">
     {sessionError && <div className="auth-feedback auth-feedback-error" role="alert">{sessionError}</div>}
     {isAuthOpen && <Suspense fallback={<WorkspaceLoading />}><AuthInterface
-      key={authRole}
       isOpen={isAuthOpen}
       onClose={() => navigate('/')}
       initialMode={location.pathname === '/signup' ? 'signup' : location.pathname.endsWith('/login') ? 'signin' : authMode}
-      initialRole={authRole}
       accessRole={accessRole}
     /></Suspense>}
     <AnimatePresence mode="wait">

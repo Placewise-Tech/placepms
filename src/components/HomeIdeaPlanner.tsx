@@ -10,7 +10,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion';
 const examples = ['Build a campus placement portal in six weeks', 'Create a mobile app for student wellbeing in eight weeks', 'Build an IoT system to monitor classroom air quality in four weeks'];
 type Inputs = Omit<IdeaInput, 'weeks' | 'teamSize'> & { weeks: string; teamSize: string };
 
-export default function HomeIdeaPlanner({ onOpenAuth, motionPaused }: { onOpenAuth: (mode: 'signin' | 'signup', role?: 'student' | 'faculty' | 'college' | 'recruiter') => void; motionPaused: boolean }) {
+export default function HomeIdeaPlanner({ onOpenAuth, motionPaused }: { onOpenAuth: (mode: 'signin' | 'signup') => void; motionPaused: boolean }) {
   const reduced = useReducedMotion();
   const [restored] = useState(() => readIdeaDraft());
   const [plan, setPlan] = useState<IdeaPlan | null>(restored?.plan || null);
@@ -65,7 +65,7 @@ export default function HomeIdeaPlanner({ onOpenAuth, motionPaused }: { onOpenAu
     try {
       const draft = prepareIdeaHandoff(validateIdeaPlan(plan));
       setHandedOff(true); setPlan(draft.plan); setSaved(true); setError(''); setSaveError('');
-      onOpenAuth(mode, 'student');
+      onOpenAuth(mode);
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'Your draft could not be saved.'); }
   };
   const download = () => {

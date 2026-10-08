@@ -173,7 +173,10 @@ test('dashboard refresh replaces milestones and members without retaining remove
 test('administrators create mentor accounts, update permissions, and save feature controls', async ({ page }) => {
   const { calls, accounts, settings } = await workspace(page, { managedRole: 'admin' });
   await page.getByRole('link', { name: 'Accounts & permissions', exact: true }).click();
-  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await page.getByRole('link', { name: 'Create managed account', exact: true }).click();
+  await expect(page).toHaveURL(/\/admin\/create-account$/);
+  await expect(page.getByRole('button', { name: 'Create administrator account', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Create teacher account', exact: true }).click();
   const create = page.getByRole('dialog', { name: 'Create account', exact: true });
   await create.getByLabel('Full name', { exact: true }).fill('Managed Teacher');
   await create.getByLabel('Account email', { exact: true }).fill('teacher@example.test');
@@ -181,6 +184,7 @@ test('administrators create mentor accounts, update permissions, and save featur
   await create.getByLabel('Department', { exact: true }).fill('Computing');
   await create.getByRole('button', { name: 'Create & email account', exact: true }).click();
   await expect(create).toHaveCount(0);
+  await page.getByRole('link', { name: 'Manage accounts', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Managed Teacher', exact: true })).toBeVisible();
   expect(accounts[0]).toMatchObject({ role: 'teacher', can_mentor: true, email: 'teacher@example.test' });
 
@@ -208,13 +212,13 @@ test('live admin access overrides cached student metadata for login, account man
   const { accounts } = await workspace(page, { managedRole: 'admin', staleRoleMetadata: true });
   await expect(page.locator('.admin-workspace')).toBeVisible();
   await expect(page.getByRole('button', { name: 'New project', exact: true })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Accounts & permissions', exact: true }).click();
-  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await page.getByRole('link', { name: 'Create role accounts', exact: true }).click();
+  await page.getByRole('button', { name: 'Create staff account', exact: true }).click();
   const create = page.getByRole('dialog', { name: 'Create account', exact: true });
   await create.getByLabel('Full name', { exact: true }).fill('Managed Staff');
   await create.getByLabel('Account email', { exact: true }).fill('staff@example.test');
   await create.getByLabel('Institution', { exact: true }).fill('Example University');
-  await create.getByLabel('Account role', { exact: true }).selectOption('staff');
+  await create.getByRole('combobox', { name: 'Account role', exact: true }).selectOption('staff');
   await create.getByRole('button', { name: 'Create & email account', exact: true }).click();
   await expect(create).toHaveCount(0);
   expect(accounts[0]).toMatchObject({ role: 'staff', email: 'staff@example.test' });
@@ -224,7 +228,7 @@ test('live admin access overrides cached student metadata for login, account man
   });
   await page.reload();
   await allProjectsRequest;
-  await expect(page.getByRole('heading', { name: 'Accounts & mentors', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Create role accounts', exact: true })).toBeVisible();
 });
 
 for (const managedRole of ['teacher', 'staff'] as const) test(`${managedRole} login and project links stay in the assigned workspace`, async ({ page }) => {

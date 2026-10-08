@@ -12,9 +12,8 @@ import HomeTeam from './HomeTeam';
 import HomeIdeaPlanner from './HomeIdeaPlanner';
 
 type AuthMode = 'signin' | 'signup';
-type AuthRole = 'student' | 'faculty' | 'college' | 'recruiter';
 type Preview = 'overview' | 'tasks' | 'tools';
-interface HomePageProps { onOpenAuth: (mode: AuthMode, role?: AuthRole) => void }
+interface HomePageProps { onOpenAuth: (mode: AuthMode) => void }
 const HomeMotionContext = createContext(false);
 const HomeAutomation = lazy(() => import('./HomeAutomation'));
 const navigation = [{ id: 'idea-planner', label: 'Build your idea' }, { id: 'features', label: 'Features' }, { id: 'automation', label: 'Automation' }, { id: 'how-it-works', label: 'The journey' }, { id: 'team', label: 'Our team' }, { id: 'faq', label: 'FAQ' }];
@@ -112,7 +111,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
   }, [mobileMenuOpen]);
   const currentStep = workflow[step];
   const StepIcon = currentStep.icon;
-  const openAuth = (mode: AuthMode, role: AuthRole = 'student') => { setMobileMenuOpen(false); onOpenAuth(mode, role); };
+  const openAuth = (mode: AuthMode) => { setMobileMenuOpen(false); onOpenAuth(mode); };
   const selectPreview = (value: Preview) => { setPreview(value); setTourPlaying(false); };
   const followAnchor = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !(event.target instanceof Element)) return;
@@ -186,7 +185,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
       <section id="get-started" className="home-start"><div className="home-start-orbit" aria-hidden="true" /><Reveal className="home-container"><span className="home-badge"><Sparkles size={14} /> Your next big thing starts here</span><h2>Make space<br />for <span>what’s next.</span></h2><p>You bring the ambition. We’ll bring everything into focus.</p><div className="home-start-actions"><button className="home-button home-button-primary" onClick={() => openAuth('signup')}>Create Account <ArrowUpRight size={18} /></button><button className="home-button home-button-glass" onClick={() => openAuth('signin')}>Open your workspace <ArrowRight size={17} /></button></div><span className="home-start-note"><ShieldCheck size={13} /> Your projects. Your people. Your next chapter.</span></Reveal></section>
     </main>
 
-    <footer className="home-footer"><div className="home-container"><div className="home-footer-top"><a href="/" aria-label="PlacePMS Home"><img src="/PlacePMS-Logo-White.svg" width="126" height="36" alt="PlacePMS" /></a><span>Your work. Your universe.</span><div><button onClick={() => openAuth('signin')}>Student sign in <ArrowRight size={13} /></button><button onClick={() => openAuth('signin', 'faculty')}>Mentor sign in <ArrowRight size={13} /></button></div></div><nav className="home-footer-nav" aria-label="Footer navigation">{navigation.map(item => <a href={`#${item.id}`} key={item.id}>{item.label}</a>)}</nav><div className="home-footer-bottom"><span>© {year} PlacePMS</span><span><span className="home-live-dot" /> Built for the next generation.</span><a href="#home-main">Back to top <ArrowUpRight size={13} /></a></div></div></footer>
+    <footer className="home-footer"><div className="home-container"><div className="home-footer-top"><a href="/" aria-label="PlacePMS Home"><img src="/PlacePMS-Logo-White.svg" width="126" height="36" alt="PlacePMS" /></a><span>Your work. Your universe.</span><div><button onClick={() => openAuth('signin')}>Student sign in <ArrowRight size={13} /></button><button onClick={() => openAuth('signin')}>Mentor sign in <ArrowRight size={13} /></button></div></div><nav className="home-footer-nav" aria-label="Footer navigation">{navigation.map(item => <a href={`#${item.id}`} key={item.id}>{item.label}</a>)}</nav><div className="home-footer-bottom"><span>© {year} PlacePMS</span><span><span className="home-live-dot" /> Built for the next generation.</span><a href="#home-main">Back to top <ArrowUpRight size={13} /></a></div></div></footer>
     {hasScrolled && <div className="home-floating-cta"><span><Orbit size={17} /> Your next chapter starts here.</span><button className="home-button home-button-primary" onClick={() => openAuth('signup')}>Start building <ArrowUpRight size={15} /></button><a href="#home-main" aria-label="Return to the top of the page"><ArrowUp size={17} /></a></div>}
   </div></HomeMotionContext.Provider>;
 }

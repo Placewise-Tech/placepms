@@ -26,6 +26,7 @@ const navigation = [
   { slug: 'reports', label: 'Integration analyses', icon: GitBranch, group: 'INTELLIGENCE' },
   { slug: 'connections', label: 'Provider connections', icon: Link2, group: 'INTELLIGENCE' },
   { slug: 'accounts', label: 'Accounts & permissions', icon: ShieldCheck, group: 'ADMINISTRATION' },
+  { slug: 'create-account', label: 'Create role accounts', icon: Plus, group: 'ADMINISTRATION' },
   { slug: 'settings', label: 'Feature controls', icon: Settings2, group: 'ADMINISTRATION' },
   { slug: 'audit', label: 'Management audit', icon: Monitor, group: 'ADMINISTRATION' },
   { slug: 'sessions', label: 'My admin sessions', icon: Database, group: 'ADMINISTRATION' },
@@ -43,7 +44,7 @@ export default function AdminDashboard({ user }: { user: User }) {
   const name = data.profile?.full_name || String(user.user_metadata.full_name || user.email?.split('@')[0] || 'Administrator');
   useEffect(() => { document.title = `${title} | PlacePMS Admin`; }, [title]);
   const saved = async (message: string) => { setNotice(message); await refresh(); };
-  const management = ['accounts', 'settings', 'connections', 'audit', 'reports'].includes(view);
+  const management = ['accounts', 'create-account', 'settings', 'connections', 'audit', 'reports'].includes(view);
   const monitoring = ['overview', 'users', 'activity', 'analytics'].includes(view);
   const closeNavigation = () => setMobileOpen(false);
   return <div className="dashboard dashboard-dark workspace-studio admin-workspace">

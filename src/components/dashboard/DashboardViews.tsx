@@ -90,7 +90,7 @@ export default function DashboardViews({ view, data, user, features, onCreate, o
   const projectError = data.errors.some(error => ['Projects', 'Team projects', 'Memberships', 'Mentorship'].includes(error.section)); const taskError = projectError || data.errors.some(error => error.section === 'Milestones');
   const role=workspaceRole(user); const feature=({repositories:'github',reports:'github',figma:'figma',miro:'miro',research:'research',resources:'resource',documents:'document',blackbook:'blackbook'} as Record<string,FeatureKey>)[view];
   if (role!=='admin' && feature && features?.[feature]===false) return <EmptyState title="Feature disabled" description="Your administrator has disabled this feature. Contact them to request access."/>;
-  if (view==='reports' && role!=='student' || role==='admin' && ['accounts','settings','connections','audit'].includes(view)) return <ManagementWorkspace view={view} user={user} onSaved={onSaved}/>;
+  if (view==='reports' && role!=='student' || ['accounts','create-account','settings','connections','audit'].includes(view)) return <ManagementWorkspace view={view} user={user} onSaved={onSaved}/>;
   if (view==='overview' && role!=='student') return <ManagementOverview data={data} user={user}/>;
   if (view==='students' && role!=='student') return <StudentRoster />;
   if (['integrations', 'repositories', 'figma', 'miro'].includes(view)) return <IntegrationWorkspace view={view} data={data} onChanged={() => onSaved('')} />;

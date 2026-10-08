@@ -14,8 +14,10 @@ test('nebula-theme account screens preserve details between modes and trap keybo
   await dialog.getByRole('button', { name: 'Create Account', exact: true }).click();
   await expect(page).toHaveURL(/\/signup$/);
   await expect(page.getByLabel('Institutional Email')).toHaveValue('design-check@example.test');
-  await page.getByRole('button', { name: 'Faculty', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Faculty', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('heading', { name: 'Create Your Student Account', exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Create account', exact: true }).getByRole('combobox')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^(Student|Faculty|College \/ TPO|Recruiter)$/ })).toHaveCount(0);
+  await expect(page.getByText('Teacher, staff, and administrator access is created by your administrator.')).toBeVisible();
   await page.getByLabel('Full Name').fill('Design Check');
   await page.getByLabel('College / University Name').fill('Example University');
   await page.screenshot({ path: '/tmp/omnirush/placepms-signup-desktop.png', animations: 'disabled' });

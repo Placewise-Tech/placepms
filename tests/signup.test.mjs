@@ -49,11 +49,27 @@ test('temporary login credentials are exactly six decimal digits', () => {
 });
 
 test('invalid signup details never create an account or send email', async () => {
-  for (const invalid of [null, {}, { ...input, email: 'user@example.com\r\nBcc:other@example.com' }, { ...input, role: 'admin' }, { ...input, agreeTerms: false }, { ...input, fullName: ' ' }, { ...input, organization: 'x'.repeat(201) }]) {
+  for (const invalid of [null, {}, { ...input, email: 'user@example.com\r\nBcc:other@example.com' }, { ...input, role: 'admin' }, { ...input, role: 'faculty' }, { ...input, role: 'college' }, { ...input, role: 'recruiter' }, { ...input, agreeTerms: false }, { ...input, fullName: ' ' }, { ...input, organization: 'x'.repeat(201) }]) {
     const { services, calls } = fixture();
     await assert.rejects(registerAccount(invalid, 'local', services), { status: 400 });
     assert.equal(calls.created.length, 0);
     assert.equal(calls.emails.length, 0);
+  }
+});
+
+test('signup defaults to a student account when the public client omits role data', async () => {
+  const { services, calls } = fixture();
+  await registerAccount({ ...input, role: undefined }, 'local', services);
+  assert.equal(calls.created[0].user_metadata.role, 'student');
+});
+
+test('public signup rejects every non-student role before claiming limits or creating credentials', async () => {
+  for (const role of ['admin', 'teacher', 'staff', 'faculty', 'college', 'recruiter', null, 1]) {
+    const { services, calls } = fixture();
+    await assert.rejects(registerAccount({ ...input, role }, 'local', services), { status: 400 });
+    assert.deepEqual(calls.limits, []);
+    assert.deepEqual(calls.created, []);
+    assert.deepEqual(calls.emails, []);
   }
 });
 

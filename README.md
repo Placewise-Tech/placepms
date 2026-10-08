@@ -67,6 +67,15 @@ and does not automatically sign the user in. The server creates a confirmed Auth
 account, but the random credential is delivered only to its email address. The
 code is used in the normal **Password** field for the initial sign-in.
 
+Public **Create account** always registers a student and has no role selector.
+Other roles are created by an administrator under **Administration → Create role
+accounts** (`/admin/create-account`). This section provisions teacher, staff, and
+administrator accounts, with institution/department details and optional mentor
+eligibility. The owner receives the same emailed first-login code and chooses a
+personal password before entering their role-specific workspace. **Accounts &
+permissions** manages existing roles and access. The public signup endpoint rejects
+non-student roles even when submitted directly.
+
 `app_metadata.must_change_password` is server-owned. The password form and database
 policies block workspace access until Supabase updates the password; a database
 trigger clears the flag in the same update. Reloading or opening a dashboard URL

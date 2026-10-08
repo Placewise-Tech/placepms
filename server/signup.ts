@@ -21,13 +21,12 @@ function validateSignup(input: unknown) {
   const email = typeof fields.email === 'string' ? fields.email.trim().toLowerCase() : '';
   const fullName = typeof fields.fullName === 'string' ? fields.fullName.trim() : '';
   const organization = typeof fields.organization === 'string' ? fields.organization.trim() : '';
-  const role = typeof fields.role === 'string' ? fields.role : '';
   if (email.length > 254 || !emailPattern.test(email)) throw new SignupError(400, 'Enter a valid email address.');
   if (!fullName || fullName.length > 120 || /[\r\n\0]/.test(fullName)) throw new SignupError(400, 'Enter a full name of up to 120 characters.');
   if (!organization || organization.length > 200 || /[\r\n\0]/.test(organization)) throw new SignupError(400, 'Enter an organization of up to 200 characters.');
-  if (!['student', 'faculty', 'college', 'recruiter'].includes(role)) throw new SignupError(400, 'Select a valid role.');
+  if (fields.role !== undefined && fields.role !== 'student') throw new SignupError(400, 'Public registration is for student accounts only. Ask an administrator to create another role.');
   if (fields.agreeTerms !== true) throw new SignupError(400, 'Please agree to the Terms of Service and Privacy Policy.');
-  return { email, fullName, organization, role };
+  return { email, fullName, organization, role: 'student' };
 }
 
 export function temporaryPassword() {

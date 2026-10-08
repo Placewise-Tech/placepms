@@ -1,5 +1,7 @@
 .management-metric { text-decoration: none; color: var(--dash-text); transition: border-color .2s; }.management-metric:hover { border-color: var(--dash-brand); }.management-account-actions { display: flex; gap: 10px; flex-wrap: wrap; border-top: 1px solid var(--dash-border); margin-top: 20px; padding-top: 10px; }.management-account-actions > p { width: 100%; }.management-feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 20px 0; }.dash-form .management-feature { display: flex; align-items: center; gap: 10px; padding: 15px; border: 1px solid var(--dash-border); border-radius: 10px; }.management-feature input { width: auto; accent-color: var(--dash-brand); }.management-feature svg { color: var(--dash-brand); flex-shrink: 0; }.management-feature span { color: var(--dash-text); }.management-feature input:focus-visible { outline: 2px solid var(--dash-brand); outline-offset: 4px; }
+.admin-account-provisioning { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 20px; border: 1px solid color-mix(in srgb, var(--dash-brand) 28%, var(--dash-border)); border-radius: 12px; background: linear-gradient(120deg, color-mix(in srgb, var(--dash-brand) 8%, var(--dash-card)), var(--dash-card)); }.admin-account-provisioning > div { min-width: 0; }.admin-account-provisioning h3 { margin-top: 7px; font-size: 14px; }.admin-account-provisioning p { max-width: 650px; margin-top: 6px; color: var(--dash-muted); font-size: 10px; line-height: 1.7; }
 @media(max-width:700px) { .management-feature-grid { grid-template-columns: 1fr; }.management-account-actions > button { flex: 1 1 170px; } }
+.admin-account-provisioning { flex-wrap: wrap; }.admin-account-provisioning .dash-button { flex-shrink: 0; }
 .dash-management { margin: 8px 14px 0; padding-bottom: 8px; border-bottom: 1px solid var(--dash-border); }.dash-management .dash-nav-item { min-height: 32px; font-size: 10px; }.dashboard-collapsed .dash-management { margin-inline: 10px; }
 
 /* Roster and fast account controls */
@@ -22,4 +24,3 @@ button.admin-risk-row > svg { color: var(--dash-muted); transition: transform .1
 button.admin-risk-row:hover > svg { transform: translateX(3px); color: var(--admin-accent); }
 .admin-project-card-action { grid-column: 1 / -1; display: flex; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--dash-border); }
 .admin-project-card-action .dash-button { font-size: 9px !important; padding: 6px 11px !important; }
-
