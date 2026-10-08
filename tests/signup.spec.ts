@@ -24,6 +24,7 @@ async function mockAuth(page: Page, options: { failUpdate?: boolean } = {}) {
     }
     await route.fulfill({ json: user(required) });
   });
+  await page.route('**/api/management', route => route.fulfill({ json: { role: 'student', enabled: true, can_mentor: false, settings: { features: { github: true, figma: true, miro: true, research: true, resource: true, document: true, blackbook: true } } } }));
   await page.route('**/rest/v1/**', route => { dashboardRequests++; return route.fulfill({ json: [] }); });
   await page.route('**/api/sessions', route => route.fulfill({ json: { sessions: [] } }));
   await page.route('**/api/integrations', route => route.fulfill({ json: { connections: [], oauth: { github: false, figma: false, miro: false } } }));

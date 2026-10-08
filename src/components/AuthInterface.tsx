@@ -8,6 +8,11 @@ import { trapDialogTab } from '../lib/dialog-focus';
 import { roleLabels } from '../lib/workspace-roles';
 import { readIdeaDraft, saveIdeaDraft } from '../lib/idea-draft';
 
+function authErrorMessage(cause: unknown) {
+  if (cause instanceof TypeError && /fetch/i.test(cause.message)) return 'Unable to reach the authentication service. Check your connection and try again.';
+  return cause instanceof Error ? cause.message : 'Unable to authenticate. Please try again.';
+}
+
 type AccessRole = 'admin' | 'teacher' | 'staff';
 interface AuthInterfaceProps { isOpen: boolean; onClose: () => void; initialMode?: 'signin' | 'signup'; accessRole?: AccessRole }
 
@@ -50,7 +55,7 @@ export default function AuthInterface({ isOpen, onClose, initialMode = 'signin',
         if (!response.ok || !result?.message) throw new Error(result?.error || 'Account email delivery is unavailable. Please try again later.');
         setPassword(''); setIsSuccess(true);
       }
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to authenticate. Please try again.'); }
+    } catch (cause) { setError(authErrorMessage(cause)); }
     finally { setIsLoading(false); }
   };
   const resetPassword = async () => {
@@ -58,7 +63,7 @@ export default function AuthInterface({ isOpen, onClose, initialMode = 'signin',
     if (!email.trim()) { setError('Enter your email address first to receive a password reset link.'); return; }
     setIsLoading(true); setError(''); setNotice('');
     try { await requestPasswordReset(email); setNotice('If an account exists for this email, a password reset link has been sent.'); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to send the reset email.'); }
+    catch (cause) { setError(authErrorMessage(cause)); }
     finally { setIsLoading(false); }
   };
 

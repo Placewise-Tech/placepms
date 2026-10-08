@@ -10,7 +10,13 @@ export async function workspaceRequest<T>(endpoint: 'integrations' | 'sessions' 
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) throw new WorkspaceApiError('Please sign in again.', 401);
   const timeout = AbortSignal.timeout(55_000);
-  const response = await fetch(`/api/${endpoint}`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` }, body: JSON.stringify(body), signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+  let response: Response;
+  try {
+    response = await fetch(`/api/${endpoint}`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` }, body: JSON.stringify(body), signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+  } catch (cause) {
+    if (cause instanceof TypeError && /fetch/i.test(cause.message)) throw new WorkspaceApiError('Unable to reach the workspace service. Check your connection and try again.', 0);
+    throw cause;
+  }
   const result = await response.json().catch(() => null);
   if (!response.ok) throw new WorkspaceApiError(result?.error || 'The workspace service is unavailable. Please retry.', response.status);
   if (!result) throw new Error('The workspace service returned an invalid response.');

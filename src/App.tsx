@@ -17,6 +17,9 @@ type AuthMode = 'signin' | 'signup';
 function WorkspaceLoading() {
   return <div className="workspace-gate" role="status"><img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" width="140" /><p>Opening your workspace…</p></div>;
 }
+function WorkspaceAccessError({ message }: { message: string }) {
+  return <div className="workspace-gate"><img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" width="140" /><div className="workspace-gate-card"><span className="dash-eyebrow">WORKSPACE ACCESS</span><h1>We couldn’t open this workspace</h1><p>{message}</p>{/workspace management migration/i.test(message) && <p>Apply <code>supabase/migrations/202610050001_workspace_management.sql</code> in the production Supabase SQL editor, then apply the administrator monitoring migrations if needed.</p>}<button className="dash-button dash-button-primary" onClick={() => window.location.reload()}>Retry connection</button></div></div>;
+}
 
 export default function App() {
   const { session, loading: authLoading, error: sessionError, passwordRecovery, recoveryError, finishPasswordRecovery } = useAuth();
@@ -29,6 +32,7 @@ export default function App() {
   const mustChangePassword = session?.user.app_metadata.must_change_password === true;
   const [authoritativeAccess, setAuthoritativeAccess] = useState<{ token: string; role: WorkspaceRole } | null>(null);
   const accessLoading = Boolean(session && authoritativeAccess?.token !== session.access_token);
+  const [accessError, setAccessError] = useState<{ token: string; message: string } | null>(null);
   const effectiveRole = session && authoritativeAccess?.token === session.access_token ? authoritativeAccess.role : session ? workspaceRole(session.user) : 'student';
   const workspaceUser = useMemo(() => session ? { ...session.user, app_metadata: { ...session.user.app_metadata, workspace_role: effectiveRole } } : null, [session, effectiveRole]);
   const root = session ? workspaceRootForRole(effectiveRole) : '/dashboard';
@@ -45,7 +49,7 @@ export default function App() {
     let active = true;
     void workspaceRequest<{ role: WorkspaceRole }>('management', { action: 'access' })
       .then(result => { if (active) setAuthoritativeAccess({ token: accessToken, role: ['student', 'admin', 'teacher', 'staff'].includes(result.role) ? result.role : accessFallbackRole }); })
-      .catch(() => { if (active) setAuthoritativeAccess({ token: accessToken, role: accessFallbackRole }); });
+      .catch(cause => { if (active) setAccessError({ token: accessToken, message: cause instanceof Error ? cause.message : 'Unable to verify workspace access. Please retry.' }); });
     return () => { active = false; };
   }, [accessUserId, accessToken, accessFallbackRole, mustChangePassword, passwordRecovery]);
 
@@ -80,6 +84,8 @@ export default function App() {
   if (authLoading) return <WorkspaceLoading />;
   if (recoveryError || (location.pathname === '/reset-password' && !passwordRecovery && !mustChangePassword)) return <RecoveryHelp message={recoveryError || 'Open the password-reset link from your email. If your reset session has ended, request a new link below.'} signedIn={Boolean(session)} onBack={() => { finishPasswordRecovery(); navigate(session ? root : '/login', { replace: true }); }} />;
   if ((passwordRecovery || mustChangePassword) && session) return <PasswordRecovery requiredSetup={mustChangePassword} email={session.user.email} onComplete={() => { finishPasswordRecovery(); navigate(root, { replace: true }); }} onSignOut={() => navigate('/login', { replace: true })} />;
+  const currentAccessError = accessToken && accessError?.token === accessToken ? accessError.message : '';
+  if (session && currentAccessError && !mustChangePassword && !passwordRecovery) return <WorkspaceAccessError message={currentAccessError} />;
   if (session && accessLoading) return <WorkspaceLoading />;
   if (session && workspaceUser) return <WorkspaceRootContext.Provider value={root}><Suspense fallback={<WorkspaceLoading />}>{effectiveRole === 'admin' ? <AdminDashboard key={session.user.id} user={workspaceUser} /> : <Dashboard key={session.user.id} user={workspaceUser} />}</Suspense></WorkspaceRootContext.Provider>;
 

@@ -44,3 +44,19 @@ test('sign-in and signup fit mobile widths and respect reduced motion', async ({
     await page.screenshot({ path: `/tmp/omnirush/placepms-${route === '/login' ? 'signin' : 'signup'}-mobile.png`, animations: 'disabled' });
   }
 });
+
+test('admin setup failures explain that the workspace migration is required', async ({ page }) => {
+  const userId = '11111111-1111-4111-8111-111111111111';
+  const email = 'admin-migration@example.test';
+  const user = { id: userId, aud: 'authenticated', role: 'authenticated', email, app_metadata: { must_change_password: false }, user_metadata: { full_name: 'Admin Migration Check' }, created_at: '2026-10-08T00:00:00Z' };
+  const token = `${Buffer.from('{"alg":"HS256"}').toString('base64url')}.${Buffer.from(JSON.stringify({ sub: userId, session_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.fixture`;
+  await page.route('**/auth/v1/token**', route => route.fulfill({ json: { access_token: token, refresh_token: 'fixture-refresh', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, token_type: 'bearer', user } }));
+  await page.route('**/auth/v1/user', route => route.fulfill({ json: user }));
+  await page.route('**/api/management', route => route.fulfill({ status: 503, json: { error: 'Apply the workspace management migration in Supabase to enable administration.' } }));
+  await page.goto('/admin/login');
+  await page.getByLabel('Institutional Email').fill(email);
+  await page.getByLabel(/^Password/).fill('fixture-password');
+  await page.getByRole('button', { name: 'Sign In to Workspace', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'We couldn’t open this workspace', exact: true })).toBeVisible();
+  await expect(page.getByText('202610050001_workspace_management.sql', { exact: false })).toBeVisible();
+});

@@ -134,6 +134,12 @@ There is no invented project data or fallback provider analysis in the applicati
 
 ### Administrator monitoring
 
+Apply `supabase/migrations/202610050001_workspace_management.sql` before using
+administrator login, managed roles, public registration controls, or the admin
+workspace. Apply `supabase/migrations/202610030001_temporary_password_signup.sql`
+first when using the emailed temporary-login flow. Then apply the monitoring
+migrations below in order:
+
 Apply `supabase/migrations/202610060001_admin_monitoring.sql` after the workspace
 management migration to enable the administrator control center. Apply
 `supabase/migrations/202610060002_designated_admin_bootstrap.sql` afterward to enable
