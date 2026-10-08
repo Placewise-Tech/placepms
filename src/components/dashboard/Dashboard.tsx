@@ -20,6 +20,7 @@ const baseNavigation = [
   { slug: '', label: 'Overview', icon: LayoutDashboard, section: 'WORKSPACE' },
   { slug: 'projects', label: 'Projects', icon: FolderKanban, section: 'WORKSPACE' },
   { slug: 'tasks', label: 'My Tasks', icon: CheckSquare, section: 'WORKSPACE' },
+  { slug: 'scope', label: 'Project Scope', icon: FileText, section: 'WORKSPACE' },
   { slug: 'mentorship', label: 'Mentorship', icon: Users, section: 'WORKSPACE' },
   { slug: 'calendar', label: 'Calendar', icon: CalendarDays, section: 'WORKSPACE' },
   { slug: 'documents', label: 'Documents', icon: FileText, section: 'LIBRARY' },

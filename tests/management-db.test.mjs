@@ -30,7 +30,7 @@ before(async()=>{
   }
   await db.query("insert into public.pms_squads values('assigned','student@example.test',$1),('elsewhere','other@example.test',$2)",[users.teacher,users.staff]);
   await db.exec("insert into public.milestones values('delivery','assigned','SUBMITTED',null,null),('other-delivery','elsewhere','SUBMITTED',null,null)");
-  for(const migration of ['202610030001_temporary_password_signup.sql','202610030002_workspace_integrations.sql','202610050001_workspace_management.sql','202610050001_workspace_management.sql','202610060001_admin_monitoring.sql','202610060002_designated_admin_bootstrap.sql'])await db.exec(readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
+  for(const migration of ['202610030001_temporary_password_signup.sql','202610030002_workspace_integrations.sql','202610050001_workspace_management.sql','202610050001_workspace_management.sql','202610060001_admin_monitoring.sql','202610060002_designated_admin_bootstrap.sql','202610090001_workspace_calendar_events.sql'])await db.exec(readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
   await db.query('select public.workspace_bootstrap_admin($1)',[users.admin]);
   assert.equal((await db.query('select public.workspace_session_active($1,$2) as active',[users.admin,sessions.admin])).rows[0].active,true);
   await db.query("select public.workspace_register_account($1,$2,'teacher',true,'Teaching')",[users.admin,users.teacher]);
@@ -104,6 +104,16 @@ test('feature controls protect direct library requests while preserving administ
   });
   assert.equal((await db.query('select public.workspace_signup_open() as open')).rows[0].open,false);
   await as('student',async()=>{assert.equal((await db.query('select * from public.workspace_library')).rows.length,0);await assert.rejects(db.exec("insert into public.workspace_library(kind,title) values('research','Bypass')"),/row-level security/);});
+});
+test('calendar events stay private to their owner and update their timestamp',async()=>{
+  await as('student',async()=>{
+    await db.query("insert into public.workspace_calendar_events(title,starts_at) values('Mentor review','2026-10-15T10:00:00Z')");
+    assert.equal((await db.query('select count(*)::int as count from public.workspace_calendar_events')).rows[0].count,1);
+    await db.query("update public.workspace_calendar_events set title='Updated mentor review'");
+    assert.equal((await db.query('select title from public.workspace_calendar_events')).rows[0].title,'Updated mentor review');
+  });
+  await as('teacher',async()=>{assert.equal((await db.query('select count(*)::int as count from public.workspace_calendar_events')).rows[0].count,0);});
+  await as('student',async()=>{await db.exec("delete from public.workspace_calendar_events where title='Updated mentor review'");});
 });
 test('saved GitHub pages deduplicate AI flags and are visible only to their owner, admin, and assigned educators',async()=>{
   const commit=(sha,flagged)=>({sha:sha.repeat(40),committedAt:'2026-01-01T00:00:00Z',aiAssistance:{flagged},message:flagged?'Change\n\nAI-Assisted: true':'Change'});

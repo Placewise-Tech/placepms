@@ -11,14 +11,28 @@ export function useDashboard(user: User) {
   const [error, setError] = useState('');
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const request = useRef(0);
+  const controller = useRef<AbortController | null>(null);
   const mounted = useRef(false);
 
   const refresh = useCallback(async () => {
     if (!supabase) { setError(configurationError); setLoading(false); return; }
+    controller.current?.abort();
+    const abortController = new AbortController();
+    controller.current = abortController;
     const current = ++request.current;
     setRefreshing(true);
     try {
-      const next = await loadDashboard(supabase, user);
+      const next = await loadDashboard(supabase, user, {
+        signal: abortController.signal,
+        onCoreLoaded: core => {
+          if (!mounted.current || current !== request.current) return;
+          setData(core);
+          setUpdatedAt(new Date());
+          setError('');
+          setLoading(false);
+          setRefreshing(false);
+        },
+      });
       if (!mounted.current || current !== request.current) return;
       setData(next);
       setUpdatedAt(new Date());
@@ -28,6 +42,7 @@ export function useDashboard(user: User) {
       setError(cause instanceof Error ? cause.message : 'Unable to load your workspace. Please try again.');
     } finally {
       if (mounted.current && current === request.current) { setLoading(false); setRefreshing(false); }
+      if (controller.current === abortController) controller.current = null;
     }
   }, [user]);
 
@@ -41,6 +56,8 @@ export function useDashboard(user: User) {
     }, 60_000);
     return () => {
       mounted.current = false;
+      controller.current?.abort();
+      controller.current = null;
       window.clearTimeout(initial);
       window.removeEventListener('focus', handleFocus);
       window.clearInterval(interval);

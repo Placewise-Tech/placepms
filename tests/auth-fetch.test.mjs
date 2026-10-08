@@ -35,6 +35,28 @@ test('normal credential errors and unrelated URLs do not get retried through the
   assert.ok(requests.every(url => !url.startsWith('/api/auth')));
 });
 
+test('REST requests fall back quickly through the same-origin proxy and preserve query/body headers', async () => {
+  const requests = [];
+  const transport = createAuthFetch(project, async (url, init) => {
+    requests.push({ url: String(url), init });
+    if (requests.length === 1) throw new TypeError('Failed to fetch');
+    return Response.json([{ id: 'project' }]);
+  });
+  const read = await transport(`${project}/rest/v1/pms_squads?select=id`);
+  assert.deepEqual(await read.json(), [{ id: 'project' }]);
+  assert.equal(requests.length, 2);
+  const readProxy = new URL(requests[1].url, 'https://placepms.example.test');
+  assert.equal(readProxy.pathname, '/api/supabase');
+  assert.equal(readProxy.searchParams.get('path'), '/rest/v1/pms_squads?select=id');
+  const body = JSON.stringify({ title: 'Updated project' });
+  const response = await transport(`${project}/rest/v1/pms_squads?id=eq.project`, { method: 'PATCH', headers: { apikey: 'public-key', Authorization: 'Bearer user-session', Prefer: 'return=representation' }, body });
+  assert.deepEqual(await response.json(), [{ id: 'project' }]);
+  assert.equal(requests.length, 3);
+  assert.equal(requests[2].url, `${project}/rest/v1/pms_squads?id=eq.project`);
+  assert.equal(requests[2].init.body, body);
+  assert.equal(requests[2].init.headers.Authorization, 'Bearer user-session');
+});
+
 test('manual cancellation is preserved and a total network outage returns a structured error', async () => {
   const controller = new AbortController(); controller.abort();
   let attempts = 0;

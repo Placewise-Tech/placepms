@@ -55,6 +55,7 @@
 .workspace-calendar button.selected { background: var(--dash-brand-soft); box-shadow: inset 0 0 0 1px var(--dash-brand); }
 .workspace-calendar small { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; background: var(--dash-bg); padding: 2px; }
 .workspace-calendar small.complete { color: var(--dash-brand); }.workspace-calendar small.overdue { color: #c34b42; }
+.workspace-calendar small.calendar-event { color: #6d58bd; background: #f1edff; }.dashboard-dark .workspace-calendar small.calendar-event { color: #c6b8ff; background: #29223e; }
 .workspace-checkbox { flex-direction: row !important; align-items: center; }.workspace-checkbox input { width: auto; }
 .workspace-report { border: 1px solid var(--dash-border); border-radius: 10px; margin-top: 20px; padding: 24px; }
 .workspace-report pre { white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.9 Georgia,serif; }
@@ -98,6 +99,9 @@
 .workspace-calendar-controls select { flex: 1 1 150px; }
 .workspace-calendar-legend > span { display: flex; gap: 5px; align-items: center; font-size: 10px; }
 .workspace-calendar-legend i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.calendar-event-legend { color: #6d58bd; }.calendar-event-legend i { background: currentColor; }
+.calendar-event-form { margin: 18px 0; padding: 16px; border: 1px solid var(--dash-border); border-radius: 10px; background: var(--dash-bg); }
+.calendar-event-agenda { padding: 0 16px; }.calendar-event-row { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--dash-border); }.calendar-event-row > div { flex: 1; min-width: 0; }.calendar-event-row strong, .calendar-event-row small { display: block; overflow-wrap: anywhere; }.calendar-event-row small { margin-top: 4px; color: var(--dash-muted); font-size: 10px; }
 .workspace-portfolio-readiness { margin: 0 25px 24px; }
 .workspace-document-link { margin: 6px 12px 6px 0; }
 .workspace-milestone { scroll-margin-top: 20px; }

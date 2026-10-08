@@ -119,6 +119,12 @@ mentor management, milestone attachments/reviews, and a monthly calendar.
 Research, resources, and documents have private saved libraries; the Blackbook
 builder produces editable reports from actual project records.
 
+Apply `supabase/migrations/202610090001_workspace_calendar_events.sql` after the
+workspace migrations to enable private timetable events and personal reminders.
+Project milestones remain available without this optional migration. Research
+discovery uses the public OpenAlex catalog and saved results remain in the private
+Research library.
+
 GitHub repository intelligence adds activity graphs, a contribution heatmap,
 contributor breakdowns, exact author/committer UTC timelines, language composition,
 and per-commit code-change graphs. Filter by contributor, date, message or commit
@@ -165,7 +171,8 @@ refreshes while the page is open and activity history is retained in
 - **Mentorship:** submitted-delivery queue, review metrics, revision requests,
   scores, feedback, and links directly to milestone evidence.
 - **Calendar:** month/agenda views, Today, date deep links, project/completion
-  filtering, and export of the selected deadlines as ICS.
+  filtering, private timetable and personal events, event deletion, and export of
+  the selected deadlines and events as ICS.
 - **Libraries:** title/notes/URL search, project and exact-tag filters, sorting,
   refresh, individual Markdown exports, and current-page JSON export. Saved
   libraries remain private; project and milestone records are shared with the team.
