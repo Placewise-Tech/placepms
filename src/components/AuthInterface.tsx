@@ -9,7 +9,7 @@ import { roleLabels } from '../lib/workspace-roles';
 import { readIdeaDraft, saveIdeaDraft } from '../lib/idea-draft';
 
 function authErrorMessage(cause: unknown) {
-  if (cause instanceof TypeError && /fetch/i.test(cause.message)) return 'Unable to reach the authentication service. Check your connection and try again.';
+  if (cause instanceof Error && (/failed to fetch|fetch failed|load failed|networkerror/i.test(cause.message) || cause.name === 'AuthRetryableFetchError')) return 'Unable to reach the authentication service. Check your connection and try again.';
   return cause instanceof Error ? cause.message : 'Unable to authenticate. Please try again.';
 }
 

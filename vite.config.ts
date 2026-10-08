@@ -8,6 +8,7 @@ import { createSessionsHandler } from './server/sessions.ts'
 import { createWorkspaceHandler } from './server/workspace.ts'
 import { createManagementHandler } from './server/management.ts'
 import { createIdeaPlanHandler } from './server/idea-plan.ts'
+import { createAuthHandler } from './server/auth.ts'
 
 // Only public settings reach the browser. Also accepts the labelled keys in
 // the original .env file; private keys are used only by the server middleware.
@@ -62,6 +63,8 @@ export default defineConfig(({ mode }) => {
         }
         const handler = createSignupHandler(serverEnv)
         server.middlewares.use('/api/signup', (request, response) => { void handler(request, response) })
+        const auth = createAuthHandler(serverEnv)
+        server.middlewares.use('/api/auth', (request, response) => { void auth(request, response) })
         const integrations = createIntegrationsHandler(serverEnv)
         const sessions = createSessionsHandler(serverEnv)
         server.middlewares.use('/api/integrations', (request, response) => { void integrations(request, response) })

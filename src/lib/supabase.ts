@@ -1,5 +1,6 @@
 import { createClient, type Session } from '@supabase/supabase-js';
 import { readAuthCallback } from './auth-recovery';
+import { createAuthFetch } from './auth-fetch';
 
 const url = import.meta.env.VITE_SUPABASE_URL;
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -23,6 +24,7 @@ export function isPasswordRecoverySession(session: Session | null) {
 }
 
 export const supabase = url && key ? createClient(url, key, {
+  global: { fetch: createAuthFetch(url) },
   auth: {
     persistSession: true,
     autoRefreshToken: true,

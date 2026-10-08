@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && npm run check:api && vite build",
+    "check:api": "tsc --project tsconfig.api.json",
     "lint": "oxlint",
     "test": "tsx --test tests/*.test.mjs",
     "test:e2e": "playwright test",

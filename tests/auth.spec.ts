@@ -60,3 +60,30 @@ test('admin setup failures explain that the workspace migration is required', as
   await expect(page.getByRole('heading', { name: 'We couldn’t open this workspace', exact: true })).toBeVisible();
   await expect(page.getByText('202610050001_workspace_management.sql', { exact: false })).toBeVisible();
 });
+
+test('admin login uses the same-site fallback when the browser cannot reach Supabase Auth', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
+  const id = '11111111-1111-4111-8111-111111111111';
+  const user = { id, aud: 'authenticated', role: 'authenticated', email: 'fallback-admin@example.test', app_metadata: { workspace_role: 'admin' }, user_metadata: { full_name: 'Fallback Admin' }, created_at: '2026-10-08T00:00:00Z' };
+  const token = `${Buffer.from('{"alg":"HS256"}').toString('base64url')}.${Buffer.from(JSON.stringify({ sub: id, session_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', exp: Math.floor(Date.now() / 1000) + 3600 })).toString('base64url')}.fixture`;
+  let fallbacks = 0;
+  await page.route('**/auth/v1/token**', route => route.abort('namenotresolved'));
+  await page.route('**/auth/v1/user', route => route.abort('namenotresolved'));
+  await page.route('**/api/auth**', route => {
+    const url = new URL(route.request().url()); fallbacks++;
+    if (url.searchParams.get('path') === '/user') return route.fulfill({ json: user });
+    expect(url.searchParams.get('path')).toBe('/token');
+    expect(url.searchParams.get('grant_type')).toBe('password');
+    expect(route.request().postDataJSON()).toMatchObject({ email: user.email, password: 'fixture-password' });
+    return route.fulfill({ json: { access_token: token, refresh_token: 'fixture-refresh', expires_in: 3600, token_type: 'bearer', user } });
+  });
+  await page.route('**/api/management', route => route.fulfill({ status: 503, json: { error: 'Test access check reached the server successfully.' } }));
+  await page.goto('/admin/login');
+  await page.getByLabel('Institutional Email').fill(user.email);
+  await page.getByLabel(/^Password/).fill('fixture-password');
+  await page.getByRole('button', { name: 'Sign In to Workspace', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'We couldn’t open this workspace', exact: true })).toBeVisible();
+  await expect(page.getByText('Test access check reached the server successfully.', { exact: true })).toBeVisible();
+  expect(fallbacks).toBeGreaterThan(0);
+  expect(errors).toEqual([]);
+});
