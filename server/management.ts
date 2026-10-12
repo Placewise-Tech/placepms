@@ -5,7 +5,7 @@ import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, typ
 import { createServices, temporaryLoginEmail, temporaryPassword } from './signup.js';
 import { designatedAdministratorEmail, featureLabels, type WorkspaceRole } from '../src/lib/workspace-roles.js';
 import { text } from './providers.js';
-import { databaseMetrics, serverMetrics } from './system-monitor.js';
+import { databaseMetrics, serverMetrics, systemHealth } from './system-monitor.js';
 
 export function managementError(error: { code?: string; message?: string } | null) {
   if (!error) return;
@@ -255,7 +255,8 @@ export function createManagementHandler(env: NodeJS.ProcessEnv=process.env, serv
       }
       if (!administrator) throw new ApiError(403,'Administrator access is required.');
       if (input.action==='monitoring.system') {
-        jsonResponse(response,{ server:serverMetrics(env), database:await databaseMetrics(client,admin), updated_at:new Date().toISOString() }); return;
+        const server = serverMetrics(env); const database = await databaseMetrics(client,admin);
+        jsonResponse(response,{ ...systemHealth(server,database,env), updated_at:new Date().toISOString() }); return;
       }
       if (input.action==='monitoring.overview' || input.action==='monitoring.users' || input.action==='monitoring.user') {
         const snapshot = await monitoringData(admin,client);

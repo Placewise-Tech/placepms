@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { databaseMetrics, serverMetrics } from '../server/system-monitor.ts';
+import { databaseMetrics, serverMetrics, systemHealth } from '../server/system-monitor.ts';
 
 test('server metrics expose bounded runtime, memory, load, and event-loop readings', () => {
   const metrics = serverMetrics({ NODE_ENV: 'test', VERCEL_ENV: 'preview', VERCEL_REGION: 'fixture' });
@@ -33,6 +33,13 @@ test('database metrics return aggregate readings and degrade on high latency', a
         blocks_read: '4',
         blocks_hit: '100',
         stats_reset: '2026-10-12T00:00:00.000Z',
+        details: {
+          sampled_at: new Date().toISOString(),
+          connections: { cluster: 2, usable: 20, reserved: 3, running: 1, idle: 1, idle_in_transaction: 0, waiting_on_lock: 0, longest_query_seconds: 0.1 },
+          storage: { database_bytes: 1000, table_count: 4, live_rows: 20, dead_rows: 0, temp_bytes: 0, temp_files: 0 },
+          rows: { inserted: 5, updated: 4, deleted: 1 }, deadlocks: 0,
+          presence: { online_students: 12, online_users: 14, active_sessions: 15, registered_students: 50 }, tables: [],
+        },
       },
       error: null,
     }),
@@ -45,6 +52,25 @@ test('database metrics return aggregate readings and degrade on high latency', a
   assert.equal(metrics.max_connections, 10);
   assert.equal(metrics.transactions.committed, 42);
   assert.equal(metrics.blocks.hit, 100);
+  const health = systemHealth(serverMetrics({ NODE_ENV: 'test' }), metrics, { NODE_ENV: 'test' });
+  assert.equal(health.assessment.rating, 'strained');
+  assert.equal(health.capacity.estimated_total_students, null);
+});
+
+test('capacity reports a calibrated student estimate when a load-tested limit is configured', async () => {
+  const client = {
+    rpc: async () => ({ data: {
+      database: 'fixture', server_version: 'PostgreSQL 16', active_connections: 20, max_connections: 100, connection_utilization_percent: 20,
+      cache_hit_ratio_percent: 99.5, transactions_committed: 100, transactions_rolled_back: 0, blocks_read: 10, blocks_hit: 100, stats_reset: '2026-10-12T00:00:00.000Z',
+      details: { sampled_at: new Date().toISOString(), connections: { cluster: 20, usable: 90, reserved: 10, running: 2, idle: 18, idle_in_transaction: 0, waiting_on_lock: 0, longest_query_seconds: 0.2 }, storage: { database_bytes: 100, table_count: 1, live_rows: 1, dead_rows: 0, temp_bytes: 0, temp_files: 0 }, rows: { inserted: 1, updated: 1, deleted: 0 }, deadlocks: 0, presence: { online_students: 12, online_users: 14, active_sessions: 15, registered_students: 50 }, tables: [] },
+    }, error: null }),
+  };
+  const metrics = await databaseMetrics(client);
+  const health = systemHealth(serverMetrics({ NODE_ENV: 'test' }), metrics, { PLACEPMS_LOAD_TEST_STUDENT_LIMIT: '500' });
+  assert.equal(health.assessment.rating, 'super_healthy');
+  assert.equal(health.capacity.basis, 'load_test');
+  assert.equal(health.capacity.estimated_total_students, 500);
+  assert.equal(health.capacity.estimated_additional_students, 488);
 });
 
 test('database metric failures fail closed with a down reading instead of leaking an exception', async () => {

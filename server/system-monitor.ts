@@ -1,6 +1,7 @@
 import os from 'node:os';
 import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { assessDatabase, databaseRates, estimateStudentCapacity, type DatabaseMetrics, type ServerMetrics } from '../src/lib/system-health.js';
 
 const startedAt = Date.now();
 const eventLoop = monitorEventLoopDelay({ resolution: 20 });
@@ -10,53 +11,6 @@ let previousCpu = process.cpuUsage();
 let previousCpuAt = performance.now();
 
 type HealthStatus = 'healthy' | 'degraded' | 'down';
-
-export interface DatabaseMetrics {
-  status: HealthStatus;
-  latency_ms: number;
-  metrics_available: boolean;
-  database: string | null;
-  server_version: string | null;
-  active_connections: number | null;
-  max_connections: number | null;
-  connection_utilization_percent: number | null;
-  cache_hit_ratio_percent: number | null;
-  transactions: { committed: number | null; rolled_back: number | null };
-  blocks: { read: number | null; hit: number | null };
-  stats_reset: string | null;
-  message?: string;
-}
-
-export interface ServerMetrics {
-  status: HealthStatus;
-  runtime: string;
-  node_version: string;
-  environment: string;
-  region: string;
-  process_id: number;
-  started_at: string;
-  uptime_seconds: number;
-  memory: {
-    rss_bytes: number;
-    heap_used_bytes: number;
-    heap_total_bytes: number;
-    external_bytes: number;
-    array_buffers_bytes: number;
-    host_total_bytes: number;
-    host_free_bytes: number;
-    host_usage_percent: number;
-    heap_usage_percent: number;
-  };
-  load: {
-    one_minute: number;
-    five_minutes: number;
-    fifteen_minutes: number;
-    cpu_count: number;
-    normalized_percent: number;
-    process_cpu_percent: number;
-  };
-  event_loop: { p95_ms: number; p99_ms: number };
-}
 
 function rounded(value: number, decimals = 1) {
   const factor = 10 ** decimals;
@@ -96,6 +50,8 @@ function unavailableDatabase(latency: number, message: string): DatabaseMetrics 
     transactions: { committed: null, rolled_back: null },
     blocks: { read: null, hit: null },
     stats_reset: null,
+    rates: null,
+    details: null,
     message,
   };
 }
@@ -159,6 +115,13 @@ export function serverMetrics(env: NodeJS.ProcessEnv = process.env): ServerMetri
   };
 }
 
+let previousDatabase: DatabaseMetrics | undefined;
+
+function testedStudentLimit(env: NodeJS.ProcessEnv) {
+  const value = Number(env.PLACEPMS_LOAD_TEST_STUDENT_LIMIT);
+  return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+}
+
 export async function databaseMetrics(client: SupabaseClient, probeClient = client) {
   const started = performance.now();
   let result: Awaited<ReturnType<SupabaseClient['rpc']>>;
@@ -173,7 +136,7 @@ export async function databaseMetrics(client: SupabaseClient, probeClient = clie
     const activeConnections = databaseNumber(stats.active_connections);
     const maxConnections = databaseNumber(stats.max_connections);
     const connectionUtilization = databaseNumber(stats.connection_utilization_percent);
-    return {
+    const metrics: DatabaseMetrics = {
       status: databaseStatus(connectionUtilization, latency),
       latency_ms: latency,
       metrics_available: true,
@@ -192,7 +155,12 @@ export async function databaseMetrics(client: SupabaseClient, probeClient = clie
         hit: databaseNumber(stats.blocks_hit),
       },
       stats_reset: typeof stats.stats_reset === 'string' ? stats.stats_reset : null,
-    } satisfies DatabaseMetrics;
+      rates: null,
+      details: databaseObject(stats.details) as unknown as DatabaseMetrics['details'],
+    };
+    metrics.rates = databaseRates(previousDatabase, metrics);
+    previousDatabase = metrics;
+    return metrics;
   }
 
   // Keep the system page useful when the optional metrics migration has not
@@ -218,6 +186,12 @@ export async function databaseMetrics(client: SupabaseClient, probeClient = clie
     transactions: { committed: null, rolled_back: null },
     blocks: { read: null, hit: null },
     stats_reset: null,
+    rates: null,
+    details: null,
     message: available ? 'Apply the system monitoring migration to enable PostgreSQL load metrics.' : 'The database health probe failed.',
   } satisfies DatabaseMetrics;
+}
+
+export function systemHealth(server: ServerMetrics, database: DatabaseMetrics, env: NodeJS.ProcessEnv = process.env) {
+  return { server, database, assessment: assessDatabase(database), capacity: estimateStudentCapacity(database, server, testedStudentLimit(env)) };
 }

@@ -30,7 +30,7 @@ before(async()=>{
   }
   await db.query("insert into public.pms_squads values('assigned','student@example.test',$1),('elsewhere','other@example.test',$2)",[users.teacher,users.staff]);
   await db.exec("insert into public.milestones values('delivery','assigned','SUBMITTED',null,null),('other-delivery','elsewhere','SUBMITTED',null,null)");
-  for(const migration of ['202610030001_temporary_password_signup.sql','202610030002_workspace_integrations.sql','202610050001_workspace_management.sql','202610050001_workspace_management.sql','202610060001_admin_monitoring.sql','202610060002_designated_admin_bootstrap.sql','202610090001_workspace_calendar_events.sql','202610120001_system_monitoring.sql'])await db.exec(readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
+  for(const migration of ['202610030001_temporary_password_signup.sql','202610030002_workspace_integrations.sql','202610050001_workspace_management.sql','202610050001_workspace_management.sql','202610060001_admin_monitoring.sql','202610060002_designated_admin_bootstrap.sql','202610090001_workspace_calendar_events.sql','202610120001_system_monitoring.sql','202610120002_database_capacity_monitoring.sql'])await db.exec(readFileSync(new URL(`../supabase/migrations/${migration}`,import.meta.url),'utf8'));
   await db.query('select public.workspace_bootstrap_admin($1)',[users.admin]);
   assert.equal((await db.query('select public.workspace_session_active($1,$2) as active',[users.admin,sessions.admin])).rows[0].active,true);
   await db.query("select public.workspace_register_account($1,$2,'teacher',true,'Teaching')",[users.admin,users.teacher]);
@@ -89,6 +89,10 @@ test('system metrics are restricted to administrators and expose aggregate datab
     assert.ok(Number.isInteger(metrics.max_connections));
     assert.ok(Number.isInteger(metrics.active_connections));
     assert.ok(metrics.cache_hit_ratio_percent === null || metrics.cache_hit_ratio_percent >= 0);
+    assert.ok(metrics.details);
+    assert.ok(Number.isInteger(metrics.details.storage.table_count));
+    assert.ok(Number.isInteger(metrics.details.connections.usable));
+    assert.ok(Number.isInteger(metrics.details.presence.registered_students));
   });
 });
 test('teachers and staff are restricted to assigned projects and cannot choose their own mentor assignments',async()=>{
