@@ -43,6 +43,20 @@ export default defineConfig(({ mode }) => {
   catch { /* Publishable keys are not JWTs. */ }
   if (privateKey) throw new Error('Use a publishable or anon Supabase key for the frontend, never a server key.')
 
+  const removeStaleFontAssets = {
+    name: 'placepms-remove-stale-font-assets',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!id.endsWith('/src/index.css')) return null
+      const lines = code.split(/\r?\n/)
+      // The first two lines came from an old external build and point at
+      // media files that are not part of this Vite project. Keep the actual
+      // stylesheet and use its system-font fallbacks instead.
+      if (lines[0]?.includes('../media/') && lines[1]?.includes('../media/')) return { code: lines.slice(2).join('\n'), map: null }
+      return null
+    },
+  }
+
   // Catch accidentally public server credentials before Vite bundles them.
   for (const [name, value] of Object.entries(env)) {
     if (!name.startsWith('VITE_')) continue
@@ -55,7 +69,7 @@ export default defineConfig(({ mode }) => {
     }
   }
   return {
-    plugins: [react(), {
+    plugins: [removeStaleFontAssets, react(), {
       name: 'placepms-signup-api',
       configureServer(server) {
         const serverEnv = {

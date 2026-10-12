@@ -1,17 +1,31 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import publicConfig from '../supabase.public.json' with { type: 'json' };
 import { ApiError } from './integration-security.js';
 
 export type Request = IncomingMessage & { body?: unknown };
+const adminClientCache = new Map<string, SupabaseClient>();
+
+function serverFetch(input: Parameters<typeof fetch>[0], init?: RequestInit) {
+  const timeout = AbortSignal.timeout(20_000);
+  const signal = init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout;
+  return fetch(input, { ...init, signal });
+}
+
 export function serverClients(env: NodeJS.ProcessEnv, token?: string) {
   const secret = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
   if (!secret) throw new ApiError(503, 'The workspace server is not configured.');
   const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL || publicConfig.url;
   const publicKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || publicConfig.publishableKey;
-  const options = { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: (input: Parameters<typeof fetch>[0], init?: RequestInit) => fetch(input, { ...init, signal: AbortSignal.timeout(20_000) }) } };
+  const options = { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: serverFetch } };
+  const cacheKey = `${url}\u0000${secret}`;
+  let admin = adminClientCache.get(cacheKey);
+  if (!admin) {
+    admin = createClient(url, secret, options);
+    adminClientCache.set(cacheKey, admin);
+  }
   return {
-    admin: createClient(url, secret, options),
+    admin,
     client: createClient(url, publicKey, { ...options, global: { ...options.global, headers: token ? { Authorization: `Bearer ${token}` } : {} } }),
   };
 }
