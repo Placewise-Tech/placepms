@@ -159,7 +159,8 @@ refreshes while the page is open and activity history is retained in
 Apply `supabase/migrations/202610120001_system_monitoring.sql` after those monitoring
 migrations to enable the System health page's aggregate PostgreSQL connection,
 transaction, block, and cache statistics. The page remains available with a degraded
-status when this optional metrics migration has not been applied.
+status when this optional metrics migration has not been applied; it still shows
+student presence from existing workspace activity when available.
 Apply `supabase/migrations/202610120002_database_capacity_monitoring.sql` afterward
 to enable detailed workload, storage, lock, table, presence, and student-capacity
 readings. Set the server-only `PLACEPMS_LOAD_TEST_STUDENT_LIMIT` only after a

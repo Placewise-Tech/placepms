@@ -1,7 +1,7 @@
 import os from 'node:os';
 import { monitorEventLoopDelay, performance } from 'node:perf_hooks';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { assessDatabase, databaseRates, estimateStudentCapacity, type DatabaseMetrics, type ServerMetrics } from '../src/lib/system-health.js';
+import { assessDatabase, databaseRates, estimateStudentCapacity, type DatabaseDetails, type DatabaseMetrics, type ServerMetrics } from '../src/lib/system-health.js';
 
 const startedAt = Date.now();
 const eventLoop = monitorEventLoopDelay({ resolution: 20 });
@@ -54,6 +54,40 @@ function unavailableDatabase(latency: number, message: string): DatabaseMetrics 
     details: null,
     message,
   };
+}
+
+async function fallbackPresence(client: SupabaseClient, admin: SupabaseClient): Promise<DatabaseDetails | null> {
+  try {
+    const accounts = await admin.from('workspace_accounts').select('user_id,role,enabled');
+    if (accounts.error) return null;
+    const accountRows = (accounts.data || []) as { user_id: string; role: string; enabled: boolean }[];
+    const profiles = await admin.from('profiles').select('id,role');
+    const profileRows = profiles.error ? [] : (profiles.data || []) as { id: string; role: string | null }[];
+    const recent = await admin.from('workspace_activity').select('user_id,event_type,metadata,occurred_at')
+      .gte('occurred_at', new Date(Date.now() - 5 * 60_000).toISOString())
+      .in('event_type', ['heartbeat', 'page_view']).limit(10_000);
+    const activityRows = recent.error ? [] : (recent.data || []) as { user_id: string; event_type: string; metadata: Record<string, unknown> | null; occurred_at: string }[];
+    const onlineUsers = new Set(activityRows.filter(row => row.metadata?.visibility === 'visible' || row.event_type === 'page_view').map(row => row.user_id));
+    const accountsByUser = new Map(profileRows.map(row => [row.id, { user_id: row.id, role: row.role || 'student', enabled: true }]));
+    accountRows.forEach(row => accountsByUser.set(row.user_id, row));
+    const sessions = await client.rpc('workspace_admin_list_sessions');
+    const activeSessions = sessions.error ? null : Array.isArray(sessions.data) ? sessions.data.length : 0;
+    return {
+      sampled_at: new Date().toISOString(),
+      connections: { cluster: null, usable: null, reserved: null, running: null, idle: null, idle_in_transaction: null, waiting_on_lock: null, longest_query_seconds: null },
+      storage: { database_bytes: null, table_count: null, live_rows: null, dead_rows: null, temp_bytes: null, temp_files: null },
+      rows: { inserted: null, updated: null, deleted: null }, deadlocks: null,
+      presence: {
+        online_students: [...onlineUsers].filter(userId => accountsByUser.get(userId)?.role === 'student' && accountsByUser.get(userId)?.enabled !== false).length,
+        online_users: onlineUsers.size,
+        active_sessions: activeSessions,
+        registered_students: [...accountsByUser.values()].filter(row => row.role === 'student' && row.enabled !== false).length,
+      },
+      tables: [],
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function serverMetrics(env: NodeJS.ProcessEnv = process.env): ServerMetrics {
@@ -136,6 +170,9 @@ export async function databaseMetrics(client: SupabaseClient, probeClient = clie
     const activeConnections = databaseNumber(stats.active_connections);
     const maxConnections = databaseNumber(stats.max_connections);
     const connectionUtilization = databaseNumber(stats.connection_utilization_percent);
+    const details = Object.keys(databaseObject(stats.details)).length
+      ? databaseObject(stats.details) as unknown as DatabaseDetails
+      : await fallbackPresence(client, probeClient);
     const metrics: DatabaseMetrics = {
       status: databaseStatus(connectionUtilization, latency),
       latency_ms: latency,
@@ -156,7 +193,8 @@ export async function databaseMetrics(client: SupabaseClient, probeClient = clie
       },
       stats_reset: typeof stats.stats_reset === 'string' ? stats.stats_reset : null,
       rates: null,
-      details: databaseObject(stats.details) as unknown as DatabaseMetrics['details'],
+      details,
+      message: details ? undefined : 'Apply supabase/migrations/202610120002_database_capacity_monitoring.sql for detailed PostgreSQL workload and capacity metrics.',
     };
     metrics.rates = databaseRates(previousDatabase, metrics);
     previousDatabase = metrics;
@@ -172,6 +210,7 @@ export async function databaseMetrics(client: SupabaseClient, probeClient = clie
   } catch {
     available = false;
   }
+  const details = available ? await fallbackPresence(client, probeClient) : null;
   latency = rounded(performance.now() - started);
   return {
     status: available ? 'degraded' : 'down',
@@ -187,8 +226,10 @@ export async function databaseMetrics(client: SupabaseClient, probeClient = clie
     blocks: { read: null, hit: null },
     stats_reset: null,
     rates: null,
-    details: null,
-    message: available ? 'Apply the system monitoring migration to enable PostgreSQL load metrics.' : 'The database health probe failed.',
+    details,
+    message: available
+      ? 'Apply supabase/migrations/202610120001_system_monitoring.sql and supabase/migrations/202610120002_database_capacity_monitoring.sql for full PostgreSQL load metrics. Student presence is shown from workspace activity when available.'
+      : 'The database health probe failed.',
   } satisfies DatabaseMetrics;
 }
 

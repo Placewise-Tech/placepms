@@ -93,6 +93,38 @@ test('missing monitoring migration falls back to a probe and reports its total l
 
   assert.equal(metrics.status, 'degraded');
   assert.equal(metrics.metrics_available, false);
-  assert.match(metrics.message, /Apply the system monitoring migration/);
+  assert.match(metrics.message, /202610120001_system_monitoring\.sql/);
   assert.ok(metrics.latency_ms >= 0);
+});
+
+test('missing metrics RPC still exposes student presence through the admin fallback', async () => {
+  const query = value => ({
+    select() { return this; }, eq() { return this; }, gte() { return this; }, in() { return this; },
+    limit() { return Promise.resolve(value); },
+    then(resolve, reject) { return Promise.resolve(value).then(resolve, reject); },
+  });
+  const client = {
+    rpc: async name => name === 'workspace_system_metrics'
+      ? { data: null, error: { code: 'PGRST202' } }
+      : { data: [{ id: 'session-1' }], error: null },
+  };
+  const admin = {
+    from: table => table === 'workspace_settings'
+      ? query({ data: [{ id: true }], error: null })
+      : table === 'workspace_accounts'
+        ? query({ data: [{ user_id: 'student-1', role: 'student', enabled: true }, { user_id: 'admin-1', role: 'admin', enabled: true }], error: null })
+        : table === 'profiles'
+          ? query({ data: [], error: null })
+          : query({ data: [{ user_id: 'student-1', event_type: 'heartbeat', metadata: { visibility: 'visible' }, occurred_at: new Date().toISOString() }], error: null }),
+  };
+
+  const metrics = await databaseMetrics(client, admin);
+  assert.equal(metrics.metrics_available, false);
+  assert.equal(metrics.details.presence.online_students, 1);
+  assert.equal(metrics.details.presence.online_users, 1);
+  assert.equal(metrics.details.presence.registered_students, 1);
+  assert.equal(metrics.details.presence.active_sessions, 1);
+  const health = systemHealth(serverMetrics({ NODE_ENV: 'test' }), metrics, { NODE_ENV: 'test' });
+  assert.equal(health.capacity.current_students, 1);
+  assert.equal(health.capacity.basis, 'insufficient_data');
 });
