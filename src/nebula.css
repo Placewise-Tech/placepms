@@ -424,3 +424,231 @@ html .home-page #home-chart-fill stop { stop-color: var(--home-brand); }html .ho
     transition: none !important;
   }
 }
+
+/* Ember Orbit palette: a warmer editorial-futurist direction for daylight
+   mode. It intentionally overrides the earlier daylight defaults while the
+   .dashboard-dark branch remains on the original midnight system. */
+.dashboard.workspace-studio:not(.dashboard-dark) {
+  --dash-bg: #f7f2ec;
+  --dash-card: #fffdfa;
+  --dash-text: #242332;
+  --dash-muted: #716d7b;
+  --dash-border: #e6ddd3;
+  --dash-brand: #c65b3f;
+  --dash-brand-strong: #963d2e;
+  --dash-brand-soft: #fff0e9;
+  --dash-violet: #5d55a5;
+  --dash-shadow: 0 14px 34px rgba(72, 44, 45, .08);
+  color-scheme: light;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-shell {
+  background: radial-gradient(circle at 90% -5%, rgba(93, 85, 165, .12), transparent 28%), linear-gradient(180deg, #fcf9f5 0%, #f7f2ec 52%, #f1ebe4 100%);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-shell::before {
+  background:
+    radial-gradient(circle at 18% 25%, rgba(230, 125, 76, .16), transparent 24%),
+    radial-gradient(circle at 78% 8%, rgba(93, 85, 165, .14), transparent 26%),
+    radial-gradient(circle at 52% 74%, rgba(255, 255, 255, .82), transparent 34%);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-shell::after {
+  background-image: linear-gradient(rgba(198, 91, 63, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(198, 91, 63, .04) 1px, transparent 1px);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-sidebar {
+  background: linear-gradient(180deg, #fffdfa 0%, #faf5ef 100%);
+  border-right-color: #e2d8cd;
+  box-shadow: 8px 0 26px rgba(72, 44, 45, .04);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-brand { border-bottom-color: #eee5dc; }
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-institution {
+  background: #fbf6f0;
+  border-color: #e6dbd0;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-institution > span {
+  background: #fffdfa;
+  border-color: #e6dbd0;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-brand-mark {
+  color: var(--dash-brand);
+  background: #fff0e9;
+  border-color: #efc8bb;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-create-button {
+  color: var(--dash-brand-strong);
+  background: linear-gradient(115deg, #fff0e9, #f2effb);
+  border-color: #e7bdae;
+  box-shadow: 0 7px 18px rgba(198, 91, 63, .12);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-create-button > span {
+  background: var(--dash-brand);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-nav-item:hover {
+  background: #f8eee8;
+  border-color: #eee0d7;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-nav-item.active {
+  color: var(--dash-brand-strong) !important;
+  background: linear-gradient(90deg, #ffede6, #f8f1ed);
+  border-color: #e7c4b7;
+  box-shadow: inset 3px 0 0 var(--dash-brand), 0 5px 14px rgba(198, 91, 63, .09);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-sidebar-help {
+  background: #fff2e7;
+  border-color: #efd7c8;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-header {
+  background: rgba(255, 253, 250, .9);
+  border-bottom-color: #e5dbd1;
+  box-shadow: 0 5px 18px rgba(72, 44, 45, .045);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-command-trigger,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-sync {
+  background: #fbf7f2;
+  border-color: #e3d9d0;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-sync i,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-live-dot {
+  background: var(--dash-brand);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-button { border-color: #e0d5cb; }
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-button:hover {
+  border-color: #d18b75;
+  box-shadow: 0 7px 16px rgba(198, 91, 63, .12);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-button-primary {
+  color: #fffaf7 !important;
+  background: linear-gradient(135deg, #b94d37, #d8754e);
+  border-color: #b94d37;
+  box-shadow: 0 8px 18px rgba(198, 91, 63, .24);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-button-primary:hover {
+  background: linear-gradient(135deg, #a94231, #c96545);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-hero {
+  background: radial-gradient(ellipse at 92% 35%, rgba(93, 85, 165, .36), transparent 45%), linear-gradient(120deg, #3b2947 0%, #8d4054 55%, #c65b3f 100%);
+  border-color: #ce806d;
+  box-shadow: 0 18px 40px rgba(104, 55, 58, .2);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-stat,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-project-card,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-card {
+  background: linear-gradient(145deg, #fffdfa, #fcf7f2);
+  border-color: #e4d9cf;
+  box-shadow: 0 8px 22px rgba(72, 44, 45, .06), inset 0 1px 0 #fff;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.dash-stat, .dash-project-card, .studio-card):hover {
+  border-color: #d9a08e;
+  box-shadow: 0 14px 30px rgba(72, 44, 45, .12), inset 0 1px 0 #fff;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-panel {
+  border-color: #e3d8ce;
+  box-shadow: var(--dash-shadow);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-stat-icon.green,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-stat-icon.blue {
+  color: var(--dash-brand-strong);
+  background: #fff0e9;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-stat-icon.amber {
+  color: #a26016;
+  background: #fff2d9;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-stat-icon.purple {
+  color: #564a9c;
+  background: #efedfb;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-status.is-complete {
+  color: #27725c;
+  background: #e8f5ed;
+  border-color: #c2e2d0;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-status:not(.is-complete):not(.is-inactive) {
+  color: #996018;
+  background: #fff3dc;
+  border-color: #efd6a4;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-tabs {
+  background: #f4eee9;
+  border-color: #e3d8ce;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-tabs > button[aria-selected=true] {
+  color: var(--dash-brand-strong);
+  border-color: #e6bcac;
+  box-shadow: 0 4px 12px rgba(72, 44, 45, .09);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.dash-form input, .dash-form textarea, .dash-form select, .workspace-input, .dash-search) {
+  background: #fffdfa;
+  border-color: #dcd0c6;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.dash-form input, .dash-form textarea, .dash-form select, .workspace-input, .dash-search):focus-within {
+  border-color: #d48870;
+  box-shadow: 0 0 0 3px rgba(198, 91, 63, .12);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-section-intro,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-inspect-form,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-editor,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-token-form,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-callout,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-session-current,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-document-preview {
+  background: linear-gradient(145deg, #fffdfa, #faf4ee);
+  border-color: #e1d6cc;
+  box-shadow: 0 8px 22px rgba(72, 44, 45, .05);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-calendar button,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-provider-tabs button,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-chapters button {
+  background: #fffdfa;
+  border-color: #e1d6cc;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.workspace-calendar button:hover, .studio-provider-tabs button:hover, .studio-chapters button:hover) {
+  background: #fff1e9;
+  border-color: #d9a08e;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-dialog {
+  border-color: #d8c7bc;
+  box-shadow: 0 30px 90px rgba(60, 37, 40, .22), 0 0 45px rgba(93, 85, 165, .08);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-alert:not(.dash-alert-error) {
+  color: #28664f;
+  background: #eaf6ef;
+  border-color: #c2e3d1;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-overdue,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-danger,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-removed {
+  color: #b34447 !important;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-control-meta > span,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-text-link,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-section-note summary {
+  color: var(--dash-brand-strong) !important;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-hero-progress-track span,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-progress span,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-bar > span {
+  background-image: linear-gradient(100deg, #c65b3f, #e59a4d, #5d55a5, #c65b3f);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-shell::before {
+  background:
+    radial-gradient(circle at 18% 25%, rgba(230, 125, 76, .17), transparent 24%),
+    radial-gradient(circle at 78% 8%, rgba(93, 85, 165, .15), transparent 26%),
+    radial-gradient(circle at 52% 74%, rgba(255, 255, 255, .84), transparent 34%);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-shell::after {
+  background-image: linear-gradient(rgba(198, 91, 63, .04) 1px, transparent 1px), linear-gradient(90deg, rgba(198, 91, 63, .04) 1px, transparent 1px);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-hero {
+  background: radial-gradient(ellipse at 92% 35%, rgba(93, 85, 165, .36), transparent 45%), linear-gradient(120deg, #3b2947 0%, #8d4054 55%, #c65b3f 100%);
+}
+@keyframes daylight-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(198, 91, 63, .04); }
+  50% { box-shadow: 0 0 0 7px rgba(198, 91, 63, .1); }
+}
+@keyframes daylight-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(198, 91, 63, .14); }
+  50% { box-shadow: 0 0 0 5px rgba(198, 91, 63, .04); }
+}
+@keyframes daylight-focus {
+  0% { box-shadow: 0 0 0 0 rgba(198, 91, 63, .3); }
+  100% { box-shadow: 0 0 0 6px rgba(198, 91, 63, 0); }
+}
