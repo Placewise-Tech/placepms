@@ -241,3 +241,186 @@ html .home-page #home-chart-fill stop { stop-color: var(--home-brand); }html .ho
 .dashboard.workspace-studio:not(.dashboard-dark) .studio-section-note summary {
   color: var(--dash-brand-strong) !important;
 }
+
+/* Futuristic daylight motion layer. Each effect is deliberately subtle so
+   information remains the focus while the workspace still feels alive. */
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-shell::before {
+  content: '';
+  position: absolute;
+  inset: -18% -8% auto;
+  height: 520px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 25%, rgba(76, 184, 198, .13), transparent 24%),
+    radial-gradient(circle at 76% 9%, rgba(127, 102, 207, .12), transparent 26%),
+    radial-gradient(circle at 52% 74%, rgba(255, 255, 255, .7), transparent 34%);
+  filter: blur(2px);
+  animation: daylight-aurora 18s ease-in-out infinite alternate;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .28;
+  background-image: linear-gradient(rgba(8, 120, 146, .035) 1px, transparent 1px), linear-gradient(90deg, rgba(8, 120, 146, .035) 1px, transparent 1px);
+  background-size: 52px 52px;
+  mask-image: linear-gradient(180deg, #000, transparent 70%);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-header {
+  position: relative;
+  z-index: 3;
+  backdrop-filter: blur(22px) saturate(1.15);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-brand-mark {
+  animation: daylight-breathe 4.5s ease-in-out infinite;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-sync i,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-live-dot {
+  animation: daylight-pulse 2.4s ease-in-out infinite;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-nav-item,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-button,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-icon-button {
+  transition: transform .25s cubic-bezier(.2, .8, .2, 1), color .25s, background .25s, border-color .25s, box-shadow .25s;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-button:hover,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-icon-button:hover {
+  transform: translateY(-2px);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-hero {
+  background-size: 180% 180%;
+  animation: daylight-gradient 14s ease-in-out infinite alternate;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-hero::before {
+  animation: daylight-orbit 24s linear infinite;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-hero::after {
+  animation: daylight-orbit-reverse 32s linear infinite;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-hero-glow {
+  animation: daylight-glow 5s ease-in-out infinite;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-hero-progress-track span,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-progress span,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-bar > span {
+  background-image: linear-gradient(100deg, var(--dash-brand), #70c9d2, var(--dash-violet), var(--dash-brand));
+  background-size: 240% 100%;
+  animation: daylight-progress 6s linear infinite;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.dash-stat, .dash-project-card, .studio-card) {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(0);
+  transition: transform .3s cubic-bezier(.2, .8, .2, 1), border-color .3s, box-shadow .3s;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.dash-stat, .dash-project-card, .studio-card)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, .72) 48%, transparent 74%);
+  transform: translateX(-115%);
+  transition: opacity .25s;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.dash-stat, .dash-project-card, .studio-card):hover {
+  transform: translateY(-5px);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.dash-stat, .dash-project-card, .studio-card):hover::before {
+  opacity: .55;
+  animation: daylight-sheen .8s ease-out both;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-card-icon,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-project-icon {
+  box-shadow: 0 0 0 5px rgba(8, 120, 146, .035), 0 8px 18px rgba(8, 120, 146, .08);
+  transition: transform .3s, box-shadow .3s;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) :is(.studio-card, .dash-project-card):hover :is(.studio-card-icon, .dash-project-icon) {
+  transform: translateY(-3px) rotate(-4deg);
+  box-shadow: 0 0 0 7px rgba(8, 120, 146, .06), 0 11px 23px rgba(8, 120, 146, .15);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-tabs > button,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-provider-tabs button,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-chapters button,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-calendar button {
+  transition: transform .25s, color .25s, background .25s, border-color .25s, box-shadow .25s;
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-tabs > button:hover,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-provider-tabs button:hover,
+.dashboard.workspace-studio:not(.dashboard-dark) .studio-chapters button:hover,
+.dashboard.workspace-studio:not(.dashboard-dark) .workspace-calendar button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 7px 16px rgba(27, 62, 96, .08);
+}
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-command-trigger:focus-within,
+.dashboard.workspace-studio:not(.dashboard-dark) .dash-search:focus-within {
+  animation: daylight-focus .7s ease-out;
+}
+
+@keyframes daylight-aurora {
+  0% { transform: translate3d(-2%, -1%, 0) scale(1); }
+  100% { transform: translate3d(3%, 2%, 0) scale(1.08); }
+}
+@keyframes daylight-gradient {
+  0% { background-position: 0% 45%; }
+  100% { background-position: 100% 55%; }
+}
+@keyframes daylight-orbit {
+  to { transform: rotate(360deg); }
+}
+@keyframes daylight-orbit-reverse {
+  to { transform: rotate(-360deg); }
+}
+@keyframes daylight-glow {
+  0%, 100% { opacity: .62; transform: scale(.92); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+@keyframes daylight-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(8, 120, 146, .04); }
+  50% { box-shadow: 0 0 0 7px rgba(8, 120, 146, .08); }
+}
+@keyframes daylight-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(8, 120, 146, .12); }
+  50% { box-shadow: 0 0 0 5px rgba(8, 120, 146, .04); }
+}
+@keyframes daylight-progress {
+  to { background-position: 240% 0; }
+}
+@keyframes daylight-sheen {
+  to { transform: translateX(115%); }
+}
+@keyframes daylight-focus {
+  0% { box-shadow: 0 0 0 0 rgba(8, 120, 146, .28); }
+  100% { box-shadow: 0 0 0 6px rgba(8, 120, 146, 0); }
+}
+
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-shell::before,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-hero,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-hero::before,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-hero::after,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-hero-glow,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-brand-mark,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-sync i,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-stat,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-project-card,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .studio-card,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .dash-progress span,
+.dashboard.workspace-studio:not(.dashboard-dark).dashboard-motion-paused .workspace-bar > span {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dashboard.workspace-studio:not(.dashboard-dark) *,
+  .dashboard.workspace-studio:not(.dashboard-dark) *::before,
+  .dashboard.workspace-studio:not(.dashboard-dark) *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
