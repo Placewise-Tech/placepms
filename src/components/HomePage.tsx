@@ -9,13 +9,13 @@ import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useHomeAutoplay } from '../hooks/useHomeAutoplay';
 import HomeAudience from './HomeAudience';
 import HomeTeam from './HomeTeam';
-import HomeIdeaPlanner from './HomeIdeaPlanner';
 
 type AuthMode = 'signin' | 'signup';
 type Preview = 'overview' | 'tasks' | 'tools';
 interface HomePageProps { onOpenAuth: (mode: AuthMode) => void }
 const HomeMotionContext = createContext(false);
 const HomeAutomation = lazy(() => import('./HomeAutomation'));
+const HomeIdeaPlanner = lazy(() => import('./HomeIdeaPlanner'));
 const navigation = [{ id: 'idea-planner', label: 'Build your idea' }, { id: 'features', label: 'Features' }, { id: 'automation', label: 'Automation' }, { id: 'how-it-works', label: 'The journey' }, { id: 'team', label: 'Our team' }, { id: 'faq', label: 'FAQ' }];
 const previews: Preview[] = ['overview', 'tasks', 'tools'];
 
@@ -157,7 +157,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
 
       <div className="home-integrations-rail"><div className="home-container"><span>Your favorite tools.<br /><strong>One connected workflow.</strong></span><div>{[{ icon: Github, name: 'GitHub', caption: 'Code & evidence' }, { icon: Layers3, name: 'Figma', caption: 'Design & ideas' }, { icon: LayoutDashboard, name: 'Miro', caption: 'Plans & collaboration' }].map(({ icon: Icon, name, caption }) => <span className="home-integration-item" key={name}><Icon size={22} /><span><strong>{name}</strong><small>{caption}</small></span></span>)}</div><a href="#automation">See it come together <ArrowRight size={15} /></a></div></div>
 
-      <HomeIdeaPlanner onOpenAuth={openAuth} motionPaused={frozen} />
+      <Suspense fallback={<section id="idea-planner" className="home-section home-idea-planner" aria-busy="true"><div className="home-container"><div className="home-section-heading"><span className="home-eyebrow">Idea → validated workspace plan</span><h2>Turn a rough idea<br /><span>into a clear next step.</span></h2><p role="status">Loading the idea planner…</p></div></div></section>}><HomeIdeaPlanner onOpenAuth={openAuth} motionPaused={frozen} /></Suspense>
 
       <section id="features" className="home-section"><div className="home-container">
         <Reveal className="home-section-heading home-feature-heading"><div><span className="home-eyebrow">Everything in your orbit</span><h2>Less switching.<br /><span>More creating.</span></h2></div><p>A home for every part of your project.<br />Thoughtfully connected. Beautifully simple.</p></Reveal>

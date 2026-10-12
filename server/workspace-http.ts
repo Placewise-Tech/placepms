@@ -4,7 +4,7 @@ import publicConfig from '../supabase.public.json' with { type: 'json' };
 import { ApiError } from './integration-security.js';
 
 export type Request = IncomingMessage & { body?: unknown };
-const adminClientCache = new Map<string, SupabaseClient>();
+const adminClientCache = new Map<string, { secret: string; client: SupabaseClient }>();
 
 function serverFetch(input: Parameters<typeof fetch>[0], init?: RequestInit) {
   const timeout = AbortSignal.timeout(20_000);
@@ -18,14 +18,16 @@ export function serverClients(env: NodeJS.ProcessEnv, token?: string) {
   const url = env.SUPABASE_URL || env.VITE_SUPABASE_URL || publicConfig.url;
   const publicKey = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY || env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || publicConfig.publishableKey;
   const options = { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: serverFetch } };
-  const cacheKey = `${url}\u0000${secret}`;
-  let admin = adminClientCache.get(cacheKey);
-  if (!admin) {
-    admin = createClient(url, secret, options);
-    adminClientCache.set(cacheKey, admin);
+  let cached = adminClientCache.get(url);
+  if (!cached || cached.secret !== secret) {
+    cached = { secret, client: createClient(url, secret, options) };
+    adminClientCache.set(url, cached);
+    // A key rotation should not retain an unbounded collection of clients if
+    // a process serves several environments over its lifetime.
+    while (adminClientCache.size > 4) adminClientCache.delete(adminClientCache.keys().next().value!);
   }
   return {
-    admin,
+    admin: cached.client,
     client: createClient(url, publicKey, { ...options, global: { ...options.global, headers: token ? { Authorization: `Bearer ${token}` } : {} } }),
   };
 }
@@ -40,14 +42,15 @@ export async function authenticate(request: Request, env: NodeJS.ProcessEnv) {
   const header = request.headers.authorization;
   if (!header?.startsWith('Bearer ')) throw new ApiError(401, 'Sign in to use your workspace.');
   const token = header.slice(7);
+  if (token.length > 8192 || token.split('.').length !== 3) throw new ApiError(401, 'Your session is invalid. Please sign in again.');
+  let sessionId = '';
+  try { sessionId = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).session_id; } catch { /* The provider will reject a malformed token. */ }
+  if (!/^[a-f0-9-]{36}$/i.test(sessionId)) throw new ApiError(401, 'Please sign in again to start a valid session.');
   const clients = serverClients(env, token);
   const { data, error } = await clients.admin.auth.getUser(token);
   if (error && ![400, 401, 403].includes(error.status || 0)) throw new ApiError(503, 'Authentication is temporarily unavailable. Please retry shortly.');
   if (error || !data.user) throw new ApiError(401, 'Your session has ended. Please sign in again.');
   if (data.user.app_metadata.must_change_password === true) throw new ApiError(403, 'Set your own password before connecting your tools.');
-  let sessionId = '';
-  try { sessionId = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).session_id; } catch { /* Verified token still needs a session ID. */ }
-  if (!/^[a-f0-9-]{36}$/i.test(sessionId)) throw new ApiError(401, 'Please sign in again to start a valid session.');
   const active = await clients.admin.rpc('workspace_session_active', { p_user_id: data.user.id, p_session_id: sessionId });
   databaseError(active.error);
   if (active.data !== true) throw new ApiError(401, 'This session has been revoked. Please sign in again.');

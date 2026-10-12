@@ -1,13 +1,13 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Preloader, { AnimatePresence } from './components/Preloader';
-import HomePage from './components/HomePage';
 import PasswordRecovery from './components/PasswordRecovery';
 import RecoveryHelp from './components/RecoveryHelp';
 import { useAuth } from './hooks/useAuth';
 import { managedPath, workspaceRole, workspaceRootForRole, WorkspaceRootContext, type WorkspaceRole } from './lib/workspace-roles';
 import { workspaceRequest } from './lib/workspace-api';
 
+const HomePage = lazy(() => import('./components/HomePage'));
 const Dashboard = lazy(() => import('./components/dashboard/Dashboard'));
 const AdminDashboard = lazy(() => import('./components/dashboard/AdminDashboard'));
 const AuthInterface = lazy(() => import('./components/AuthInterface'));
@@ -100,6 +100,6 @@ export default function App() {
     <AnimatePresence mode="wait">
       {isLoading && <Preloader onComplete={() => setIsLoading(false)} />}
     </AnimatePresence>
-    <HomePage onOpenAuth={openAuth} />
+    <Suspense fallback={null}><HomePage onOpenAuth={openAuth} /></Suspense>
   </div>;
 }

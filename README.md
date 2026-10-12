@@ -168,6 +168,11 @@ representative production-like load test; the admin page uses that tested limit 
 capacity planning. Without it, the page shows a low-confidence connection-based
 estimate only after enough live student activity has been observed, and otherwise
 reports that more data is needed.
+Apply `supabase/migrations/202610130001_capacity_hardening.sql` last. It adds a
+bounded per-session presence table, indexes the high-volume workspace predicates,
+and retains only 90 days of activity history. It is safe to apply during a rolling
+deployment: older servers fall back to the activity table until the migration is
+available.
 
 ## Advanced dashboard
 
@@ -287,6 +292,24 @@ This checks the configured `APP_URL` redirect with Supabase, exercises its retur
 recovery session on localhost, and removes the isolated account afterward.
 Set `RECOVERY_TEST_ORIGIN=https://www.placepms.in` alongside the live-test flag to
 verify the same flow on the deployed site. The origin must match `APP_URL`.
+
+### Concurrent capacity test
+
+The load runner creates disposable confirmed student accounts, signs them in at
+the same time, and runs a representative authenticated workload: profile read,
+project read, session heartbeat, and workspace-access check. It reports success
+rate, throughput, and p50/p95/p99 latency, then removes the accounts and records.
+Run it only against a staging or production-like Supabase project:
+
+```sh
+LOAD_TEST_CREATE_USERS=1 npm run load:test -- --users 1000 --base-url https://www.placepms.in
+```
+
+The default is 1,000 users. Use `LOAD_TEST_USERS_JSON` for pre-created disposable
+accounts instead of creating users, or set `LOAD_TEST_KEEP_USERS=1` for manual
+post-test inspection. Do not set the tested student limit from a local or
+resource-constrained run; configure `PLACEPMS_LOAD_TEST_STUDENT_LIMIT` only from a
+representative deployment after reviewing the reported failures and latency.
 
 The opt-in browser test exercises real authentication and database writes with
 an isolated account, and deletes that account and its records afterward:

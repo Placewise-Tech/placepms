@@ -60,6 +60,7 @@ interface MonitoringProfile {
 interface MonitoringAccount { user_id: string; role: WorkspaceRole; enabled: boolean; can_mentor: boolean; department: string }
 interface MonitoringSession { user_id: string; id: string; created_at: string; last_active_at: string; user_agent: string | null; ip: string | null; current_session: boolean }
 interface MonitoringActivity { id: string; user_id: string; session_id: string | null; event_type: string; route: string; metadata: Record<string, unknown>; occurred_at: string }
+interface MonitoringPresence { user_id: string; session_id: string; route: string; visibility: string; last_seen_at: string }
 interface MonitoringProject { id: string; title: string; leader_email: string; mentor_id: string | null; mentor_name: string | null; github_repo: string | null; figma_url: string | null; miro_url: string | null; current_phase: string | null; status: string | null; created_at: string | null; updated_at: string | null }
 interface MonitoringMilestone { id: string; squad_id: string; name: string; phase: string; status: string | null; score: number | null; due_date: string | null; submitted_at: string | null; updated_at: string | null }
 interface MonitoringMember { squad_id: string; email: string; name: string; role: string | null }
@@ -93,7 +94,7 @@ function latestTimestamp(values: (string | null | undefined)[]) {
 }
 
 async function monitoringData(admin: SupabaseClient, client: SupabaseClient) {
-  const [profiles, accounts, projects, milestones, members, connections, reports, activityResult, summaryResult, designReports] = await Promise.all([
+  const [profiles, accounts, projects, milestones, members, connections, reports, activityResult, presenceResult, summaryResult, designReports] = await Promise.all([
     readAll<MonitoringProfile>(admin,'profiles','id,email,full_name,college,role,roll_number,division,batch,program,avatar_url'),
     readAll<MonitoringAccount>(admin,'workspace_accounts','user_id,role,enabled,can_mentor,department','user_id'),
     readAll<MonitoringProject>(admin,'pms_squads','id,title,leader_email,mentor_id,mentor_name,github_repo,figma_url,miro_url,current_phase,status,created_at,updated_at'),
@@ -102,12 +103,16 @@ async function monitoringData(admin: SupabaseClient, client: SupabaseClient) {
     readAll<MonitoringConnection>(admin,'integration_connections','user_id,provider,mode,account,expires_at,updated_at'),
     readAll<MonitoringReport>(admin,'workspace_repository_reports','id,owner_id,project_id,repository,branch,snapshot_at,updated_at,loaded_commits,ai_marked'),
     admin.from('workspace_activity').select('id,user_id,session_id,event_type,route,metadata,occurred_at').order('occurred_at',{ascending:false}).order('id').limit(10000),
+    admin.from('workspace_presence').select('user_id,session_id,route,visibility,last_seen_at').order('last_seen_at',{ascending:false}).limit(10000),
     client.rpc('workspace_monitoring_activity_summary'),
     readAll<{id:string;owner_id:string;provider:string;title:string;url:string;snapshot_at:string}>(admin,'workspace_provider_reports','id,owner_id,provider,title,url,snapshot_at'),
   ]);
   managementError(summaryResult.error);
   const activitySummary = (summaryResult.data || { latest: [], activity_24h: 0, trends: [] }) as { latest: MonitoringActivity[]; activity_24h:number; trends:{at:string;count:number}[] };
   const activities = rows<MonitoringActivity>(activityResult);
+  // Presence is optional during a rolling migration. The activity stream
+  // remains the compatibility source until the bounded table is available.
+  const presences = presenceResult.error ? [] : (presenceResult.data || []) as MonitoringPresence[];
   const sessions: MonitoringSession[] = [];
   for(let offset=0;;offset+=500) {
     const sessionResult=await client.rpc('workspace_admin_list_sessions').range(offset,offset+499);
@@ -120,6 +125,8 @@ async function monitoringData(admin: SupabaseClient, client: SupabaseClient) {
   sessions.forEach(session => { const list = sessionsByUser.get(session.user_id) || []; list.push(session); sessionsByUser.set(session.user_id, list); });
   const activityByUser = new Map<string, MonitoringActivity[]>();
   activities.forEach(activity => { const list = activityByUser.get(activity.user_id) || []; list.push(activity); activityByUser.set(activity.user_id, list); });
+  const presenceByUser = new Map<string, MonitoringPresence>();
+  presences.forEach(presence => { if (!presenceByUser.has(presence.user_id)) presenceByUser.set(presence.user_id, presence); });
   const memberProjectsByEmail = new Map<string, Set<string>>();
   members.forEach(member => { const key = member.email.toLowerCase(); const ids = memberProjectsByEmail.get(key) || new Set<string>(); ids.add(member.squad_id); memberProjectsByEmail.set(key, ids); });
   const today = new Date().toISOString().slice(0, 10);
@@ -127,8 +134,9 @@ async function monitoringData(admin: SupabaseClient, client: SupabaseClient) {
     const userSessions = sessionsByUser.get(profile.id) || [];
     const userActivity = activityByUser.get(profile.id) || [];
     const latestActivity = userActivity[0];
-    const latestPresence = userActivity.find(activity => activity.event_type === 'heartbeat' || activity.event_type === 'page_view');
-    const lastActive = latestTimestamp([latestActivity?.occurred_at, ...userSessions.map(session => session.last_active_at)]);
+    const latestPresence = presenceByUser.get(profile.id);
+    const activityPresence = userActivity.find(activity => activity.event_type === 'heartbeat' || activity.event_type === 'page_view');
+    const lastActive = latestTimestamp([latestPresence?.last_seen_at, activityPresence?.occurred_at, latestActivity?.occurred_at, ...userSessions.map(session => session.last_active_at)]);
     const projectIds = memberProjectsByEmail.get(profile.email.toLowerCase()) || new Set<string>();
     const userProjects = projects.filter(project => project.leader_email.toLowerCase() === profile.email.toLowerCase() || project.mentor_id === profile.id || project.mentor_id?.toLowerCase() === profile.email.toLowerCase() || projectIds.has(project.id));
     const projectIdSet = new Set(userProjects.map(project => project.id));
@@ -142,7 +150,7 @@ async function monitoringData(admin: SupabaseClient, client: SupabaseClient) {
       id: profile.id, email: profile.email, full_name: profile.full_name, college: profile.college,
       role: account?.role || 'student', enabled: account?.enabled !== false, can_mentor: account?.can_mentor || false,
       department: account?.department || '', status: account?.enabled === false || !userSessions.length ? 'offline' : monitoringStatus(lastActive), last_active_at: lastActive,
-      last_route: latestPresence?.route || '', last_event_at: latestActivity?.occurred_at || null,
+      last_route: latestPresence?.route || activityPresence?.route || '', last_event_at: latestPresence?.last_seen_at || activityPresence?.occurred_at || latestActivity?.occurred_at || null,
       active_sessions: userSessions.length, projects: userProjects.length, milestones: userMilestones.length,
       completed_milestones: completed, submitted_milestones: userMilestones.filter(milestone => milestone.status === 'SUBMITTED').length,
       overdue_milestones: activeMilestones.filter(milestone => milestone.due_date && milestone.due_date < today && !['COMPLETED','COMPLETE','DONE','APPROVED'].includes((milestone.status || '').toUpperCase())).length,
