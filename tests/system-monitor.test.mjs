@@ -91,7 +91,7 @@ test('missing monitoring migration falls back to a probe and reports its total l
     from: () => ({ select: () => ({ eq: async () => ({ error: null }) }) }),
   });
 
-  assert.equal(metrics.status, 'degraded');
+  assert.equal(metrics.status, 'healthy');
   assert.equal(metrics.metrics_available, false);
   assert.match(metrics.message, /202610120001_system_monitoring\.sql/);
   assert.ok(metrics.latency_ms >= 0);

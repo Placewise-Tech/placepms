@@ -213,7 +213,7 @@ export async function databaseMetrics(client: SupabaseClient, probeClient = clie
   const details = available ? await fallbackPresence(client, probeClient) : null;
   latency = rounded(performance.now() - started);
   return {
-    status: available ? 'degraded' : 'down',
+    status: available ? databaseStatus(null, latency) : 'down',
     latency_ms: latency,
     metrics_available: false,
     database: null,
