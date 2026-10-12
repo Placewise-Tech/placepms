@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, BarChart3, BookOpen, CheckSquare, ChevronRight, Database, FileText, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, Link2, LogOut, Menu, Monitor, Plus, RefreshCw, Search, Settings2, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, BarChart3, BookOpen, CheckSquare, ChevronRight, Database, FileText, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, Link2, LogOut, Menu, Monitor, Plus, RefreshCw, Search, Server, Settings2, ShieldCheck, Users, X } from 'lucide-react';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useSessionMonitor } from '../../hooks/useSessionMonitor';
 import { supabase } from '../../lib/supabase';
@@ -17,6 +17,7 @@ const navigation = [
   { slug: 'users', label: 'People & activity', icon: Users, group: 'MONITOR' },
   { slug: 'activity', label: 'Live activity stream', icon: Activity, group: 'MONITOR' },
   { slug: 'analytics', label: 'Delivery analytics', icon: BarChart3, group: 'MONITOR' },
+  { slug: 'system', label: 'System health', icon: Server, group: 'MONITOR' },
   { slug: 'projects', label: 'All projects', icon: FolderKanban, group: 'WORKSPACE DATA' },
   { slug: 'tasks', label: 'All milestones', icon: CheckSquare, group: 'WORKSPACE DATA' },
   { slug: 'students', label: 'Student roster', icon: GraduationCap, group: 'WORKSPACE DATA' },
@@ -45,7 +46,7 @@ export default function AdminDashboard({ user }: { user: User }) {
   useEffect(() => { document.title = `${title} | PlacePMS Admin`; }, [title]);
   const saved = async (message: string) => { setNotice(message); await refresh(); };
   const management = ['accounts', 'create-account', 'settings', 'connections', 'audit', 'reports'].includes(view);
-  const monitoring = ['overview', 'users', 'activity', 'analytics'].includes(view);
+  const monitoring = ['overview', 'users', 'activity', 'analytics', 'system'].includes(view);
   const closeNavigation = () => setMobileOpen(false);
   return <div className="dashboard dashboard-dark workspace-studio admin-workspace">
     {mobileOpen && <button className="dash-sidebar-backdrop" aria-label="Close administration navigation" onClick={closeNavigation} />}

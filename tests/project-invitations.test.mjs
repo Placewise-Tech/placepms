@@ -32,6 +32,14 @@ before(async () => {
     create function public.workspace_project_owner(p_project_id text) returns boolean language sql stable security definer set search_path = '' as $$
       select public.has_completed_password_setup() and exists(select 1 from public.pms_squads where id=p_project_id and lower(leader_email)=lower(auth.jwt()->>'email'))
     $$;
+    create function public.workspace_project_access(p_project_id text) returns boolean language sql stable security definer set search_path = '' as $$
+      select public.workspace_project_owner(p_project_id)
+    $$;
+    grant select on public.pms_squads, public.squad_members to authenticated;
+    alter table public.pms_squads enable row level security;
+    alter table public.squad_members enable row level security;
+    create policy fixture_project_read on public.pms_squads for select to authenticated using (public.workspace_project_access(id));
+    create policy fixture_member_read on public.squad_members for select to authenticated using (public.workspace_project_access(squad_id));
     grant usage on schema auth to authenticated;
   `);
   await db.exec(readFileSync(new URL('../supabase/migrations/202610080001_project_member_invitations.sql', import.meta.url), 'utf8'));
@@ -62,6 +70,8 @@ test('registered project invitations are owner-scoped and acceptance creates sha
     await db.exec('reset role');
     assert.deepEqual((await db.query('select name,email,user_id from public.squad_members')).rows, [{ name: 'Registered Teammate', email: 'invitee@example.test', user_id: invitee }]);
     await db.exec('set role authenticated');
+    assert.deepEqual((await db.query('select id from public.pms_squads')).rows, [{ id: 'project' }]);
+    assert.deepEqual((await db.query('select name from public.squad_members')).rows, [{ name: 'Registered Teammate' }]);
     assert.equal((await db.query("select public.workspace_project_access('project') as allowed")).rows[0].allowed, true);
     await assert.rejects(db.query('select public.workspace_accept_project_invitation($1)', [pending.invitations[0].id]), /no longer available/);
   });

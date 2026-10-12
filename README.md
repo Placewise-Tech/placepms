@@ -156,6 +156,10 @@ drill-downs, provider connection metadata, and saved integration-analysis payloa
 Provider credentials are never included in monitoring responses. The live monitor
 refreshes while the page is open and activity history is retained in
 `workspace_activity` for administrator review.
+Apply `supabase/migrations/202610120001_system_monitoring.sql` after those monitoring
+migrations to enable the System health page's aggregate PostgreSQL connection,
+transaction, block, and cache statistics. The page remains available with a degraded
+status when this optional metrics migration has not been applied.
 
 ## Advanced dashboard
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, BarChart3, CheckCircle2, ChevronRight, Clock3, Database, Download, Eye, GitBranch, Link2, ListFilter, Monitor, Network, RefreshCw, Search, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, BarChart3, CheckCircle2, ChevronRight, Clock3, Cpu, Database, Download, Eye, GitBranch, HardDrive, Link2, ListFilter, Monitor, Network, RefreshCw, Search, Server, ShieldCheck, Timer, Users, X, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useWorkspaceRoot, roleLabels, type WorkspaceRole } from '../../lib/workspace-roles';
 import { downloadText, errorMessage, workspaceRequest } from '../../lib/workspace-api';
@@ -13,6 +13,22 @@ interface AdminUser {
 }
 interface ActivityRecord { id: string; user_id: string; session_id: string | null; event_type: string; route: string; metadata: Record<string, unknown>; occurred_at: string; user_name?: string; user_email?: string; user?: { full_name: string | null; email: string } | null }
 interface AdminOverviewData { counts: Record<string, number>; users: AdminUser[]; activity: ActivityRecord[]; providerStats: { provider: string; accounts: number; last_connected: string | null }[]; trends: { at: string; count: number }[]; updated_at: string }
+type HealthStatus = 'healthy' | 'degraded' | 'down';
+interface SystemHealthData {
+  updated_at: string;
+  server: {
+    status: HealthStatus; runtime: string; node_version: string; environment: string; region: string; process_id: number;
+    started_at: string; uptime_seconds: number;
+    memory: { rss_bytes: number; heap_used_bytes: number; heap_total_bytes: number; external_bytes: number; array_buffers_bytes: number; host_total_bytes: number; host_free_bytes: number; host_usage_percent: number; heap_usage_percent: number };
+    load: { one_minute: number; five_minutes: number; fifteen_minutes: number; cpu_count: number; normalized_percent: number; process_cpu_percent: number };
+    event_loop: { p95_ms: number; p99_ms: number };
+  };
+  database: {
+    status: HealthStatus; latency_ms: number; metrics_available: boolean; database: string | null; server_version: string | null;
+    active_connections: number | null; max_connections: number | null; connection_utilization_percent: number | null; cache_hit_ratio_percent: number | null;
+    transactions: { committed: number | null; rolled_back: number | null }; blocks: { read: number | null; hit: number | null }; stats_reset: string | null; message?: string;
+  };
+}
 interface UserProject { id: string; title: string; leader_email: string; mentor_id: string | null; mentor_name: string | null; github_repo: string | null; figma_url: string | null; miro_url: string | null; current_phase: string | null; status: string | null; updated_at: string | null; milestones: { id: string; name: string; phase: string; status: string | null; score: number | null; due_date: string | null; submitted_at: string | null; updated_at: string | null }[]; members: { email: string; name: string; role: string | null }[] }
 interface UserDetail { profile: Record<string, string | null>; account: { role: WorkspaceRole; enabled: boolean; can_mentor: boolean; department: string }; summary: AdminUser; sessions: { id: string; created_at: string; last_active_at: string; user_agent: string | null; ip: string | null; current_session: boolean }[]; activity: ActivityRecord[]; projects: UserProject[]; connections: { provider: string; mode: string; account: string; expires_at: string | null; updated_at: string }[]; analyses: { id: string; repository: string; branch: string; snapshot_at: string; updated_at: string; loaded_commits: number; ai_marked: number; payload: Record<string, unknown> }[]; design_analyses: { id: string; provider: string; title: string; url: string; snapshot_at: string; payload: Record<string, unknown> }[] }
 
@@ -41,17 +57,17 @@ function Metric({ label, value, detail, icon: Icon, tone = '', to }: { label: st
   }
   return <article className={`admin-metric ${tone}`}>{content}</article>;
 }
-function useAdminRequest<T>(action: string, params: Record<string, unknown> = {}) {
+function useAdminRequest<T>(action: string, params: Record<string, unknown> = {}, refreshMs = 60_000) {
   const [data, setData] = useState<T | null>(null); const [loading, setLoading] = useState(true); const [refreshing, setRefreshing] = useState(false); const [error, setError] = useState('');
   const key = JSON.stringify(params);
   const load = useCallback(async () => { setRefreshing(true); setError(''); try { const result = await workspaceRequest<T>('management', { action, ...JSON.parse(key) }); setData(result); } catch (cause) { setError(errorMessage(cause)); } finally { setLoading(false); setRefreshing(false); } }, [action, key]);
   useEffect(() => {
     const initial = window.setTimeout(() => void load(), 0);
     const refreshWhenVisible = () => { if (document.visibilityState === 'visible') void load(); };
-    const interval = window.setInterval(refreshWhenVisible, 60_000);
+    const interval = window.setInterval(refreshWhenVisible, refreshMs);
     window.addEventListener('focus', refreshWhenVisible);
     return () => { window.clearTimeout(initial); window.clearInterval(interval); window.removeEventListener('focus', refreshWhenVisible); };
-  }, [load]);
+  }, [load, refreshMs]);
   return { data, loading, refreshing, error, reload: load };
 }
 
@@ -59,22 +75,45 @@ function AdminHeader({ title, description, onRefresh, refreshing }: { title: str
   return <div className="admin-page-header"><div><span className="admin-kicker"><ShieldCheck size={13} /> ADMINISTRATOR / CONTROL PLANE</span><h2>{title}</h2><p>{description}</p></div>{onRefresh && <button className="dash-button admin-refresh" onClick={onRefresh} disabled={refreshing}><RefreshCw size={14} className={refreshing ? 'dash-spinning' : ''} />{refreshing ? 'Syncing…' : 'Refresh data'}</button>}</div>;
 }
 
+function overallHealth(data: SystemHealthData | null): HealthStatus {
+  if (!data) return 'degraded';
+  if (data.server.status === 'down' || data.database.status === 'down') return 'down';
+  if (data.server.status === 'degraded' || data.database.status === 'degraded') return 'degraded';
+  return 'healthy';
+}
+
+function SystemHealthSummary({ data, loading, error, root }: { data: SystemHealthData | null; loading: boolean; error: string; root: string }) {
+  const status = overallHealth(data);
+  const serverLoad = data?.server.load.normalized_percent ?? 0;
+  const databaseLoad = data?.database.connection_utilization_percent;
+  const databaseValue = databaseLoad === null || databaseLoad === undefined
+    ? data ? `${data.database.latency_ms} ms` : '—'
+    : `${databaseLoad}%`;
+  const databaseDetail = !data
+    ? 'Waiting for the database reading'
+    : databaseLoad === null || databaseLoad === undefined
+      ? 'Database response latency'
+      : `${data.database.active_connections} active of ${data.database.max_connections} connections`;
+  return <section className={`system-summary system-summary-${status}`} aria-label="Live infrastructure health"><div className="system-summary-heading"><div><span className="admin-kicker"><Server size={13} /> LIVE INFRASTRUCTURE</span><h3>Server &amp; database load</h3><p>Updated automatically every 15 seconds while this admin workspace is open.</p></div><Link className="admin-inline-link" to={`${root}/system`}>Open details <ChevronRight size={14} /></Link></div><div className="system-summary-grid"><article className="system-summary-card"><div className="system-summary-card-top"><span><Cpu size={15} /> Server load</span>{data ? <HealthTag status={data.server.status} /> : <span className="system-summary-reading">{loading ? 'Reading…' : 'Unavailable'}</span>}</div><strong>{data ? `${serverLoad}%` : '—'}</strong><small>{data ? `${data.server.load.one_minute.toFixed(2)} one-minute load · ${data.server.load.cpu_count} CPUs` : 'Waiting for the server reading'}</small><span className="system-summary-progress"><i style={{ width: `${Math.min(100, Math.max(0, serverLoad))}%` }} /></span></article><article className="system-summary-card"><div className="system-summary-card-top"><span><Database size={15} /> Database load</span>{data ? <HealthTag status={data.database.status} /> : <span className="system-summary-reading">{loading ? 'Reading…' : 'Unavailable'}</span>}</div><strong>{databaseValue}</strong><small>{databaseDetail}</small><span className="system-summary-progress"><i style={{ width: `${Math.min(100, Math.max(0, databaseLoad || 0))}%` }} /></span></article></div>{error && <p className="system-summary-error" role="status">{error} <Link to={`${root}/system`}>View system health</Link></p>}{data && <span className="system-summary-updated">Last reading {dateTime(data.updated_at)}</span>}</section>;
+}
+
 function AdminOverview() {
-  const root = useWorkspaceRoot(); const { data, loading, refreshing, error, reload } = useAdminRequest<AdminOverviewData>('monitoring.overview'); const [selected, setSelected] = useState<string | null>(null);
+  const root = useWorkspaceRoot(); const { data, loading, refreshing, error, reload } = useAdminRequest<AdminOverviewData>('monitoring.overview'); const health = useAdminRequest<SystemHealthData>('monitoring.system', {}, 15_000); const [selected, setSelected] = useState<string | null>(null);
   if (loading && !data) return <div className="admin-loading" role="status"><Activity size={24} className="admin-pulse" /><strong>Connecting to the monitoring plane</strong><span>Collecting current workspace signals…</span></div>;
-  return <div className="admin-console"><AdminHeader title="Admin command center" description="One live view of people, delivery health, connected tools, and workspace activity." onRefresh={() => void reload()} refreshing={refreshing} />{error && <div className="dash-alert dash-alert-error" role="alert">{error}</div>}{data && <>
-    <section className="admin-live-banner"><div className="admin-live-orbit"><span /><Activity size={21} /></div><div><span className="admin-kicker">LIVE WORKSPACE MONITOR</span><h3>{data.counts.online} people active right now</h3><p>Heartbeat activity refreshes every minute while a workspace is open. Last data sync {dateTime(data.updated_at)}.</p></div><div className="admin-banner-facts"><span><strong>{data.counts.active_sessions}</strong> sessions</span><span><strong>{data.counts.activity_24h}</strong> events / 24h</span></div></section>
-    <div className="admin-metric-grid">
+  return <div className="admin-console"><AdminHeader title="Admin command center" description="One live view of people, delivery health, connected tools, and workspace activity." onRefresh={() => void Promise.all([reload(), health.reload()])} refreshing={refreshing || health.refreshing} />{error && <div className="dash-alert dash-alert-error" role="alert">{error}</div>}{data && <>
+     <section className="admin-live-banner"><div className="admin-live-orbit"><span /><Activity size={21} /></div><div><span className="admin-kicker">LIVE WORKSPACE MONITOR</span><h3>{data.counts.online} people active right now</h3><p>Heartbeat activity refreshes every minute while a workspace is open. Last data sync {dateTime(data.updated_at)}.</p></div><div className="admin-banner-facts"><span><strong>{data.counts.active_sessions}</strong> sessions</span><span><strong>{data.counts.activity_24h}</strong> events / 24h</span></div></section>
+     <div className="admin-metric-grid">
       <Metric to={`${root}/users`} label="Total accounts" value={data.counts.accounts} detail={`${data.counts.online} online · ${data.counts.idle} idle`} icon={Users} tone="admin-metric-purple" />
       <Metric to={`${root}/sessions`} label="Active sessions" value={data.counts.active_sessions} detail="Live authenticated devices" icon={Monitor} tone="admin-metric-green" />
       <Metric to={`${root}/projects`} label="Project workspaces" value={data.counts.projects} detail={`${data.counts.milestones} milestones tracked`} icon={Database} tone="admin-metric-blue" />
       <Metric to={`${root}/analytics`} label="Needs attention" value={data.counts.submitted} detail="Deliveries waiting for review" icon={Clock3} tone="admin-metric-amber" />
       <Metric to={`${root}/connections`} label="Connected tools" value={data.counts.connections} detail="GitHub, Figma and Miro accounts" icon={Link2} tone="admin-metric-cyan" />
-      <Metric to={`${root}/reports`} label="Saved analyses" value={data.counts.reports} detail={`${data.counts.ai_marked} AI-marked commits`} icon={GitBranch} tone="admin-metric-pink" />
-    </div>
-    <div className="admin-overview-grid"><section className="admin-panel admin-pulse-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">ACTIVITY PULSE</span><h3>Workspace traffic</h3><p>Heartbeat and route events captured over the last twelve hours.</p></div><Activity size={18} /></div><div className="admin-bars" aria-label="Workspace activity by hour">{data.trends.map(point => <div className="admin-bar-wrap" key={point.at} title={`${point.count} events at ${dateTime(point.at)}`}><span style={{ height: `${Math.max(8, Math.min(100, point.count ? point.count / Math.max(...data.trends.map(item => item.count), 1) * 100 : 8))}%` }} /><small>{new Date(point.at).toLocaleTimeString([], { hour: 'numeric' })}</small></div>)}</div><div className="admin-pulse-footer"><span><i className="admin-legend-dot admin-legend-green" />Live heartbeats</span><span>Updates every 60 seconds</span></div></section><section className="admin-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">INTEGRATION INTELLIGENCE</span><h3>Provider coverage</h3><p>Connected accounts and most recent sync signal.</p></div><Network size={18} /></div><div className="admin-provider-list">{data.providerStats.map(provider => <div className="admin-provider-row" key={provider.provider}><span className={`admin-provider-mark admin-provider-${provider.provider}`}>{provider.provider === 'github' ? <GitBranch size={15} /> : <Link2 size={15} />}</span><div><strong>{provider.provider}</strong><small>{provider.last_connected ? `Last connected ${relativeTime(provider.last_connected)}` : 'No connected accounts'}</small></div><b>{provider.accounts}</b></div>)}</div><Link className="admin-inline-link" to={`${root}/reports`}>Open all saved analyses <ChevronRight size={14} /></Link></section></div>
+       <Metric to={`${root}/reports`} label="Saved analyses" value={data.counts.reports} detail={`${data.counts.ai_marked} AI-marked commits`} icon={GitBranch} tone="admin-metric-pink" />
+     </div>
+     <SystemHealthSummary data={health.data} loading={health.loading} error={health.error} root={root} />
+     <div className="admin-overview-grid"><section className="admin-panel admin-pulse-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">ACTIVITY PULSE</span><h3>Workspace traffic</h3><p>Heartbeat and route events captured over the last twelve hours.</p></div><Activity size={18} /></div><div className="admin-bars" aria-label="Workspace activity by hour">{data.trends.map(point => <div className="admin-bar-wrap" key={point.at} title={`${point.count} events at ${dateTime(point.at)}`}><span style={{ height: `${Math.max(8, Math.min(100, point.count ? point.count / Math.max(...data.trends.map(item => item.count), 1) * 100 : 8))}%` }} /><small>{new Date(point.at).toLocaleTimeString([], { hour: 'numeric' })}</small></div>)}</div><div className="admin-pulse-footer"><span><i className="admin-legend-dot admin-legend-green" />Live heartbeats</span><span>Updates every 60 seconds</span></div></section><section className="admin-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">INTEGRATION INTELLIGENCE</span><h3>Provider coverage</h3><p>Connected accounts and most recent sync signal.</p></div><Network size={18} /></div><div className="admin-provider-list">{data.providerStats.map(provider => <div className="admin-provider-row" key={provider.provider}><span className={`admin-provider-mark admin-provider-${provider.provider}`}>{provider.provider === 'github' ? <GitBranch size={15} /> : <Link2 size={15} />}</span><div><strong>{provider.provider}</strong><small>{provider.last_connected ? `Last connected ${relativeTime(provider.last_connected)}` : 'No connected accounts'}</small></div><b>{provider.accounts}</b></div>)}</div><Link className="admin-inline-link" to={`${root}/reports`}>Open all saved analyses <ChevronRight size={14} /></Link></section></div>
     <div className="admin-overview-grid admin-overview-grid-bottom"><section className="admin-panel admin-user-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">LIVE PEOPLE</span><h3>Who is working now</h3><p>Open a user record for minute-by-minute activity and full workspace detail.</p></div><Link className="admin-panel-link" to={`${root}/users`}>All users <ChevronRight size={14} /></Link></div><div className="admin-user-table">{data.users.slice(0, 8).map(user => <button className="admin-user-row" key={user.id} onClick={() => setSelected(user.id)}><span className="admin-avatar">{initials(user)}</span><span className="admin-user-main"><strong>{userName(user)}</strong><small>{user.email}</small></span><span><ActivityStatus status={user.status} /><small className="admin-route">{user.last_route || 'No page recorded'}</small></span><span className="admin-user-stat"><b>{user.projects}</b><small>projects</small></span><span className="admin-user-stat"><b>{user.completion}%</b><small>delivery</small></span><ChevronRight size={15} /></button>)}</div></section><section className="admin-panel admin-activity-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">ACTIVITY STREAM</span><h3>Recent user activity</h3><p>Latest heartbeat events across every account.</p></div><Link className="admin-panel-link" to={`${root}/activity`}>Full log <ChevronRight size={14} /></Link></div><div className="admin-activity-list">{data.activity.slice(0, 8).map(item => <div className="admin-activity-row" key={item.id}><span className="admin-activity-icon"><Eye size={14} /></span><div><strong>{item.user_name || item.user_email}</strong><p>{item.route || 'Workspace opened'} <span>·</span> {relativeTime(item.occurred_at)}</p></div></div>)}</div></section></div>
-    <div className="admin-quick-links"><Link to={`${root}/users`}><Users size={16} /><span><strong>People directory</strong><small>Search every account, presence state and delivery signal</small></span><ChevronRight size={15} /></Link><Link to={`${root}/reports`}><BarChart3 size={16} /><span><strong>Integration analyses</strong><small>Inspect saved GitHub intelligence and AI evidence</small></span><ChevronRight size={15} /></Link><Link to={`${root}/audit`}><ListFilter size={16} /><span><strong>Management audit</strong><small>Review role, access, connection and settings changes</small></span><ChevronRight size={15} /></Link></div>
+     <div className="admin-quick-links"><Link to={`${root}/users`}><Users size={16} /><span><strong>People directory</strong><small>Search every account, presence state and delivery signal</small></span><ChevronRight size={15} /></Link><Link to={`${root}/system`}><Server size={16} /><span><strong>System health</strong><small>Inspect server load, memory, event loop, and database health</small></span><ChevronRight size={15} /></Link><Link to={`${root}/reports`}><BarChart3 size={16} /><span><strong>Integration analyses</strong><small>Inspect saved GitHub intelligence and AI evidence</small></span><ChevronRight size={15} /></Link><Link to={`${root}/audit`}><ListFilter size={16} /><span><strong>Management audit</strong><small>Review role, access, connection and settings changes</small></span><ChevronRight size={15} /></Link></div>
   </>}{selected && <AdminUserDialog userId={selected} onClose={() => setSelected(null)} />}</div>;
 }
 
@@ -139,9 +178,50 @@ function DeliveryAnalytics() {
   return <div className="admin-console"><AdminHeader title="Delivery analytics" description="Workspace-wide delivery signals, review load, completion health, and accounts that need attention." onRefresh={() => void reload()} refreshing={refreshing} />{error && <div className="dash-alert dash-alert-error" role="alert">{error}</div>}{loading && !data ? <div className="admin-loading"><BarChart3 size={20} className="admin-pulse" /><span>Calculating delivery analytics…</span></div> : data && <><div className="admin-metric-grid"><Metric label="Completed deliveries" value={data.counts.completed} detail={`${data.counts.milestones ? Math.round(data.counts.completed / data.counts.milestones * 100) : 0}% of all milestones`} icon={CheckCircle2} tone="admin-metric-green" /><Metric label="In review" value={data.counts.submitted} detail="Waiting for mentor action" icon={Clock3} tone="admin-metric-amber" /><Metric label="Project workspaces" value={data.counts.projects} detail="Across every account" icon={Database} tone="admin-metric-blue" /><Metric label="AI evidence flags" value={data.counts.ai_marked} detail="Declared in saved analyses" icon={GitBranch} tone="admin-metric-pink" /></div><section className="admin-panel admin-analytics-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">DELIVERY RISK RADAR</span><h3>Accounts that need attention</h3><p>Click any account to inspect milestones, project progress, and mentor assignment.</p></div><BarChart3 size={18} /></div><div className="admin-risk-table">{riskUsers.map(user => <button type="button" className="admin-risk-row admin-risk-button" key={user.id} onClick={() => setSelected(user.id)}><span className="admin-avatar">{initials(user)}</span><div><strong>{userName(user)}</strong><small>{user.projects} projects · {user.submitted_milestones} in review</small></div><div className="admin-risk-progress"><span><i style={{ width: `${user.completion}%` }} /></span><small>{user.completion}% complete</small></div><span className={user.overdue_milestones ? 'admin-risk-count is-risk' : 'admin-risk-count'}>{user.overdue_milestones}<small>overdue</small></span><ChevronRight size={15} /></button>)}{!riskUsers.length && <p className="admin-empty-note">No delivery records are available yet.</p>}</div></section></>}{selected && <AdminUserDialog userId={selected} onClose={() => setSelected(null)} />}</div>;
 }
 
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value < 1) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const index = Math.min(Math.floor(Math.log(value) / Math.log(1024)), units.length - 1);
+  return `${(value / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+}
+
+function formatDuration(seconds: number) {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ${seconds % 60}s`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ${minutes % 60}m`;
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`;
+}
+
+function HealthTag({ status }: { status: HealthStatus }) {
+  return <span className={`system-health-tag system-health-tag-${status}`}><i />{status === 'healthy' ? 'Healthy' : status === 'degraded' ? 'Degraded' : 'Unavailable'}</span>;
+}
+
+function SystemHealth() {
+  const { data, loading, refreshing, error, reload } = useAdminRequest<SystemHealthData>('monitoring.system', {}, 15_000);
+  const overall = overallHealth(data);
+  const connectionLabel = !data || data.database.active_connections === null || data.database.max_connections === null
+    ? 'Unavailable'
+    : `${data.database.active_connections} / ${data.database.max_connections}`;
+
+  return <div className="admin-console"><AdminHeader title="System health" description="Live server runtime, process load, event-loop pressure, and PostgreSQL health for this deployment." onRefresh={() => void reload()} refreshing={refreshing} />{error && <div className="dash-alert dash-alert-error" role="alert">{error}</div>}{loading && !data ? <div className="admin-loading"><Server size={22} className="admin-pulse" /><strong>Reading system health</strong><span>Collecting server and database signals…</span></div> : data && <>
+    <section className={`system-health-banner system-health-banner-${overall}`}><div className="system-health-banner-icon"><Server size={22} /></div><div><span className="admin-kicker">DEPLOYMENT STATUS</span><h3>{overall === 'healthy' ? 'All monitored systems operational' : overall === 'degraded' ? 'Some systems need attention' : 'A monitored system is unavailable'}</h3><p>Updated {dateTime(data.updated_at)} · Refreshes automatically every 15 seconds while this page is visible.</p></div><HealthTag status={overall} /></section>
+    <div className="admin-metric-grid system-health-metric-grid">
+      <Metric label="Server load · 1m" value={`${data.server.load.one_minute.toFixed(2)}`} detail={`${data.server.load.normalized_percent}% of ${data.server.load.cpu_count} CPUs`} icon={Cpu} tone="admin-metric-green" />
+      <Metric label="Memory in use" value={`${data.server.memory.host_usage_percent}%`} detail={`${formatBytes(data.server.memory.rss_bytes)} resident`} icon={HardDrive} tone="admin-metric-purple" />
+      <Metric label="Database latency" value={`${data.database.latency_ms} ms`} detail={data.database.metrics_available ? 'Metrics query response' : 'Health probe response'} icon={Database} tone="admin-metric-blue" />
+      <Metric label="Database connections" value={connectionLabel} detail={data.database.connection_utilization_percent === null ? 'Connection metrics unavailable' : `${data.database.connection_utilization_percent}% of limit`} icon={Network} tone="admin-metric-cyan" />
+    </div>
+    <div className="admin-overview-grid system-health-grid"><section className="admin-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">SERVER RUNTIME</span><h3>Application process</h3><p>Measurements from the server process serving this request.</p></div><Zap size={18} /></div><div className="system-health-list"><div><span>Runtime</span><strong>{data.server.runtime} {data.server.node_version}</strong></div><div><span>Environment / region</span><strong>{data.server.environment} · {data.server.region}</strong></div><div><span>Process uptime</span><strong>{formatDuration(data.server.uptime_seconds)}</strong></div><div><span>Process CPU</span><strong>{data.server.load.process_cpu_percent}%</strong></div><div><span>Event loop p95 / p99</span><strong>{data.server.event_loop.p95_ms} ms / {data.server.event_loop.p99_ms} ms</strong></div><div><span>Heap usage</span><strong>{formatBytes(data.server.memory.heap_used_bytes)} / {formatBytes(data.server.memory.heap_total_bytes)} ({data.server.memory.heap_usage_percent}%)</strong></div></div><div className="system-health-load"><div><span>Normalized one-minute load</span><b>{data.server.load.normalized_percent}%</b></div><span className="system-health-progress"><i style={{ width: `${Math.min(100, Math.max(0, data.server.load.normalized_percent))}%` }} /></span><small>Host load {data.server.load.one_minute.toFixed(2)} · {data.server.load.five_minutes.toFixed(2)} five-minute · {data.server.load.fifteen_minutes.toFixed(2)} fifteen-minute</small></div></section><section className="admin-panel"><div className="admin-panel-heading"><div><span className="admin-kicker">POSTGRESQL</span><h3>Database health</h3><p>Aggregate database statistics returned by the protected monitoring function.</p></div><Database size={18} /></div><div className="system-database-status"><HealthTag status={data.database.status} /><span>{data.database.database || 'Database identity unavailable'}</span></div><div className="system-health-list"><div><span>Response time</span><strong>{data.database.latency_ms} ms</strong></div><div><span>Active connections</span><strong>{connectionLabel}</strong></div><div><span>Cache hit ratio</span><strong>{data.database.cache_hit_ratio_percent === null ? 'Unavailable' : `${data.database.cache_hit_ratio_percent}%`}</strong></div><div><span>Transactions</span><strong>{data.database.transactions.committed === null ? 'Unavailable' : `${data.database.transactions.committed.toLocaleString()} committed · ${(data.database.transactions.rolled_back || 0).toLocaleString()} rolled back`}</strong></div><div><span>Blocks</span><strong>{data.database.blocks.hit === null ? 'Unavailable' : `${data.database.blocks.hit.toLocaleString()} cache hits · ${(data.database.blocks.read || 0).toLocaleString()} reads`}</strong></div><div><span>Statistics reset</span><strong>{dateTime(data.database.stats_reset)}</strong></div></div>{data.database.message && <p className="system-health-note">{data.database.message}</p>}</section></div>
+    <section className="admin-panel system-health-footer"><div><Timer size={16} /><span><strong>Automatic monitoring</strong><small>Server metrics are sampled per running application instance. Database readings come from PostgreSQL statistics.</small></span></div><span className="system-health-updated"><i />Live refresh enabled</span></section>
+  </>}</div>;
+}
+
 export default function AdminMonitoring({ view = 'overview' }: { view?: string }) {
   if (view === 'users') return <UserDirectory />;
   if (view === 'activity') return <ActivityDirectory />;
   if (view === 'analytics') return <DeliveryAnalytics />;
+  if (view === 'system') return <SystemHealth />;
   return <AdminOverview />;
 }
