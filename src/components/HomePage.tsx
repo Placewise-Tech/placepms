@@ -9,6 +9,7 @@ import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useHomeAutoplay } from '../hooks/useHomeAutoplay';
 import HomeAudience from './HomeAudience';
 import HomeTeam from './HomeTeam';
+import HomeUniverse from './HomeUniverse';
 
 type AuthMode = 'signin' | 'signup';
 type Preview = 'overview' | 'tasks' | 'tools';
@@ -141,7 +142,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
         <div className="home-container">
           <div className="home-hero-grid">
           <Reveal className="home-hero-copy"><span className="home-badge"><span className="home-live-dot" /> The connected academic workspace</span><h1>Big ideas.<br /><span>Next-level execution.</span></h1><p>Plan projects, bring your team together, and turn everyday progress into work worth showing.</p><div className="home-actions"><button className="home-button home-button-primary" onClick={() => openAuth('signup')}>Create your workspace <ArrowUpRight size={18} /></button><a className="home-button home-button-glass" href="#workspace-preview">Take a look inside <ArrowDown size={16} /></a></div><div className="home-hero-note"><span><Check size={12} /> Built for students</span><span><Check size={12} /> Connected with mentors</span></div><div className="home-hero-signal"><span><Workflow size={16} /></span><div><strong>From first idea to final presentation.</strong><small>Planning. Evidence. Feedback. All connected.</small></div></div></Reveal>
-          <div className="home-tour" ref={tourRef}><Reveal className="home-stage" delay={0.15}>
+           <div className="home-tour" ref={tourRef}><HomeUniverse motionPaused={frozen} /><Reveal className="home-stage" delay={0.15}>
             <div className="home-tour-top"><span><span className="home-live-dot" /> YOUR WORKSPACE, IN MOTION</span><span>PRODUCT TOUR / 0{previews.indexOf(preview) + 1}</span></div>
             <div className="home-stage-orbit" aria-hidden="true"><i /><i /><i /></div>
             <div className="home-floating-tag home-floating-tag-left" aria-hidden="true"><span><CheckCircle2 size={17} /></span><div><strong>One step closer.</strong><small>Milestone approved</small></div><Sparkles size={15} /></div>

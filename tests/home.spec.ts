@@ -12,6 +12,10 @@ test('futuristic homepage previews, journey, motion control, and account links w
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Big ideas. Next-level execution./ })).toBeVisible();
+  const universe = page.locator('.home-universe');
+  await expect(universe).toBeVisible();
+  await universe.hover({ position: { x: 80, y: 80 }, force: true });
+  expect(await universe.getAttribute('aria-hidden')).toBe('true');
   await expect(page.locator('.home-feature')).toHaveCount(4);
   await page.getByRole('button', { name: 'Pause animations', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Play animations', exact: true })).toHaveAttribute('aria-pressed', 'true');
