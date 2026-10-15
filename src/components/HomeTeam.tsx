@@ -1,15 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import ceoPhoto from '../assets/team-ceo.webp';
-import ctoPhoto from '../assets/team-cto.webp';
-import tcoPhoto from '../assets/team-tco.webp';
 import developerPhoto from '../assets/team-developer.webp';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 
 const team = [
   { role: 'CEO', title: 'Chief Executive Officer', photo: ceoPhoto, description: 'Sets the company’s vision, guides business strategy, and builds partnerships that help PlacePMS grow.' },
-  { role: 'CTO', title: 'Chief Technology Officer', photo: ctoPhoto, description: 'Leads technology strategy, architecture, and engineering standards to keep PlacePMS reliable and ready to scale.' },
-  { role: 'TCO', title: 'PlacePMS team', photo: tcoPhoto, description: 'Brings people, priorities, and delivery together, helping the team stay aligned as PlacePMS grows.' },
   { role: 'Developer', title: 'Software Developer', photo: developerPhoto, description: 'Turns ideas into practical features, builds smooth user experiences, and improves the platform every day.' },
 ];
 
@@ -111,7 +107,7 @@ export default function HomeTeam({ motionPaused }: { motionPaused: boolean }) {
         <div className="home-team-track" ref={trackRef}>
           {team.map((member, index) => <article className="home-team-card" key={member.role}>
             <div className="home-team-portrait">
-              <img src={member.photo} alt={`PlacePMS ${member.role}`} width="640" height={member.role === 'CEO' ? 756 : member.role === 'CTO' ? 960 : member.role === 'Developer' ? 726 : 640} loading="lazy" decoding="async" />
+              <img src={member.photo} alt={`PlacePMS ${member.role}`} width="640" height={member.role === 'CEO' ? 756 : 726} loading="lazy" decoding="async" />
               <span className="home-team-badge"><span className="home-live-dot" /> PlacePMS</span>
               <div className="home-team-card-caption"><div><h3>{member.role}</h3><p>{member.title}</p></div><span aria-hidden="true">0{index + 1}</span></div>
             </div>
@@ -119,7 +115,7 @@ export default function HomeTeam({ motionPaused }: { motionPaused: boolean }) {
           </article>)}
         </div>
       </div>
-      <div className="home-team-footer"><span><span className="home-live-dot" /> Different roles. One vision.</span><span>Four people. One connected platform.</span></div>
+      <div className="home-team-footer"><span><span className="home-live-dot" /> Different roles. One vision.</span><span>One team. One connected platform.</span></div>
     </div>
   </section>;
 }

@@ -124,8 +124,8 @@ test('smart navigation, FAQ search, and role-specific entry points work without 
   await expect(page.getByRole('heading', { name: 'No matching answers.' })).toBeVisible();
   await page.getByRole('button', { name: 'Show all questions' }).click();
   await expect(page.locator('.home-faq details')).toHaveCount(6);
-  await expect(page.locator('#team img')).toHaveCount(4);
-  expect(await page.locator('#team img').evaluateAll(images => new Set(images.map(image => (image as HTMLImageElement).src)).size)).toBe(4);
+   await expect(page.locator('#team img')).toHaveCount(2);
+   expect(await page.locator('#team img').evaluateAll(images => new Set(images.map(image => (image as HTMLImageElement).src)).size)).toBe(2);
 
   await page.setViewportSize({ width: 320, height: 760 });
   await page.getByRole('button', { name: 'Open navigation menu', exact: true }).click();
@@ -136,7 +136,7 @@ test('smart navigation, FAQ search, and role-specific entry points work without 
     await page.locator(section).scrollIntoViewIfNeeded();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   }
-  await expect(page.locator('#team img')).toHaveCount(4);
+   await expect(page.locator('#team img')).toHaveCount(2);
   await page.locator('#your-workspace').getByRole('button', { name: 'Mentors', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Guide the work. See the progress.' })).toBeVisible();
   await page.getByRole('button', { name: 'Sign in as a mentor', exact: true }).click();
