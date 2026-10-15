@@ -496,3 +496,146 @@
   .home-next .home-universe { pointer-events: none; }
   .home-next .home-preview, .home-next .home-feature { transform: none !important; transition: none !important; }
 }
+
+/* Choreographed depth: each surface has its own motion language instead of
+   every card using the same lift. Decorative layers stay behind the real
+   controls and all continuous effects remain pausable by the page toggle. */
+.home-next .home-preview { transform-style: preserve-3d; }
+.home-next .home-preview-metrics > div,
+.home-next .home-preview-chart,
+.home-next .home-preview-project,
+.home-next .home-preview-connections article {
+  transform: translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), border-color .25s, box-shadow .35s;
+}
+.home-next .home-preview-metrics > div:hover,
+.home-next .home-preview-chart:hover,
+.home-next .home-preview-project:hover,
+.home-next .home-preview-connections article:hover {
+  transform: translate3d(0, -4px, 10px) rotateX(1.5deg) rotateY(-1deg);
+  border-color: #70e7ff48;
+  box-shadow: 0 12px 25px #020a1666;
+}
+.home-next .home-preview-connections article:nth-child(2):hover { transform: translate3d(0, -5px, 13px) rotateX(1deg) rotateY(1.5deg); }
+.home-next .home-preview-connections article:nth-child(3):hover { transform: translate3d(0, -3px, 8px) rotateX(2deg) rotateY(-2deg); }
+.home-next .home-preview-tabs button { transition: color .2s, transform .25s; transform-origin: center bottom; }
+.home-next .home-preview-tabs button:hover { transform: perspective(500px) rotateX(12deg) translateY(-2px); }
+
+.home-next .home-project-stack { transform-style: preserve-3d; }
+.home-next .home-stack-card { transform-style: preserve-3d; backface-visibility: hidden; }
+.home-next .home-stack-back { animation: home-project-card-back 9s ease-in-out infinite; }
+.home-next .home-stack-middle { animation: home-project-card-middle 8s ease-in-out -2.5s infinite; }
+.home-next .home-stack-front { animation: home-project-card-front 7s ease-in-out -1.2s infinite; }
+.home-next .home-feature-projects:hover .home-stack-back { transform: rotate(-11deg) translate(-20px, 2px) translateZ(-10px) rotateY(7deg); }
+.home-next .home-feature-projects:hover .home-stack-middle { transform: rotate(7deg) translate(16px, -2px) translateZ(4px) rotateY(-6deg); }
+.home-next .home-feature-projects:hover .home-stack-front { transform: rotate(-1deg) translateY(-12px) translateZ(25px) rotateX(2deg); }
+
+.home-next .home-tools-orbit { perspective: 800px; transform-style: preserve-3d; }
+.home-next .home-tools-ring { transform-style: preserve-3d; animation: home-tools-ring-spin 24s linear infinite; }
+.home-next .home-tools-core { transform: translateZ(16px); transform-style: preserve-3d; animation: home-tools-core-breathe 5s ease-in-out infinite; }
+.home-next .home-orbit-github { transform: translateZ(13px); }
+.home-next .home-orbit-figma { transform: translateZ(28px); }
+.home-next .home-orbit-miro { transform: translateZ(20px); }
+.home-next .home-tools-orbit:hover .home-tools-core { transform: translateZ(30px) rotateX(7deg) rotateY(-8deg); }
+.home-next .home-tools-orbit:hover .home-orbit-node { box-shadow: 0 16px 35px #0009, 0 0 22px #70e7ff16; }
+
+.home-next .home-idea-next-step { transform-style: preserve-3d; }
+.home-next .home-idea-next-step:hover,
+.home-next .home-idea-next-step:focus-visible { transform: translate3d(0, -4px, 16px) rotateX(2deg) rotateY(-1deg); box-shadow: 0 14px 30px #01071644; }
+.home-next .home-idea-next-step > span { transform: translateZ(14px) rotate(-5deg); transition: transform .35s cubic-bezier(.2, .8, .2, 1); }
+.home-next .home-idea-next-step:hover > span,
+.home-next .home-idea-next-step:focus-visible > span { transform: translateZ(25px) rotate(4deg) scale(1.06); }
+
+.home-next .home-automation-panel { perspective: 1200px; }
+.home-next .home-flow-source,
+.home-next .home-flow-result { transform-style: preserve-3d; transition: transform .4s cubic-bezier(.2, .8, .2, 1), border-color .25s, box-shadow .35s; }
+.home-next .home-flow-source { transform: translateZ(8px) rotateX(.5deg); }
+.home-next .home-flow-result { transform: translateZ(2px) rotateX(-.5deg); }
+.home-next .home-flow-source:hover { transform: translate3d(0, -3px, 16px) rotateX(2deg) rotateY(-1deg); border-color: #70e7ff48; box-shadow: 0 15px 28px #01071655; }
+.home-next .home-flow-result:hover { transform: translate3d(0, -4px, 13px) rotateX(1.5deg) rotateY(1deg); border-color: #b09bff48; box-shadow: 0 15px 28px #01071655; }
+.home-next .home-flow-pipeline li { transform: translateZ(0); transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+.home-next .home-flow-pipeline li:hover { transform: translate3d(0, -5px, 17px) rotateX(3deg); }
+
+.home-next .home-audience-scene { perspective: 900px; transform-style: preserve-3d; }
+.home-next .home-audience-scene-icon { transform: translateZ(20px) rotateX(2deg); transform-style: preserve-3d; transition: transform .4s cubic-bezier(.2, .8, .2, 1), box-shadow .4s; animation: home-audience-icon-float 6s ease-in-out infinite; }
+.home-next .home-audience-scene:hover .home-audience-scene-icon { transform: translateZ(38px) rotateX(-6deg) rotateY(8deg) scale(1.04); box-shadow: 0 15px 32px #01071666, 0 0 35px color-mix(in srgb, var(--scene-accent) 22%, transparent); }
+.home-next .home-audience-scene-steps > div { transform: translateZ(4px); transform-style: preserve-3d; transition: transform .3s cubic-bezier(.2, .8, .2, 1), border-color .25s, background .25s; }
+.home-next .home-audience-scene-steps > div:hover { transform: translate3d(0, -3px, 13px) rotateX(2deg) rotateY(-1deg); border-color: color-mix(in srgb, var(--scene-accent) 40%, transparent); background: color-mix(in srgb, var(--scene-accent) 7%, transparent); }
+.home-next .home-audience-scene-steps > div:nth-child(2):hover { transform: translate3d(0, -4px, 16px) rotateX(2deg) rotateY(1deg); }
+
+.home-next .home-team-card { transform-style: preserve-3d; transition: transform .4s cubic-bezier(.2, .8, .2, 1), border-color .25s, box-shadow .35s; }
+.home-next .home-team-card:hover { transform: translate3d(0, -6px, 12px) rotateX(1deg) rotateY(-1deg); }
+.home-next .home-team-card:nth-child(2n):hover { transform: translate3d(0, -5px, 10px) rotateX(1deg) rotateY(1deg); }
+.home-next .home-team-portrait { transform-style: preserve-3d; }
+.home-next .home-team-card-caption { transform: translateZ(14px); }
+
+.home-next .home-journey-visual { perspective: 1000px; transform-style: preserve-3d; }
+.home-next .home-journey-center { transform-style: preserve-3d; backface-visibility: hidden; }
+.home-next .home-journey-icon { transform: translateZ(26px); animation: home-journey-icon-bob 6s ease-in-out infinite; }
+
+@keyframes home-project-card-back {
+  0%, 100% { transform: rotate(-9deg) translate(-15px, 6px) translateZ(-8px) rotateY(3deg); }
+  50% { transform: rotate(-6deg) translate(-19px, 1px) translateZ(-13px) rotateY(8deg); }
+}
+@keyframes home-project-card-middle {
+  0%, 100% { transform: rotate(5deg) translate(12px, 4px) translateZ(1px) rotateY(-3deg); }
+  50% { transform: rotate(8deg) translate(15px, 0) translateZ(6px) rotateY(-8deg); }
+}
+@keyframes home-project-card-front {
+  0%, 100% { transform: rotate(-3deg) translateZ(5px) rotateX(0deg); }
+  50% { transform: rotate(-1deg) translateY(-5px) translateZ(13px) rotateX(1.5deg); }
+}
+@keyframes home-tools-ring-spin { to { transform: rotate(360deg); } }
+@keyframes home-tools-core-breathe {
+  0%, 100% { transform: translateZ(16px) rotateX(0deg) rotateY(0deg); }
+  50% { transform: translateZ(24px) rotateX(5deg) rotateY(-5deg); }
+}
+@keyframes home-audience-icon-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -6px; }
+}
+@keyframes home-journey-icon-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -5px; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .home-next .home-preview-metrics > div:hover strong,
+  .home-next .home-preview-chart:hover .home-chart-line,
+  .home-next .home-preview-project:hover .home-preview-project-icon { filter: drop-shadow(0 0 8px #70e7ff55); }
+  .home-next .home-feature-projects:hover .home-stack-tags > span { transform: translateZ(12px) rotateX(6deg); }
+  .home-next .home-stack-tags > span { transition: transform .3s cubic-bezier(.2, .8, .2, 1); }
+}
+
+@media (max-width: 800px) {
+  .home-next .home-preview-metrics > div:hover,
+  .home-next .home-preview-chart:hover,
+  .home-next .home-preview-project:hover,
+  .home-next .home-preview-connections article:hover,
+  .home-next .home-flow-source:hover,
+  .home-next .home-flow-result:hover,
+  .home-next .home-flow-pipeline li:hover,
+  .home-next .home-audience-scene-steps > div:hover,
+  .home-next .home-audience-scene-steps > div:nth-child(2):hover { transform: translateY(-2px); }
+  .home-next .home-feature-projects:hover .home-stack-back { transform: rotate(-8deg) translate(-16px, 4px); }
+  .home-next .home-feature-projects:hover .home-stack-middle { transform: rotate(5deg) translate(13px, 2px); }
+  .home-next .home-feature-projects:hover .home-stack-front { transform: rotate(-2deg) translateY(-7px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-next .home-preview-metrics > div,
+  .home-next .home-preview-chart,
+  .home-next .home-preview-project,
+  .home-next .home-preview-connections article,
+  .home-next .home-stack-card,
+  .home-next .home-tools-ring,
+  .home-next .home-tools-core,
+  .home-next .home-audience-scene-icon,
+  .home-next .home-journey-icon,
+  .home-next .home-team-card,
+  .home-next .home-flow-source,
+  .home-next .home-flow-result,
+  .home-next .home-flow-pipeline li,
+  .home-next .home-idea-next-step { transform: none !important; animation: none !important; transition: none !important; }
+}
