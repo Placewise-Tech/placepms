@@ -190,11 +190,12 @@ work with explicit **DEVELOPER** or **TESTER** ownership. The dashboard's
 **Automations** page also exports tasks, reports, and follow-up work as one
 `placepms-automation-work-log.md` file.
 
-The Vercel cron entry runs `/api/automation` every five minutes. Configure the
+The Vercel Hobby cron entry runs `/api/automation` once daily. Configure the
 server-only `CRON_SECRET` in Vercel; it must match the bearer secret used by the
 cron request. A saved task continues to run when the manager's laptop is off,
-because the runner uses the deployed server and Supabase task leases. The
-current checks are deterministic database audits and public URL checks only:
+because the runner uses the deployed server and Supabase task leases. A more
+frequent schedule requires a Vercel plan that supports it. The current checks
+are deterministic database audits and public URL checks only:
 they do not execute arbitrary code or call an AI model, so there is no model
 token counter or 10M-token warning to report. An AI manager/developer/tester
 worker would require a separate hosted worker and an explicitly selected model

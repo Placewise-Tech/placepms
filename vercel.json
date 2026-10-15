@@ -1,6 +1,6 @@
 {
   "functions": { "api/*.ts": { "maxDuration": 60 } },
-  "crons": [{ "path": "/api/automation", "schedule": "*/5 * * * *" }],
+  "crons": [{ "path": "/api/automation", "schedule": "0 0 * * *" }],
   "headers": [
     {
       "source": "/(.*)",
