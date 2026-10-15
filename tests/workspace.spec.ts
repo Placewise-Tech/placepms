@@ -572,7 +572,7 @@ test('GitHub change analysis preserves partial results and retries only missing 
   const requests = calls.filter(call => call.action === 'commit-stats');
   expect(requests[1].shas).toEqual(['b'.repeat(40)]);
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.locator('.dashboard')).toHaveClass(/dashboard-dark/);
+  await expect(page.locator('.dashboard')).not.toHaveClass(/dashboard-dark/);
   for (const tab of ['Activity', 'Contributors', 'Commits', 'Repository']) {
     await page.getByRole('tab', { name: tab, exact: true }).click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), `overflow in GitHub ${tab}`).toBe(false);
@@ -852,7 +852,7 @@ test('calendar supports date links, agenda, selection export, and project filter
 test('every dashboard section loads in light and dark themes on mobile without runtime errors', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await workspace(page);
-  await expect(page.locator('.dashboard')).toHaveClass(/dashboard-dark/);
+  await expect(page.locator('.dashboard')).not.toHaveClass(/dashboard-dark/);
   await expect(page.getByRole('img', { name: '0% of milestones completed', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Pause workspace animations', exact: true }).click();
   expect(await page.locator('.dash-momentum-orbit').evaluate(element => getComputedStyle(element).animationPlayState)).toBe('paused');
@@ -868,7 +868,7 @@ test('every dashboard section loads in light and dark themes on mobile without r
   await page.setViewportSize({ width: 390, height: 844 });
   for (const slug of ['', 'projects', 'tasks', 'mentorship', 'calendar', 'documents', 'research', 'resources', 'blackbook', 'integrations', 'repositories', 'figma', 'miro', 'sessions', 'portfolio']) {
     await page.goto(`/dashboard${slug ? `/${slug}` : ''}`);
-    await expect(page.locator('.dashboard')).toHaveClass(/dashboard-dark/);
+    await expect(page.locator('.dashboard')).not.toHaveClass(/dashboard-dark/);
     await expect(page.locator('.dash-main h1')).toBeVisible();
     await expect(page.getByRole('status', { name: 'Loading dashboard' })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), `overflow on ${slug || 'overview'}`).toBe(false);
@@ -876,11 +876,11 @@ test('every dashboard section loads in light and dark themes on mobile without r
   }
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export portfolio', exact: true }).click();
   expect((await download).suggestedFilename()).toBe('placepms-portfolio.html');
-  await page.getByRole('button', { name: 'Switch to light theme' }).click();
-  await expect(page.locator('.dashboard')).not.toHaveClass(/dashboard-dark/);
-  await page.reload();
-  await expect(page.locator('.dashboard')).not.toHaveClass(/dashboard-dark/);
   await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await expect(page.locator('.dashboard')).toHaveClass(/dashboard-dark/);
+  await page.reload();
+  await expect(page.locator('.dashboard')).toHaveClass(/dashboard-dark/);
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(page.getByRole('button', { name: 'Play workspace animations', exact: true })).toBeDisabled();
   expect(errors).toEqual([]);

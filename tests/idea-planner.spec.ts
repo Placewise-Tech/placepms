@@ -109,6 +109,8 @@ test('saved plan follows signup, login, password setup, and a retry into a real 
   });
   await page.route('**/api/workspace', route => {
     const input = route.request().postDataJSON();
+    if (input.action === 'notifications.list') return route.fulfill({ json: { notifications: [] } });
+    if (input.action === 'invitation.list') return route.fulfill({ json: { invitations: [] } });
     expect(passwordRequired).toBe(false);
     expect(route.request().headers().authorization).toBe(`Bearer ${token}`);
     expect(input.action).toBe('project.from-plan');

@@ -5,7 +5,7 @@ test('nebula-theme account screens preserve details between modes and trap keybo
   await page.goto('/login');
   const dialog = page.getByRole('dialog', { name: 'Sign in', exact: true });
   await expect(dialog).toBeVisible();
-  await expect(page.locator('.auth-studio')).toHaveCSS('background-color', 'rgb(8, 20, 37)');
+  await expect(page.locator('.auth-studio')).toHaveCSS('background-color', 'rgb(247, 242, 236)');
   await dialog.getByLabel('Institutional Email').fill('design-check@example.test');
   await dialog.getByLabel('Password', { exact: true }).fill('unsent-demo-password');
   await dialog.getByRole('button', { name: 'Show password', exact: true }).click();

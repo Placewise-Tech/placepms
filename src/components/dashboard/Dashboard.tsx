@@ -55,7 +55,7 @@ export default function Dashboard({ user }: { user: User }) {
   const navSection = expandedSection ?? activeSection;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('placepms:sidebar') === 'collapsed');
-  const [dark, setDark] = useState(() => localStorage.getItem('placepms:theme:black') !== 'light');
+   const [dark, setDark] = useState(() => localStorage.getItem('placepms:theme:black') === 'dark' || localStorage.getItem('placepms:theme') === 'dark');
   const [motionPaused, setMotionPaused] = useState(() => localStorage.getItem('placepms:motion') === 'paused');
   const [compact, setCompact] = useState(() => localStorage.getItem('placepms:density') !== 'comfortable');
   const reducedMotion = useReducedMotion();

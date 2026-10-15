@@ -1,6 +1,6 @@
 /* Nebula: one visual language for the public site and every workspace. */
-:root { --nebula-bg: #060b19; --nebula-panel: #0c172b; --nebula-surface: #101e35; --nebula-cyan: #70e7ff; --nebula-violet: #b09bff; --nebula-text: #edf4ff; --nebula-muted: #a3b3cb; --nebula-border: #98baff24; --nebula-glow: #70e7ff16; }
-body { background: var(--nebula-bg); }::selection { background: #70e7ff38; color: inherit; }img[src*="PlacePMS-Logo"] { filter: hue-rotate(35deg) saturate(1.15); }
+:root { --nebula-bg: #f7f2ec; --nebula-panel: #fffdfa; --nebula-surface: #f1ebe5; --nebula-cyan: #c65b3f; --nebula-violet: #5d55a5; --nebula-text: #242332; --nebula-muted: #716d7b; --nebula-border: #e6ddd3; --nebula-glow: #c65b3f16; }
+body { background: var(--nebula-bg); }::selection { background: #c65b3f2b; color: inherit; }img[src*="PlacePMS-Logo"] { filter: none; }
 html .home-page { --home-brand: var(--nebula-cyan); --home-text: var(--nebula-text); --home-muted: var(--nebula-muted); --home-border: var(--nebula-border); background: radial-gradient(ellipse at 80% 8%, #6650b314, transparent 35%), var(--nebula-bg); }
 html .home-page .home-header { background: #060b19d9; border-color: var(--home-border); }html .home-page .home-mobile-nav { background: #0a1427; }html .home-page .home-button { border-color: #98baff35; background: #8aaaff08; border-radius: 11px; }html .home-page .home-button-primary { background: linear-gradient(110deg, #70e7ff, #9fc9ff); border-color: #8fe5ff; color: #071525 !important; box-shadow: 0 0 28px #70e7ff18; }html .home-page .home-button-primary:hover { background: #aeedff; box-shadow: 0 0 40px #70e7ff30; }html .home-page .home-button-plain { background: none; border-color: transparent; }
 html .home-page .home-hero h1 > span { background-image: linear-gradient(105deg, #b8f2ff, #70e7ff 35%, #b09bff 85%); }html .home-page .home-badge { color: #c4eaff; border-color: #70e7ff38; background: #70e7ff0a; }html .home-page .home-live-dot { box-shadow: 0 0 12px #70e7ff90; }html .home-page .home-aurora i { background: #28b9f426; }html .home-page .home-aurora i + i { background: #9272ff28; }html .home-page .home-grid-field { background-image: linear-gradient(#91baff06 1px, transparent 1px), linear-gradient(90deg, #91baff06 1px, transparent 1px); }
@@ -652,3 +652,124 @@ html .home-page #home-chart-fill stop { stop-color: var(--home-brand); }html .ho
   0% { box-shadow: 0 0 0 0 rgba(198, 91, 63, .3); }
   100% { box-shadow: 0 0 0 6px rgba(198, 91, 63, 0); }
 }
+
+/* Light application shell ------------------------------------------------ */
+html .auth-studio {
+  --auth-accent: #c65b3f;
+  --auth-border: #e6ddd3;
+  --auth-muted: #716d7b;
+  color-scheme: light;
+  color: #242332;
+  background: #f7f2ec;
+}
+html .auth-studio .auth-showcase { background: linear-gradient(145deg, #f2e8df, #fffdfa); border-color: #ded2c8; }
+html .auth-studio .auth-showcase-glow { background: radial-gradient(ellipse at 50% 70%, #e8a18438, transparent 55%), radial-gradient(ellipse at 0% 15%, #aaa6df3b, transparent 40%); }
+html .auth-studio .auth-showcase h2 { color: #242332; }
+html .auth-studio .auth-showcase h2 span { color: #963d2e; }
+html .auth-studio .auth-showcase-copy > p,
+html .auth-studio .auth-showcase-bottom,
+html .auth-studio .auth-showcase-bottom button,
+html .auth-studio .auth-topbar > span,
+html .auth-studio .auth-back,
+html .auth-studio .auth-form-footer { color: #716d7b; }
+html .auth-studio .auth-eyebrow { color: #963d2e; }
+html .auth-studio .auth-universe > i { border-color: #c65b3f35; }
+html .auth-studio .auth-universe > i::after { background: #c65b3f; box-shadow: 0 0 14px #c65b3f70; }
+html .auth-studio .auth-universe > i:nth-child(2) { border-color: #c65b3f1e; }
+html .auth-studio .auth-universe > i:nth-child(3) { border-color: #5d55a535; }
+html .auth-studio .auth-universe-core { color: #c65b3f; background: linear-gradient(135deg, #fffdfa, #fff0e9); border-color: #c65b3f50; box-shadow: 0 15px 50px #c65b3f20; }
+html .auth-studio .auth-universe-node { color: #963d2e; background: #fffdfa; border-color: #d9cec5; box-shadow: 0 12px 28px #765b4220; }
+html .auth-studio .auth-universe-team { color: #5d55a5; background: #f0eefb; }
+html .auth-studio .auth-universe-caption { color: #887a80; }
+html .auth-studio .auth-universe-caption > span:first-child { background: #c65b3f; }
+html .auth-studio .auth-form-shell { background: #fffdfa; }
+html .auth-studio .auth-mode-tabs { border-color: #e6ddd3; background: #f8f3ee; }
+html .auth-studio .auth-mode-tabs button { color: #887a80; }
+html .auth-studio .auth-mode-tabs button[aria-pressed=true] { color: #963d2e; border-color: #c65b3f35; background: #fff0e9; }
+html .auth-studio .auth-card-heading > p,
+html .auth-studio .auth-form label,
+html .auth-studio .auth-role-field > span { color: #716d7b; }
+html .auth-studio .auth-form input:not([type=checkbox]) { color: #242332; border-color: #d8cec5; background: #fffdfa; }
+html .auth-studio .auth-form input:not([type=checkbox]):focus { border-color: #c65b3f80; background: #fff; box-shadow: 0 0 0 3px #c65b3f14; }
+html .auth-studio .auth-form input::placeholder { color: #a29691; }
+html .auth-studio .auth-input-wrap > svg,
+html .auth-studio .auth-input-wrap > button { color: #958781; }
+html .auth-studio .auth-password-label button,
+html .auth-studio .auth-studio a { color: #963d2e; }
+html .auth-studio .auth-role-grid button { color: #716d7b; border-color: #ded2c8; background: #fffdfa; }
+html .auth-studio .auth-role-grid button[aria-pressed=true] { color: #963d2e; border-color: #c65b3f45; background: #fff0e9; }
+html .auth-studio .auth-role-grid button svg:last-child:not(:first-child),
+html .auth-studio .auth-check input { color: #c65b3f; accent-color: #c65b3f; }
+html .auth-studio .auth-form .auth-check { color: #716d7b; }
+html .auth-studio .auth-submit { color: #fffdfa; background: #c65b3f; border-color: #c65b3f; box-shadow: 0 8px 22px #c65b3f2b; }
+html .auth-studio .auth-submit:hover { background: #963d2e; }
+html .auth-studio .auth-login-hint { color: #716d7b; border-color: #e6ddd3; background: #f8f3ee; }
+html .auth-studio .auth-idea-draft { color: #5d55a5; border-color: #aaa6df65; background: #f0eefb; }
+html .auth-studio .auth-idea-draft span { color: #5e5660; }
+html .auth-studio .auth-idea-draft small { color: #716d7b; }
+html .auth-studio .auth-success-icon { color: #c65b3f; border-color: #c65b3f40; background: #fff0e9; }
+html .auth-studio .auth-success > p,
+html .auth-studio .auth-success > small { color: #716d7b; }
+html .auth-studio .auth-success strong { color: #242332; }
+html .auth-studio .auth-success ol { border-color: #e6ddd3; background: #f8f3ee; }
+html .auth-studio .auth-success li { color: #665b63; }
+html .auth-studio .auth-success li > span { color: #c65b3f; border-color: #c65b3f35; }
+html .auth-studio .auth-feedback:not(.auth-feedback-error) { color: #3c7e67; border-color: #3c7e6740; background: #edf7f1; }
+html .auth-studio .auth-feedback-error { color: #a8473e; border-color: #d9797040; background: #fff0ed; }
+html .auth-studio img[src*="PlacePMS-Logo-White"] { filter: brightness(0) saturate(100%) invert(16%) sepia(13%) saturate(1100%) hue-rotate(215deg) brightness(91%); }
+
+html .auth-recovery { --dash-bg: #f7f2ec; --dash-card: #fffdfa; --dash-text: #242332; --dash-muted: #716d7b; --dash-border: #e6ddd3; --dash-brand: #c65b3f; color-scheme: light; background: #f7f2ec; }
+html .auth-recovery .workspace-gate-card { background: #fffdfa; border-color: #d8cec5; box-shadow: 0 24px 60px #765b4220; }
+html .auth-recovery .auth-recovery-icon { color: #c65b3f; background: #fff0e9; border-color: #c65b3f35; }
+html .auth-recovery .dash-button-primary { color: #fffdfa !important; background: #c65b3f; border-color: #c65b3f; }
+html .auth-recovery .auth-password-checks .is-met { color: #3c7e67; }
+html .workspace-gate { color: #242332; background: #f7f2ec; }
+html .workspace-gate img[src*="PlacePMS-Logo-White"] { filter: brightness(0) saturate(100%) invert(16%) sepia(13%) saturate(1100%) hue-rotate(215deg) brightness(91%); }
+
+/* Administration uses older fixed dark selectors, so give the light shell a
+   dedicated treatment while reusing the shared workspace tokens. */
+html .admin-workspace {
+  --admin-accent: #c65b3f;
+  --admin-violet: #5d55a5;
+  --admin-cyan: #3c7e67;
+  --dash-bg: #f7f2ec;
+  --dash-card: #fffdfa;
+  --dash-text: #242332;
+  --dash-muted: #716d7b;
+  --dash-border: #e6ddd3;
+  --dash-brand: #c65b3f;
+  --dash-brand-soft: #fff0e9;
+  color-scheme: light;
+}
+html .admin-workspace .admin-sidebar { background: #fffdfa; border-color: #e6ddd3; }
+html .admin-workspace .admin-brand { border-color: #e6ddd3; }
+html .admin-workspace .admin-sidebar img[src*="PlacePMS-Logo-White"] { filter: brightness(0) saturate(100%) invert(16%) sepia(13%) saturate(1100%) hue-rotate(215deg) brightness(91%); }
+html .admin-workspace .admin-sidebar-badge { color: #963d2e; border-color: #c65b3f35; background: #fff0e9; }
+html .admin-workspace .admin-sidebar-badge small { color: #8a7c76; }
+html .admin-workspace .admin-sidebar-badge > span { background: #c65b3f; box-shadow: 0 0 0 4px #c65b3f18; }
+html .admin-workspace .admin-nav-search { color: #897b75; border-color: #ded2c8; background: #f8f3ee; }
+html .admin-workspace .admin-nav-search input { color: #242332; }
+html .admin-workspace .admin-nav-group > span { color: #958781; }
+html .admin-workspace .admin-nav-item { color: #716d7b !important; }
+html .admin-workspace .admin-nav-item:hover { color: #242332 !important; background: #f8f3ee; }
+html .admin-workspace .admin-nav-item.active { color: #963d2e !important; background: #fff0e9; }
+html .admin-workspace .admin-topbar { background: #fffdfa; border-color: #e6ddd3; }
+html .admin-workspace .admin-topbar-name,
+html .admin-workspace .admin-access-label { color: #716d7b; }
+html .admin-workspace .admin-panel,
+html .admin-workspace .admin-metric,
+html .admin-workspace .admin-project-card,
+html .admin-workspace .admin-connection-card,
+html .admin-workspace .admin-user-row,
+html .admin-workspace .admin-control-form,
+html .admin-workspace .student-roster-card { color: #242332; border-color: #e6ddd3; background: #fffdfa; box-shadow: 0 8px 22px #765b4210; }
+html .admin-workspace .admin-panel-heading,
+html .admin-workspace .admin-footer { border-color: #e6ddd3; color: #716d7b; }
+html .admin-workspace .admin-nav-live { background: #c65b3f; }
+html .admin-workspace .admin-account small,
+html .admin-workspace .admin-signout { color: #716d7b; }
+html .admin-workspace .admin-account { border-color: #e6ddd3; }
+html .admin-workspace .admin-avatar { color: #963d2e; background: #fff0e9; border-color: #c65b3f35; }
+html .admin-workspace .admin-live-banner { background: #fff0e9; border-color: #c65b3f35; }
+html .admin-workspace .admin-quick-link:hover,
+html .admin-workspace .admin-risk-row:hover { background: #fff7f3; }

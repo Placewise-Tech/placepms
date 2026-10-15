@@ -33,8 +33,8 @@ interface PreloaderProps {
 export default function Preloader({
   words = defaultWords,
   onComplete,
-  brandColor = "#70E7FF",
-  bgColor = "#060B19"
+  brandColor = "#c65b3f",
+  bgColor = "#f7f2ec"
 }: PreloaderProps) {
   const [index, setIndex] = useState(0);
   const [dimension, setDimension] = useState({ width: 0, height: 0 });
@@ -96,7 +96,7 @@ export default function Preloader({
             variants={textVariants}
             initial="initial"
             animate="enter"
-            className="flex items-center text-white font-medium text-3xl sm:text-4xl md:text-5xl absolute z-10 tracking-tight"
+            className="flex items-center text-[#242332] font-medium text-3xl sm:text-4xl md:text-5xl absolute z-10 tracking-tight"
           >
             <span
               className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full mr-3 sm:mr-4 inline-block animate-pulse"

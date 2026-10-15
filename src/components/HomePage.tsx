@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useScroll } from 'framer-motion';
 import { ArrowDown, ArrowRight, ArrowUp, ArrowUpRight, BookOpen, Check, CheckCircle2, ChevronRight, Command, FileText, FolderKanban, GitBranch, GitFork as Github, Layers3, LayoutDashboard, Menu, Orbit, Pause, Play, Plus, Search, ShieldCheck, Sparkles, Users, Workflow, X } from 'lucide-react';
 import '../home.css';
 import '../home-next.css';
+import '../home-light.css';
 import { useReducedMotion } from '../hooks/useReducedMotion';
 import { useHomeAutoplay } from '../hooks/useHomeAutoplay';
 import HomeAudience from './HomeAudience';
@@ -130,7 +131,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
   return <HomeMotionContext.Provider value={frozen}><div className={`home-page home-next ${frozen ? 'home-motion-paused' : ''}`} onClickCapture={followAnchor}>
     <a className="home-skip" href="#home-main">Skip to content</a>
     <header className="home-header"><div className="home-container home-header-inner">
-      <a href="/" aria-label="PlacePMS Home"><img src="/PlacePMS-Logo-White.svg" width="126" height="36" alt="PlacePMS" /></a>
+       <a href="/" aria-label="PlacePMS Home"><img src="/PlacePMS-Logo-Vector.svg" width="126" height="36" alt="PlacePMS" /></a>
       <nav className="home-desktop-nav" aria-label="Main navigation">{nav}</nav>
       <div className="home-desktop-actions"><button className="home-button home-button-plain" onClick={() => openAuth('signin')}>Sign In</button><button className="home-button home-button-primary" onClick={() => openAuth('signup')}>Get started <ArrowUpRight size={15} /></button></div>
       <button ref={menuRef} className="home-menu-toggle" aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'} aria-expanded={mobileMenuOpen} aria-controls="home-mobile-navigation" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>{mobileMenuOpen ? <X size={23} /> : <Menu size={23} />}</button>
@@ -186,7 +187,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
       <section id="get-started" className="home-start"><div className="home-start-orbit" aria-hidden="true" /><Reveal className="home-container"><span className="home-badge"><Sparkles size={14} /> Your next big thing starts here</span><h2>Make space<br />for <span>what’s next.</span></h2><p>You bring the ambition. We’ll bring everything into focus.</p><div className="home-start-actions"><button className="home-button home-button-primary" onClick={() => openAuth('signup')}>Create Account <ArrowUpRight size={18} /></button><button className="home-button home-button-glass" onClick={() => openAuth('signin')}>Open your workspace <ArrowRight size={17} /></button></div><span className="home-start-note"><ShieldCheck size={13} /> Your projects. Your people. Your next chapter.</span></Reveal></section>
     </main>
 
-    <footer className="home-footer"><div className="home-container"><div className="home-footer-top"><a href="/" aria-label="PlacePMS Home"><img src="/PlacePMS-Logo-White.svg" width="126" height="36" alt="PlacePMS" /></a><span>Your work. Your universe.</span><div><button onClick={() => openAuth('signin')}>Student sign in <ArrowRight size={13} /></button><button onClick={() => openAuth('signin')}>Mentor sign in <ArrowRight size={13} /></button></div></div><nav className="home-footer-nav" aria-label="Footer navigation">{navigation.map(item => <a href={`#${item.id}`} key={item.id}>{item.label}</a>)}</nav><div className="home-footer-bottom"><span>© {year} PlacePMS</span><span><span className="home-live-dot" /> Built for the next generation.</span><a href="#home-main">Back to top <ArrowUpRight size={13} /></a></div></div></footer>
+     <footer className="home-footer"><div className="home-container"><div className="home-footer-top"><a href="/" aria-label="PlacePMS Home"><img src="/PlacePMS-Logo-Vector.svg" width="126" height="36" alt="PlacePMS" /></a><span>Your work. Your universe.</span><div><button onClick={() => openAuth('signin')}>Student sign in <ArrowRight size={13} /></button><button onClick={() => openAuth('signin')}>Mentor sign in <ArrowRight size={13} /></button></div></div><nav className="home-footer-nav" aria-label="Footer navigation">{navigation.map(item => <a href={`#${item.id}`} key={item.id}>{item.label}</a>)}</nav><div className="home-footer-bottom"><span>© {year} PlacePMS</span><span><span className="home-live-dot" /> Built for the next generation.</span><a href="#home-main">Back to top <ArrowUpRight size={13} /></a></div></div></footer>
     {hasScrolled && <div className="home-floating-cta"><span><Orbit size={17} /> Your next chapter starts here.</span><button className="home-button home-button-primary" onClick={() => openAuth('signup')}>Start building <ArrowUpRight size={15} /></button><a href="#home-main" aria-label="Return to the top of the page"><ArrowUp size={17} /></a></div>}
   </div></HomeMotionContext.Provider>;
 }
