@@ -9,6 +9,7 @@ import { createWorkspaceHandler } from './server/workspace.ts'
 import { createManagementHandler } from './server/management.ts'
 import { createIdeaPlanHandler } from './server/idea-plan.ts'
 import { createAuthHandler } from './server/auth.ts'
+import { createAutomationHandler } from './server/automation.ts'
 import { createSupabaseRestProxy } from './server/supabase-rest.ts'
 
 // Only public settings reach the browser. Also accepts the labelled keys in
@@ -92,9 +93,11 @@ export default defineConfig(({ mode }) => {
         server.middlewares.use('/api/management', (request, response) => { void management(request, response) })
         const ideaPlan = createIdeaPlanHandler(serverEnv)
         server.middlewares.use('/api/idea-plan', (request, response) => { void ideaPlan(request, response) })
+        const automation = createAutomationHandler(serverEnv)
+        server.middlewares.use('/api/automation', (request, response) => { void automation(request, response) })
       },
     }],
-    server: { watch: { usePolling: true, interval: 500 } },
+    server: { host: true, watch: { usePolling: true, interval: 500 } },
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(url),
       'import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY': JSON.stringify(key),

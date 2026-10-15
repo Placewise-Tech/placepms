@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { NavLink as RouterNavLink, useLocation, useNavigate, type NavLinkProps } from 'react-router-dom';
-import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronRight, CircleHelp, Command, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, LayoutTemplate, Link2, LogOut, Menu, Monitor, Moon, Orbit, PanelLeftClose, Pause, Play, Plus, RefreshCw, Search, School, Sparkles, Sun, UserRound, Users, X } from 'lucide-react';
+import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronRight, CircleHelp, Command, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, Inbox, LayoutDashboard, LayoutTemplate, Link2, ListChecks, LogOut, Menu, Monitor, Moon, Orbit, PanelLeftClose, Pause, Play, Plus, RefreshCw, Search, School, Sparkles, Sun, UserRound, Users, X } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useSessionMonitor } from '../../hooks/useSessionMonitor';
@@ -11,6 +11,7 @@ import DashboardViews from './DashboardViews';
 import WorkspaceDialog from './WorkspaceDialog';
 import IdeaPlanHandoff from './IdeaPlanHandoff';
 import WorkspaceInvitations from './WorkspaceInvitations';
+import { NotificationBell } from './WorkspaceSignals';
 import { roleLabels, useWorkspaceRoot, workspaceRole, type ManagementSettings } from '../../lib/workspace-roles';
 import { workspaceRequest } from '../../lib/workspace-api';
 
@@ -18,6 +19,8 @@ function NavLink({to,...props}:NavLinkProps) { const root=useWorkspaceRoot(); re
 
 const baseNavigation = [
   { slug: '', label: 'Overview', icon: LayoutDashboard, section: 'WORKSPACE' },
+  { slug: 'today', label: 'Today', icon: Sparkles, section: 'WORKSPACE' },
+  { slug: 'automation', label: 'Automations', icon: ListChecks, section: 'WORKSPACE' },
   { slug: 'projects', label: 'Projects', icon: FolderKanban, section: 'WORKSPACE' },
   { slug: 'tasks', label: 'My Tasks', icon: CheckSquare, section: 'WORKSPACE' },
   { slug: 'scope', label: 'Project Scope', icon: FileText, section: 'WORKSPACE' },
@@ -32,6 +35,7 @@ const baseNavigation = [
   { slug: 'figma', label: 'Figma Designs Hub', icon: LayoutTemplate, section: 'CONNECTED TOOLS' },
   { slug: 'miro', label: 'Miro Whiteboards Hub', icon: LayoutDashboard, section: 'CONNECTED TOOLS' },
   { slug: 'sessions', label: 'Login & Sessions', icon: Monitor, section: 'ACCOUNT' },
+  { slug: 'notifications', label: 'Notifications', icon: Inbox, section: 'ACCOUNT' },
 ];
 
 export default function Dashboard({ user }: { user: User }) {
@@ -140,7 +144,8 @@ export default function Dashboard({ user }: { user: User }) {
          }}><Download size={15} />Export deadlines</button></div>
          {notice && <div className="dash-alert dash-alert-success" role="status">{notice}<button aria-label="Dismiss message" onClick={() => setNotice('')}><X size={16} /></button></div>}
          {signOutError && <div className="dash-alert dash-alert-error" role="alert">{signOutError}</div>}
-         <WorkspaceInvitations user={user} onSaved={saved} refreshKey={updatedAt?.getTime() || 0} />
+          <NotificationBell user={user} />
+          <WorkspaceInvitations user={user} onSaved={saved} refreshKey={updatedAt?.getTime() || 0} />
          <IdeaPlanHandoff user={user} onSaved={saved} />
         {data.errors.length > 0 && <div className="dash-alert dash-alert-error" role="alert"><div><strong>Some workspace data could not be loaded.</strong><details><summary>Connection details</summary>{data.errors.map((issue, index) => <p key={`${issue.section}-${index}`}>{issue.section}: {issue.message}</p>)}</details></div><button className="dash-button" disabled={refreshing} onClick={() => void refresh()}>Retry</button></div>}
         {loading ? <div className="dash-loading" role="status" aria-label="Loading dashboard"><div className="dash-stats">{[1, 2, 3, 4].map(item => <div className="dash-skeleton dash-skeleton-stat" key={item} />)}</div><div className="dash-skeleton dash-skeleton-panel" /><p>Loading your workspace from Supabase…</p></div> : error ? <div className="dash-panel dash-connection-error" role="alert"><CircleHelp size={30} /><h2>We couldn’t load your workspace</h2><p>{error}</p><button className="dash-button dash-button-primary" onClick={() => void refresh()}>Try again</button></div> : <DashboardViews key={view} view={view} data={data} user={user} features={access?.settings.features} onCreate={setDialog} onSaved={saved} />}

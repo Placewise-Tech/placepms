@@ -49,6 +49,7 @@ export interface Milestone {
 export interface Member {
   id: string;
   squad_id: string;
+  user_id?: string | null;
   name: string;
   email: string;
   role: string | null;

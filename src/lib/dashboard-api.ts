@@ -109,7 +109,7 @@ export async function loadDashboard(client: SupabaseClient, user: User, options:
           return signal ? query.abortSignal(signal) : query;
         }),
         readPaged<Member>('Team members', offset => {
-          const query = client.from('squad_members').select('id,squad_id,name,email,role,skills').in('squad_id', projectIds).order('id').range(offset, offset + pageSize - 1);
+          const query = client.from('squad_members').select('id,squad_id,user_id,name,email,role,skills').in('squad_id', projectIds).order('id').range(offset, offset + pageSize - 1);
           return signal ? query.abortSignal(signal) : query;
         }),
       ]);

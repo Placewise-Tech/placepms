@@ -34,6 +34,10 @@ function uuid(input: Record<string, unknown>, name: string) {
   if (!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)) throw new ApiError(400, 'Choose a valid registered user or invitation.');
   return value;
 }
+function uuidValue(value: unknown) {
+  if (typeof value !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value)) throw new ApiError(400, 'Mentions must contain registered account IDs.');
+  return value;
+}
 
 export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
   return async (request: Request, response: ServerResponse) => {
@@ -56,6 +60,21 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
         invitationError(result.error); jsonResponse(response, result.data);
         return;
       }
+      if (action === 'notifications.list') {
+        const result = await client.from('workspace_notifications').select('id,project_id,milestone_id,kind,title,body,read_at,created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50);
+        databaseError(result.error); jsonResponse(response, { notifications: result.data || [] });
+        return;
+      }
+      if (action === 'notification.read') {
+        const result = await client.rpc('workspace_mark_notification_read', { p_notification_id: uuid(input, 'notificationId'), p_read: input.read !== false });
+        databaseError(result.error); jsonResponse(response, result.data);
+        return;
+      }
+      if (action === 'evidence.summary') {
+        const result = await client.rpc('workspace_evidence_summary');
+        databaseError(result.error); jsonResponse(response, { summaries: result.data || [] });
+        return;
+      }
       const projectId = field(input, 'projectId', 100, true)!;
       const found = await client.from('pms_squads').select('id,leader_email,mentor_id,mentor_name').eq('id', projectId).maybeSingle();
       databaseError(found.error);
@@ -63,6 +82,58 @@ export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
       const project = found.data;
       const owner = administrator || project.leader_email?.toLowerCase() === user.email?.toLowerCase();
       const mentor = administrator || ((!account.managed || account.can_mentor) && (project.mentor_id === user.id || project.mentor_id?.toLowerCase() === user.email?.toLowerCase()));
+      if (action === 'evidence.list') {
+        const result = await client.from('workspace_evidence').select('id,project_id,milestone_id,author_id,kind,title,description,url,verified,verified_by,verified_at,created_at,updated_at').eq('project_id', projectId).order('created_at', { ascending: false }).limit(200);
+        databaseError(result.error); jsonResponse(response, { evidence: result.data || [] });
+        return;
+      }
+      if (action === 'evidence.create') {
+        const kind = field(input, 'kind', 20) || 'LINK';
+        if (!['LINK', 'DOCUMENT', 'DEMO', 'REPOSITORY', 'NOTE'].includes(kind)) throw new ApiError(400, 'Choose a valid evidence type.');
+        const result = await client.from('workspace_evidence').insert({
+          project_id: projectId,
+          milestone_id: field(input, 'milestoneId', 100),
+          author_id: user.id,
+          kind,
+          title: field(input, 'title', 200, true),
+          description: field(input, 'description', 4000) || '',
+          url: external(field(input, 'url', 2000)),
+        }).select('id').single();
+        databaseError(result.error); jsonResponse(response, { saved: true, id: result.data?.id });
+        return;
+      }
+      if (action === 'evidence.delete') {
+        const result = await client.from('workspace_evidence').delete().eq('project_id', projectId).eq('id', uuid(input, 'evidenceId')).select('id').maybeSingle();
+        databaseError(result.error); if (!result.data) throw new ApiError(404, 'Evidence not found or you cannot remove it.');
+        jsonResponse(response, { saved: true });
+        return;
+      }
+      if (action === 'evidence.verify') {
+        if (!mentor && !administrator) throw new ApiError(403, 'Only this project’s assigned mentor can verify evidence.');
+        const result = await client.from('workspace_evidence').update({ verified: input.verified !== false }).eq('project_id', projectId).eq('id', uuid(input, 'evidenceId')).select('id,verified,verified_at').maybeSingle();
+        databaseError(result.error); if (!result.data) throw new ApiError(404, 'Evidence not found or no longer available.');
+        jsonResponse(response, { saved: true, evidence: result.data });
+        return;
+      }
+      if (action === 'comments.list') {
+        const result = await client.from('workspace_comments').select('id,project_id,milestone_id,author_id,body,mentions,created_at,updated_at').eq('project_id', projectId).order('created_at', { ascending: true }).limit(200);
+        databaseError(result.error); jsonResponse(response, { comments: result.data || [] });
+        return;
+      }
+      if (action === 'comment.create') {
+        const rawMentions = input.mentions;
+        if (rawMentions !== undefined && (!Array.isArray(rawMentions) || rawMentions.length > 20)) throw new ApiError(400, 'Add at most 20 mentions.');
+        const mentions = Array.isArray(rawMentions) ? [...new Set(rawMentions.map(uuidValue))] : [];
+        const result = await client.from('workspace_comments').insert({
+          project_id: projectId,
+          milestone_id: field(input, 'milestoneId', 100),
+          author_id: user.id,
+          body: field(input, 'body', 4000, true),
+          mentions,
+        }).select('id').single();
+        databaseError(result.error); jsonResponse(response, { saved: true, id: result.data?.id });
+        return;
+      }
       if (['project.update', 'project.archive', 'member.add', 'member.update', 'member.remove', 'directory.search', 'invitation.send', 'milestone.delete'].includes(action) && !owner) throw new ApiError(403, 'Only the project lead can make this change.');
       if (action === 'directory.search') {
         const page = input.page === undefined ? 1 : Number(input.page);

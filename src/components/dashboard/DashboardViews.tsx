@@ -18,6 +18,8 @@ import { useWorkspaceRoot, workspaceRole, type FeatureKey } from '../../lib/work
 import { milestoneCsv, milestoneMatches, profileCompletion, sortMilestones } from '../../lib/workspace-insights';
 import { downloadText, errorMessage, workspaceRequest } from '../../lib/workspace-api';
 import { reportHtml } from '../../lib/workspace-library';
+import { EvidenceReadiness, NotificationsView, TodayView } from './WorkspaceSignals';
+import AutomationView from './AutomationView';
 
 interface Props { view: string; data: DashboardData; user: User; features?: Partial<Record<FeatureKey,boolean>>; onCreate: (kind: 'project' | 'milestone' | 'profile') => void; onSaved: (message: string) => Promise<void> }
 function formatDate(value: string | null, withTime = false) {
@@ -106,6 +108,9 @@ function DashboardViewsContent({ view, data, user, features, onCreate, onSaved }
   if (view==='students' && role!=='student') return <StudentRoster />;
   if (['integrations', 'repositories', 'figma', 'miro'].includes(view)) return <IntegrationWorkspace view={view} data={data} onChanged={() => onSaved('')} />;
   if (view === 'sessions') return <SessionsView />;
+  if (view === 'notifications') return <NotificationsView />;
+  if (view === 'today') return <TodayView data={data} user={user} />;
+  if (view === 'automation') return <AutomationView data={data} user={user} />;
   if (view === 'scope') return <ScopeWorkspace data={data} />;
   if (['research', 'resources', 'documents'].includes(view)) return <LibraryView kind={view === 'research' ? 'research' : view === 'resources' ? 'resource' : 'document'} data={data} user={user} />;
   if (view === 'blackbook') return <BlackbookView data={data} user={user} />;
@@ -150,8 +155,9 @@ function DashboardViewsContent({ view, data, user, features, onCreate, onSaved }
     const profile = data.profile; const completion = profileCompletion(profile); const details = [['Institution', profile?.college || user.user_metadata.college], ['Program', profile?.program], ['Batch', profile?.batch], ['Division', profile?.division], ['Roll number', profile?.roll_number], ['Role', profile?.role]]; const name = profile?.full_name || user.user_metadata.full_name || user.email || 'Academic portfolio';
     const exportPortfolio = () => { const content = [`# ${name}`, user.email, ...details.map(([label, value]) => `${label}: ${value || 'Not added'}`), '\n## Project work', ...data.squads.filter(project => !isInactive(project.status)).flatMap(project => [`\n### ${project.title}`, project.summary || '', `Domain: ${project.domain || 'Not set'} · Phase: ${project.current_phase || 'Not set'}`, `Mentor: ${project.mentor_name || 'Not assigned'}`, ...data.milestones.filter(task => task.squad_id === project.id && isComplete(task.status)).map(task => `- Approved delivery: ${task.name}${typeof task.score === 'number' ? ` · Score ${task.score}/100` : ''}`), ...[project.github_repo, project.figma_url, project.miro_url].filter(value => safeExternalUrl(value))])].join('\n'); downloadText('placepms-portfolio.html', reportHtml(name, content), 'text/html;charset=utf-8'); };
     return <Panel title="Your portfolio" subtitle="Your academic identity. Work worth showing." action={<div className="workspace-actions"><button className="dash-button" onClick={exportPortfolio}><Download size={14} />Export portfolio</button><button className="dash-button dash-button-primary" onClick={() => onCreate('profile')}>Edit profile</button></div>}><div className="studio-portfolio-header"><span className="dash-profile-large"><GraduationCap size={34} /></span><div><h2>{name}</h2><p>{user.email}</p></div><div className="studio-portfolio-score"><strong>{data.errors.some(error => error.section === 'Profile') ? '—' : `${completion.percent}%`}</strong><span>profile complete</span></div></div><div className="workspace-content"><WorkspaceSections label="Portfolio sections" value={section} onChange={setSection} sections={[
-      { id: 'projects', label: 'Academic profile', content: <><dl className="studio-facts">{details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not added'}</dd></div>)}</dl><div className="workspace-callout workspace-spaced"><CheckCircle2 size={21} /><div><strong>{stats.completedTasks} approved deliveries</strong><p>{completion.missing.length ? `Complete your profile: ${completion.missing.map(field => field.replace(/_/g, ' ')).join(', ')}.` : 'Your academic profile is complete.'}</p></div></div></> },
-      { id: 'work', label: 'Project showcase', count: data.squads.length, content: data.squads.length ? <PagedCards items={data.squads} noun="projects" render={project => <ProjectCard project={project} data={data} />} /> : <EmptyState title="Your story starts with a project" description="Create a workspace to build your portfolio." action={projectAction} /> },
+       { id: 'projects', label: 'Academic profile', content: <><dl className="studio-facts">{details.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value || 'Not added'}</dd></div>)}</dl><div className="workspace-callout workspace-spaced"><CheckCircle2 size={21} /><div><strong>{stats.completedTasks} approved deliveries</strong><p>{completion.missing.length ? `Complete your profile: ${completion.missing.map(field => field.replace(/_/g, ' ')).join(', ')}.` : 'Your academic profile is complete.'}</p></div></div></> },
+       { id: 'evidence', label: 'Evidence readiness', content: <EvidenceReadiness data={data} /> },
+       { id: 'work', label: 'Project showcase', count: data.squads.length, content: data.squads.length ? <PagedCards items={data.squads} noun="projects" render={project => <ProjectCard project={project} data={data} />} /> : <EmptyState title="Your story starts with a project" description="Create a workspace to build your portfolio." action={projectAction} /> },
     ]} /></div></Panel>;
   }
   return <Panel title="Page not found"><EmptyState icon={<FileText size={25} />} title="This page does not exist" description="Return to the overview to continue working." action={<Link className="dash-button" to="/dashboard">Back to overview</Link>} /></Panel>;

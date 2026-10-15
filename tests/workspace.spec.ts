@@ -14,6 +14,9 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
   const milestone: Record<string, any> = { id: 'm-fixture', squad_id: project.id, name: 'Project delivery', phase: 'Build', description: 'Fixture delivery evidence', status: 'PENDING', due_date: date, start_date: null, submission_files: [], mentor_feedback: null, score: null };
   const members: Record<string, unknown>[] = [];
   const library: Record<string, unknown>[] = [{ id: 'reference-1', user_id: id, kind: 'research', title: 'Saved academic reference', url: 'https://example.test/paper', notes: 'A reviewed reference', tags: ['research'], project_id: project.id, created_at: date, updated_at: date }];
+  const notifications: Record<string, any>[] = [{ id: 'notification-1', project_id: project.id, milestone_id: milestone.id, kind: 'milestone.approved', title: 'Delivery approved', body: 'Project delivery was approved.', read_at: null, created_at: `${date}T09:00:00Z` }];
+  const evidence: Record<string, any>[] = [{ id: 'evidence-1', project_id: project.id, milestone_id: milestone.id, author_id: id, kind: 'REPOSITORY', title: 'Repository evidence', description: 'The connected repository contains the delivery.', url: 'https://github.com/fixture/repo', verified: false, verified_by: null, verified_at: null, created_at: `${date}T08:00:00Z`, updated_at: `${date}T08:00:00Z` }];
+  const comments: Record<string, any>[] = [{ id: 'comment-1', project_id: project.id, milestone_id: milestone.id, author_id: id, body: 'The first evidence record is ready for review.', mentions: [], created_at: `${date}T08:30:00Z` }];
   const connections: Record<string, unknown>[] = [];
   const accounts: Record<string, any>[] = [];
   const settings = { registration_enabled: true, features: { github: true, figma: true, miro: true, research: true, resource: true, document: true, blackbook: true } };
@@ -94,6 +97,15 @@ async function workspace(page: Page, options: { githubAnalytics?: boolean; failS
   });
   await page.route('**/api/workspace', async route => {
     const input = route.request().postDataJSON(); calls.push(input);
+    if (input.action === 'notifications.list') return route.fulfill({ json: { notifications } });
+    if (input.action === 'notification.read') { const item = notifications.find(candidate => candidate.id === input.notificationId); if (item) item.read_at = input.read === false ? null : new Date().toISOString(); return route.fulfill({ json: { saved: true } }); }
+    if (input.action === 'evidence.summary') return route.fulfill({ json: { summaries: [{ project_id: project.id, recorded: evidence.length, verified: evidence.filter(item => item.verified).length }] } });
+    if (input.action === 'evidence.list') return route.fulfill({ json: { evidence: evidence.filter(item => item.project_id === input.projectId) } });
+    if (input.action === 'evidence.create') { const item = { id: `evidence-${evidence.length + 1}`, project_id: input.projectId, milestone_id: null, author_id: id, kind: input.kind, title: input.title, description: input.description || '', url: input.url || null, verified: false, verified_by: null, verified_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }; evidence.push(item); return route.fulfill({ json: { saved: true, id: item.id } }); }
+    if (input.action === 'evidence.delete') { const index = evidence.findIndex(item => item.id === input.evidenceId && item.project_id === input.projectId); if (index >= 0) evidence.splice(index, 1); return route.fulfill({ json: { saved: true } }); }
+    if (input.action === 'evidence.verify') { const item = evidence.find(candidate => candidate.id === input.evidenceId && candidate.project_id === input.projectId); if (item) Object.assign(item, { verified: input.verified !== false, verified_by: input.verified !== false ? id : null, verified_at: input.verified !== false ? new Date().toISOString() : null }); return route.fulfill({ json: { saved: true, evidence: item } }); }
+    if (input.action === 'comments.list') return route.fulfill({ json: { comments: comments.filter(item => item.project_id === input.projectId) } });
+    if (input.action === 'comment.create') { const item = { id: `comment-${comments.length + 1}`, project_id: input.projectId, milestone_id: null, author_id: id, body: input.body, mentions: input.mentions || [], created_at: new Date().toISOString() }; comments.push(item); return route.fulfill({ json: { saved: true, id: item.id } }); }
     if (input.action === 'invitation.list') return route.fulfill({ json: { invitations: [] } });
     if (input.action === 'directory.search') return route.fulfill({ json: { people: [{ id: '22222222-2222-4222-8222-222222222222', email: 'member@example.test', full_name: 'Team Member' }], total: 1 } });
     if (input.action === 'invitation.send') { members.push({ id: 'member-fixture', squad_id: project.id, name: 'Team Member', email: 'member@example.test', role: 'Member', skills: [] }); return route.fulfill({ json: { saved: true, invitationId: '33333333-3333-4333-8333-333333333333' } }); }
@@ -723,6 +735,57 @@ test('project workspace edits existing members and submits evidence in place', a
   await expect(page.getByRole('button', { name: 'Edit & attach files' })).toBeEnabled();
   expect(calls.some(call => call.action === 'member.update')).toBe(true);
   expect(calls.filter(call => call.action === 'milestone.submit')).toHaveLength(2);
+});
+
+test('today, notifications, and project evidence use the fixture workspace signals', async ({ page }) => {
+  const { calls, evidence, comments } = await workspace(page);
+  await page.goto('/dashboard/today');
+  await expect(page.getByRole('heading', { name: 'Make the next move count.', exact: true })).toBeVisible();
+  await expect(page.getByText('Project delivery', { exact: true })).toBeVisible();
+
+  await page.goto('/dashboard/notifications');
+  await expect(page.getByRole('heading', { name: 'Notifications', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Delivery approved', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Mark read', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Mark unread', exact: true })).toBeVisible();
+
+  await page.goto('/dashboard/projects/sq-fixture');
+  await page.getByRole('tab', { name: 'Evidence & discussion', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Repository evidence', exact: true })).toBeVisible();
+  await expect(page.getByText('The first evidence record is ready for review.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Add evidence', exact: true }).click();
+  await page.getByLabel('Title', { exact: true }).fill('Demo walkthrough');
+  await page.getByLabel('URL (optional)', { exact: true }).fill('https://example.test/demo');
+  await page.getByLabel('Context', { exact: true }).fill('A real demo link for the delivery.');
+  await page.getByRole('button', { name: 'Save evidence', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Demo walkthrough', exact: true })).toBeVisible();
+  await page.getByLabel('Add a project comment', { exact: true }).fill('A useful implementation note.');
+  await page.getByRole('button', { name: 'Post', exact: true }).click();
+  await expect(page.getByText('A useful implementation note.', { exact: true })).toBeVisible();
+  expect(evidence.some(item => item.title === 'Demo walkthrough')).toBe(true);
+  expect(comments.some(item => item.body === 'A useful implementation note.')).toBe(true);
+  expect(calls.some(call => call.action === 'notifications.list')).toBe(true);
+  expect(calls.some(call => call.action === 'evidence.create')).toBe(true);
+  expect(calls.some(call => call.action === 'comment.create')).toBe(true);
+
+  await page.goto('/dashboard/portfolio');
+  await page.getByRole('tab', { name: 'Evidence readiness', exact: true }).click();
+  await expect(page.getByText('Projects represented', { exact: true })).toBeVisible();
+  await expect(page.getByText('2 recorded', { exact: true })).toBeVisible();
+  expect(calls.some(call => call.action === 'evidence.summary')).toBe(true);
+});
+
+test('assigned mentors can verify and unverify project evidence', async ({ page }) => {
+  const { project, evidence } = await workspace(page);
+  Object.assign(project, { leader_email: 'lead@example.test', mentor_id: id, mentor_name: 'Workspace Fixture' });
+  await page.goto('/dashboard/projects/sq-fixture');
+  await page.getByRole('tab', { name: 'Evidence & discussion', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Verify', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Verify', exact: true }).click();
+  await expect(page.getByText('Mentor verified', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Unverify', exact: true }).click();
+  await expect(page.getByText('Pending verification', { exact: true })).toBeVisible();
+  expect(evidence[0].verified).toBe(false);
 });
 
 test('assigned mentor sees review queue and saves a revision decision with a score', async ({ page }) => {

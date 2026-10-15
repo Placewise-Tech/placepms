@@ -174,6 +174,32 @@ and retains only 90 days of activity history. It is safe to apply during a rolli
 deployment: older servers fall back to the activity table until the migration is
 available.
 
+Apply `supabase/migrations/202610140001_workspace_signals.sql` after the workspace
+integrations and management migrations to enable the Today cockpit, persisted
+notifications, project evidence and discussion timelines, mentor evidence
+verification, and the evidence summary function. It adds only empty tables and
+strict project-scoped policies; existing milestone links and review history are
+not backfilled as verified evidence.
+
+### Cloud automation
+
+Apply `supabase/migrations/202610150001_workspace_automation.sql` after the
+workspace signals migration. It adds manager-scheduled milestone audits and
+public HTTP checks, persisted execution reports, and manager-assigned follow-up
+work with explicit **DEVELOPER** or **TESTER** ownership. The dashboard's
+**Automations** page also exports tasks, reports, and follow-up work as one
+`placepms-automation-work-log.md` file.
+
+The Vercel cron entry runs `/api/automation` every five minutes. Configure the
+server-only `CRON_SECRET` in Vercel; it must match the bearer secret used by the
+cron request. A saved task continues to run when the manager's laptop is off,
+because the runner uses the deployed server and Supabase task leases. The
+current checks are deterministic database audits and public URL checks only:
+they do not execute arbitrary code or call an AI model, so there is no model
+token counter or 10M-token warning to report. An AI manager/developer/tester
+worker would require a separate hosted worker and an explicitly selected model
+provider before token usage could be measured safely.
+
 ## Advanced dashboard
 
 - **Overview:** delivery priorities, overdue/revision/review counts, project health,

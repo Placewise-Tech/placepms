@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, BarChart3, BookOpen, CheckSquare, ChevronRight, Database, FileText, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, Link2, LogOut, Menu, Monitor, Plus, RefreshCw, Search, Server, Settings2, ShieldCheck, Users, X } from 'lucide-react';
+import { Activity, BarChart3, BookOpen, CheckSquare, ChevronRight, Database, FileText, FolderKanban, GitBranch, GraduationCap, LayoutDashboard, Link2, ListChecks, LogOut, Menu, Monitor, Plus, RefreshCw, Search, Server, Settings2, ShieldCheck, Users, X } from 'lucide-react';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useSessionMonitor } from '../../hooks/useSessionMonitor';
 import { supabase } from '../../lib/supabase';
@@ -20,6 +20,7 @@ const navigation = [
   { slug: 'system', label: 'System health', icon: Server, group: 'MONITOR' },
   { slug: 'projects', label: 'All projects', icon: FolderKanban, group: 'WORKSPACE DATA' },
   { slug: 'tasks', label: 'All milestones', icon: CheckSquare, group: 'WORKSPACE DATA' },
+  { slug: 'automation', label: 'Cloud automations', icon: ListChecks, group: 'WORKSPACE DATA' },
   { slug: 'students', label: 'Student roster', icon: GraduationCap, group: 'WORKSPACE DATA' },
   { slug: 'mentorship', label: 'Mentor review queue', icon: Users, group: 'WORKSPACE DATA' },
   { slug: 'documents', label: 'All documents', icon: FileText, group: 'WORKSPACE DATA' },

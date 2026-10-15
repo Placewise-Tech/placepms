@@ -1,0 +1,13 @@
+{
+  "name": "PlacePMS Academic Workspace",
+  "short_name": "PlacePMS",
+  "description": "Connected academic project planning, delivery, mentoring, and portfolio workspace.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#060B19",
+  "theme_color": "#060B19",
+  "icons": [
+    { "src": "/nebula-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

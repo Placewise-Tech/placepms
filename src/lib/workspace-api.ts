@@ -20,7 +20,7 @@ export interface WorkspaceInvitation {
   createdAt: string;
 }
 
-export async function workspaceRequest<T>(endpoint: 'integrations' | 'sessions' | 'workspace' | 'management', body: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
+export async function workspaceRequest<T>(endpoint: 'integrations' | 'sessions' | 'workspace' | 'management' | 'automation', body: Record<string, unknown>, signal?: AbortSignal): Promise<T> {
   if (!supabase) throw new Error('Supabase is not configured.');
   const { data, error } = await supabase.auth.getSession();
   if (error || !data.session) throw new WorkspaceApiError('Please sign in again.', 401);
