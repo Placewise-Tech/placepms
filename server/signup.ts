@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import nodemailer, { type SendMailOptions } from 'nodemailer';
 import publicConfig from '../supabase.public.json' with { type: 'json' };
+import { ApiError } from './integration-security.js';
 import { protectRequest, securityHeaders } from './workspace-http.js';
 
 const successMessage = 'Check your email for your temporary login credentials. If you already have an account, sign in or use Forgot password.';
@@ -176,7 +177,7 @@ export function createSignupHandler(env: NodeJS.ProcessEnv = process.env) {
       response.statusCode = 202;
       response.end(JSON.stringify({ message }));
     } catch (cause) {
-      response.statusCode = cause instanceof SignupError ? cause.status : 503;
+      response.statusCode = cause instanceof SignupError ? cause.status : cause instanceof ApiError ? cause.status : 503;
       if (response.statusCode === 429) response.setHeader('Retry-After', '3600');
       response.end(JSON.stringify({ error: cause instanceof SignupError ? cause.message : 'Account creation is temporarily unavailable. Please try again later.' }));
     }
