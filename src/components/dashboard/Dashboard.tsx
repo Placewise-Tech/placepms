@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { NavLink as RouterNavLink, useLocation, useNavigate, type NavLinkProps } from 'react-router-dom';
-import { ArrowUpRight, Bell, CheckSquare, ChevronRight, CircleHelp, Command, Download, FolderKanban, GraduationCap, LayoutDashboard, LogOut, Menu, Moon, Orbit, PanelLeftClose, Pause, Play, Plus, RefreshCw, Search, School, Sparkles, Sun, X } from 'lucide-react';
+import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronRight, CircleHelp, ClipboardCheck, Command, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, Inbox, LayoutDashboard, Link2, LogOut, Menu, Moon, Orbit, PanelLeftClose, Pause, Play, Plus, RefreshCw, Search, School, Sparkles, Sun, Users, X } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useSessionMonitor } from '../../hooks/useSessionMonitor';
@@ -15,6 +15,21 @@ function NavLink({to,...props}:NavLinkProps) { const root=useWorkspaceRoot(); re
 
 const baseNavigation = [
   { slug: '', label: 'Overview', icon: LayoutDashboard, section: 'WORKSPACE' },
+  { slug: 'projects', label: 'Projects', icon: FolderKanban, section: 'WORKSPACE' },
+  { slug: 'tasks', label: 'My Tasks', icon: CheckSquare, section: 'WORKSPACE' },
+  { slug: 'mentorship', label: 'Mentorship', icon: Users, section: 'WORKSPACE' },
+  { slug: 'attendance', label: 'Attendance', icon: ClipboardCheck, section: 'WORKSPACE' },
+  { slug: 'calendar', label: 'Calendar', icon: CalendarDays, section: 'WORKSPACE' },
+  { slug: 'documents', label: 'Documents', icon: FileText, section: 'LIBRARY' },
+  { slug: 'research', label: 'Research', icon: FlaskConical, section: 'LIBRARY' },
+  { slug: 'resources', label: 'Academic Resources', icon: BookOpen, section: 'LIBRARY' },
+  { slug: 'blackbook', label: 'Blackbook Generator', icon: BookMarked, section: 'LIBRARY' },
+  { slug: 'integrations', label: 'Integrations', icon: Link2, section: 'CONNECTED TOOLS' },
+  { slug: 'repositories', label: 'Repositories Hub', icon: GitBranch, section: 'CONNECTED TOOLS' },
+  { slug: 'figma', label: 'Figma Designs Hub', icon: Link2, section: 'CONNECTED TOOLS' },
+  { slug: 'miro', label: 'Miro Whiteboards Hub', icon: LayoutDashboard, section: 'CONNECTED TOOLS' },
+  { slug: 'sessions', label: 'Login & Sessions', icon: Inbox, section: 'ACCOUNT' },
+  { slug: 'portfolio', label: 'Portfolio', icon: FolderKanban, section: 'CAREER' },
 ];
 
 export default function Dashboard({ user }: { user: User }) {
@@ -79,6 +94,7 @@ export default function Dashboard({ user }: { user: User }) {
 
   const saved = async (message: string) => { setNotice(message); await refresh(); };
   const closeMenus = () => { setMobileOpen(false); setShowDeadlines(false); setShowCommand(false); };
+  const openFeatureNotice = (event: ReactMouseEvent, label: string) => { event.preventDefault(); closeMenus(); setNotice(`${label} is work in progress and will be available soon.`); };
   const commandSearch = commandQuery.trim().toLowerCase();
   const commandPages = navigation.filter(item => !commandSearch || item.label.toLowerCase().includes(commandSearch));
   const commandProjects = data.squads.filter(project => !commandSearch || `${project.title} ${project.domain || ''}`.toLowerCase().includes(commandSearch)).slice(0, 4);
@@ -92,7 +108,7 @@ export default function Dashboard({ user }: { user: User }) {
        <button className="dash-institution" onClick={closeMenus} title={college}><span><School size={19} /></span><div><strong>{college}</strong><small>Academic workspace</small></div><ChevronRight size={14} /></button>
         <button className="dash-create-button" aria-label="New project" title="New project" onClick={() => setDialog('project')}><span><Plus size={15} /></span><strong>New project</strong><kbd>N</kbd></button>
         {managedRole==='admin' && <nav className="dash-management" aria-label="Administration management">{managementNavigation.map(item=><NavLink key={item.slug} to={`${root}/${item.slug}`} onClick={closeMenus} title={item.label} className={({isActive})=>`dash-nav-item ${isActive?'active':''}`}><item.icon size={16}/><span>{item.label}</span></NavLink>)}</nav>}
-        <nav className="dash-navigation" aria-label="Workspace navigation"><NavLink to="/dashboard" end onClick={closeMenus} className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><LayoutDashboard size={17} /><span>Overview</span></NavLink></nav>
+        <nav className="dash-navigation" aria-label="Workspace navigation">{['WORKSPACE', 'LIBRARY', 'CONNECTED TOOLS', 'ACCOUNT', 'CAREER'].map(section => <div className="dash-nav-group" key={section}><span className="dash-nav-caption">{section === 'CONNECTED TOOLS' ? 'CONNECTED TOOLS' : section}</span><div className="dash-nav-group-items">{navigation.filter(item => item.section === section).map(item => <NavLink key={item.slug || 'overview'} to={`/dashboard${item.slug ? `/${item.slug}` : ''}`} end title={item.label} onClick={event => item.slug ? openFeatureNotice(event, item.label) : closeMenus()} className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><item.icon size={17} /><span>{item.label}</span></NavLink>)}</div></div>)}</nav>
        <div className="dash-sidebar-bottom"><div className="dash-sidebar-help"><GraduationCap size={19} /><div><strong>A little progress, every day.</strong><span>Your work. Your next chapter.</span></div></div><button className="dash-user" onClick={closeMenus} title={name}><span className="dash-avatar">{avatar ? <img src={avatar} alt="" /> : initials}</span><span className="dash-user-copy"><strong>{name}</strong><small>{role}</small></span><ChevronRight size={15} /></button><button className="dash-sign-out" disabled={signingOut} title="Sign out" onClick={async () => {
         setSigningOut(true);
         setSignOutError('');
