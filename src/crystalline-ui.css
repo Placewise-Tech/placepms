@@ -547,3 +547,26 @@ html .admin-workspace :is(.admin-panel, .admin-metric, .admin-live-banner, .admi
 html .admin-workspace :is(.admin-panel-heading, .admin-table-row, .admin-directory-row, .admin-activity-table > button) { border-color: rgba(99, 232, 255, .12); }
 html .admin-workspace :is(.admin-button, .dash-button) { color: #d9fbff; border-color: rgba(99, 232, 255, .2); background: rgba(12, 35, 57, .76); }
 html .admin-workspace .dash-button-primary { color: #04111c !important; background: linear-gradient(135deg, #63e8ff, #4ef0c3); }
+
+/* Overview-only workspace: remove feature navigation and visual noise. */
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-management,
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-create-button,
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-command-trigger,
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-notifications,
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-view-controls,
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-launchpad,
+html .dashboard.workspace-studio:not(.admin-workspace) .studio-sections,
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-hero-actions,
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-page-heading > .dash-button { display: none !important; }
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-navigation { padding-top: 10px; }
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-navigation .dash-nav-item { display: flex; }
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-sidebar-bottom .dash-user { cursor: default; }
+html .dashboard.workspace-studio:not(.admin-workspace) .dash-sidebar-bottom .dash-user > svg { display: none; }
+html .dashboard.workspace-studio:not(.admin-workspace) :is(*, *::before, *::after) {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+html .dashboard.workspace-studio:not(.admin-workspace) :is(.dash-stat, .dash-panel, .dash-project-card, .studio-card):hover {
+  transform: none !important;
+}
