@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { NavLink as RouterNavLink, useLocation, useNavigate, type NavLinkProps } from 'react-router-dom';
-import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Command, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, Inbox, LayoutDashboard, Link2, ListChecks, LogOut, Menu, Moon, Monitor, Orbit, PanelLeftClose, Pause, Play, Plus, RefreshCw, Search, School, Sparkles, Sun, Users, X, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, Inbox, LayoutDashboard, Link2, ListChecks, LogOut, Menu, Moon, Monitor, Orbit, PanelLeftClose, Pause, Play, Plus, Search, School, Sparkles, Sun, Users, X, type LucideIcon } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useSessionMonitor } from '../../hooks/useSessionMonitor';
@@ -150,9 +150,6 @@ export default function Dashboard({ user }: { user: User }) {
            </div>
          </div>
          <div className="dash-header-actions">
-           <button className="dash-command-trigger" aria-label="Search workspace" onClick={() => setShowCommand(true)}><Search size={15} /><span>Search workspace</span><kbd><Command size={11} /> K</kbd></button>
-           <span className={`dash-sync ${data.errors.length || error ? 'has-error' : ''}`} title={updatedAt ? `Last refreshed ${updatedAt.toLocaleTimeString()}` : 'Connecting to Supabase'}><i />{loading ? 'Connecting' : error || data.errors.length ? 'Check connection' : 'Connected'}</span>
-           <button className="dash-icon-button" aria-label="Refresh dashboard" disabled={refreshing} onClick={() => void refresh()}><RefreshCw size={17} className={refreshing ? 'dash-spinning' : ''} /></button>
            <button className="dash-icon-button" aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'} onClick={() => { setDark(!dark); localStorage.setItem('placepms:theme', dark ? 'light' : 'dark'); }}>{dark ? <Sun size={18} /> : <Moon size={18} />}</button>
            <div className="dash-notifications"><button className="dash-icon-button" aria-label="Upcoming deadlines" aria-expanded={showDeadlines} onClick={() => setShowDeadlines(!showDeadlines)}><Bell size={18} />{upcoming.length > 0 && <span className="dash-notification-dot" />}</button>{showDeadlines && <div className="dash-deadline-popover"><h3>Upcoming deadlines</h3>{upcoming.length ? upcoming.slice(0, 5).map(task => <button key={task.id} onClick={() => { navigate(`${root}/calendar?date=${task.due_date}`); closeMenus(); }}><strong>{task.name}</strong><span>{task.due_date}</span></button>) : <p>No upcoming deadlines.</p>}</div>}</div>
            <button className="dash-header-profile" onClick={() => navigate(`${root}/portfolio`)} aria-label={`Open ${name}'s profile`}><span className="dash-avatar dash-header-avatar">{avatar ? <img src={avatar} alt="" /> : initials}</span><span><strong>{name}</strong><small>{role}</small></span><ChevronDown size={15} /></button>

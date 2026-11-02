@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, CalendarDays, Check, CheckCircle2, CheckSquare, ChevronRight, Circle, Clock3, Download, FileText, FlaskConical, FolderKanban, GraduationCap, Link2, Plus, RefreshCw, Search, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, Check, CheckCircle2, CheckSquare, ChevronRight, Circle, Clock3, Download, FileText, FlaskConical, FolderKanban, GraduationCap, Plus, RefreshCw, Search, Sparkles, Users } from 'lucide-react';
 import type { DashboardData, Milestone, Squad } from '../../lib/dashboard-data';
-import { calendarExport, getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
+import { calendarExport, getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
 import IntegrationWorkspace from './IntegrationWorkspace';
 import SessionsView from './SessionsView';
@@ -11,7 +11,6 @@ import LibraryView from './LibraryView';
 import BlackbookView from './BlackbookView';
 import CalendarView from './CalendarView';
 import ProjectDetails from './ProjectDetails';
-import WorkspaceInsights from './WorkspaceInsights';
 import { PagedCards, RecordPager, WorkspaceSections, WorkspaceLink as Link } from './WorkspaceUI';
 import ManagementWorkspace, { ManagementOverview } from './ManagementWorkspace';
 import { useWorkspaceRoot, workspaceRole, type FeatureKey } from '../../lib/workspace-roles';
@@ -97,7 +96,7 @@ function DashboardViewsContent({ view, data, user, now, features, onCreate, onSa
   const [taskLayout, setTaskLayout] = useState('list'); const [boardColumn, setBoardColumn] = useState('Planned'); const [section, setSection] = useState('projects');
   const taskFilter = params.get('status') || 'all'; const projectFilter = params.get('project') || '';
   const setFilter = (key: string, value: string) => { const next = new URLSearchParams(params); if (value && value !== 'all') next.set(key, value); else next.delete(key); setParams(next, { replace: true }); };
-   const stats = getDashboardStats(data); const upcoming = upcomingMilestones(data.milestones);
+   const stats = getDashboardStats(data);
   const search = query.trim().toLowerCase(); const projectAction = <button className="dash-button dash-button-primary" onClick={() => onCreate('project')}><Plus size={15} />Create project</button>;
   const taskAction = <button className="dash-button dash-button-primary" disabled={!data.squads.some(project => !isInactive(project.status))} onClick={() => onCreate('milestone')}><Plus size={15} />Add milestone</button>;
   const projectError = data.errors.some(error => ['Projects', 'Team projects', 'Memberships', 'Mentorship'].includes(error.section)); const taskError = projectError || data.errors.some(error => error.section === 'Milestones');
@@ -131,11 +130,6 @@ function DashboardViewsContent({ view, data, user, now, features, onCreate, onSa
      <div className="dash-stats dash-overview-stats">
        {[{ label: 'ACTIVE PROJECTS', value: projectError ? '—' : stats.activeProjects, description: projectError ? 'Data unavailable' : 'In active workspace', icon: FolderKanban, color: 'green', link: 'projects' }, { label: 'TASKS TOTAL', value: taskError ? '—' : stats.pendingTasks, description: taskError ? 'Data unavailable' : 'Live tasks', icon: CheckSquare, color: 'blue', link: 'tasks' }, { label: 'HOURS LOGGED', value: '—', description: 'Time tracking unavailable', icon: Clock3, color: 'purple', link: 'calendar' }, { label: 'OVERDUE TASKS', value: taskError ? '—' : stats.overdueTasks, description: taskError ? 'Data unavailable' : stats.overdueTasks ? 'Needs attention' : 'All clear', icon: Circle, color: 'amber', link: 'tasks' }].map(item => <Link to={`/dashboard/${item.link}`} className={`dash-stat dash-stat-${item.color}`} key={item.label}><div className="dash-row"><span>{item.label}</span><span className={`dash-stat-icon ${item.color}`}><item.icon size={17} /></span></div><strong>{item.value}</strong><p>{item.description}<ArrowUpRight size={13} /></p><span className="dash-stat-line" /></Link>)}
      </div>
-    <WorkspaceSections label="Overview sections" value={section} onChange={setSection} sections={[
-      { id: 'projects', label: 'Projects & deadlines', content: <div className="dash-overview-grid"><Panel title="Your projects" subtitle="Your next ideas, in motion." action={<Link className="dash-text-link" to="/dashboard/projects">View all <ChevronRight size={14} /></Link>}>{data.squads.length ? <div className="dash-project-grid">{data.squads.slice(0, 2).map(project => <ProjectCard key={project.id} project={project} data={data} />)}</div> : <EmptyState title={projectError ? 'Projects could not be loaded' : 'Your next big idea starts here'} description={projectError ? 'Check your connection and refresh.' : 'Create a project, bring your team, and plan your first delivery.'} action={!projectError && projectAction} />}</Panel><Panel title="Upcoming deadlines" subtitle="A focused view of your next deliveries." action={<CalendarDays size={17} />}>{upcoming.length ? <div className="dash-deadlines">{upcoming.slice(0, 4).map(task => <Link to={`/dashboard/calendar?date=${task.due_date}`} className="dash-deadline" key={task.id}><span className="dash-date-tile"><b>{new Date(`${task.due_date}T00:00:00`).getDate()}</b>{new Date(`${task.due_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short' })}</span><div><h3>{task.name}</h3><p>{data.squads.find(project => project.id === task.squad_id)?.title}</p></div><ChevronRight size={15} /></Link>)}</div> : <EmptyState icon={<CalendarDays size={24} />} title={taskError ? 'Deadlines unavailable' : 'Room to plan ahead'} description="Your upcoming milestone dates appear here." />}</Panel></div> },
-      { id: 'focus', label: 'Focus & readiness', content: <WorkspaceInsights data={data} onEditProfile={() => onCreate('profile')} /> },
-      { id: 'deliveries', label: 'Delivery progress', content: <div className="dash-overview-grid"><Panel title="Milestone progress" subtitle="Evidence, submissions, and review decisions." action={<Link className="dash-text-link" to="/dashboard/tasks">All milestones <ChevronRight size={14} /></Link>}>{data.milestones.length ? <TaskList tasks={data.milestones.slice(0, 5)} data={data} onSaved={onSaved} /> : <EmptyState icon={<CheckCircle2 size={24} />} title={taskError ? 'Milestones unavailable' : 'One step at a time'} description="Break your project into milestones and track each delivery." action={taskAction} />}</Panel><Panel title="Workspace at a glance"><div className="dash-workspace-summary"><div className="dash-completion-ring" style={{ background: `conic-gradient(var(--dash-brand) ${stats.completion}%, var(--dash-border) 0)` }}><div><strong>{taskError ? '—' : `${stats.completion}%`}</strong><span>completed</span></div></div><p>{stats.completedTasks} delivered milestones</p><Link to="/dashboard/integrations"><Link2 size={15} />Connected integrations<strong>{data.errors.some(error => error.section === 'Integrations') ? '—' : data.integrations.filter(item => item.is_connected).length}</strong></Link><Link to="/dashboard/portfolio"><GraduationCap size={15} />Your academic profile<ChevronRight size={15} /></Link></div></Panel></div> },
-     ]} />
    </>;
   }
 
