@@ -239,6 +239,65 @@ html .admin-workspace :is(.admin-button, .dash-button) { color: var(--ui-ink); b
 html .admin-workspace .dash-button-primary { color: #fff !important; border-color: transparent; background: linear-gradient(135deg, var(--ui-teal), var(--ui-cyan)); }
 html .admin-workspace :is(.admin-table-row, .admin-directory-row, .admin-activity-table > button) { border-color: var(--ui-line); }
 
+/* Large-screen composition: use the full 4K canvas without stretching text. */
+@media (min-width: 1440px) {
+  html .home-page .home-site-header > div,
+  html .home-page .home-site-main { max-width: 1680px; }
+  html .home-page .home-site-header > div { padding-inline: 36px; }
+  html .home-page .home-site-main { padding-inline: 56px; }
+  html .home-page .home-site-main > div { padding-bottom: 96px; }
+  html .home-page .home-site-main h1 { font-size: clamp(5rem, 5.6vw, 6.75rem); }
+  html .home-page #mission-control-card { box-shadow: 0 28px 70px rgba(15, 23, 42, .11), 0 0 42px rgba(8, 145, 178, .16); }
+  html .dashboard.workspace-studio .dash-sidebar { width: 282px; }
+  html .dashboard.workspace-studio .dash-brand img { width: 150px; height: auto; }
+  html .dashboard.workspace-studio .dash-main { max-width: 2048px; padding: 42px 52px 32px; }
+  html .dashboard.workspace-studio .dash-header { padding-inline: 46px; }
+  html .dashboard.workspace-studio .dash-panel,
+  html .dashboard.workspace-studio .dash-stat,
+  html .dashboard.workspace-studio .dash-project-card { box-shadow: 0 16px 42px rgba(15, 23, 42, .075), 0 0 0 1px rgba(255, 255, 255, .75); }
+  html .dashboard.workspace-studio .dash-panel-heading { padding: 24px 26px 21px; }
+  html .dashboard.workspace-studio .dash-panel-heading h2 { font-size: 15px; }
+  html .dashboard.workspace-studio .dash-panel-heading p { font-size: 11px; }
+  html .dashboard.workspace-studio .dash-stat { padding: 22px 23px 20px; }
+  html .dashboard.workspace-studio .dash-stat > strong { font-size: 36px; }
+}
+
+@media (min-width: 2200px) {
+  html .home-page .home-site-header > div,
+  html .home-page .home-site-main { max-width: 2048px; }
+  html .home-page .home-site-header > div { padding-inline: 54px; }
+  html .home-page .home-site-header > div > div { height: 78px; padding-inline: 30px; border-radius: 20px; }
+  html .home-page .home-site-header img { width: 168px; }
+  html .home-page .home-site-header nav a { padding: 10px 16px; font-size: 13px; }
+  html .home-page .home-site-header button { font-size: 14px !important; }
+  html .home-page .home-site-main { padding-top: 154px; padding-inline: 72px; }
+  html .home-page .home-site-main > div { padding-bottom: 124px; }
+  html .home-page .home-site-main h1 { font-size: clamp(6rem, 5vw, 8rem); }
+  html .home-page .home-site-main .text-base { font-size: 1.25rem; line-height: 1.75; }
+  html .home-page .home-site-main .text-sm { font-size: 1rem; }
+  html .home-page .home-feature { min-height: 420px; padding: 38px; }
+  html .home-page #mission-control-card { border-radius: 22px; }
+  html .dashboard.workspace-studio .dash-sidebar { width: 320px; }
+  html .dashboard.workspace-studio .dash-brand { height: 88px; padding-inline: 28px; }
+  html .dashboard.workspace-studio .dash-brand img { width: 172px; }
+  html .dashboard.workspace-studio .dash-main { max-width: 2400px; padding: 54px 72px 42px; }
+  html .dashboard.workspace-studio .dash-header { height: 82px; padding-inline: 66px; }
+  html .dashboard.workspace-studio .dash-heading-title h1 { font-size: 34px; }
+  html .dashboard.workspace-studio .dash-page-heading p { font-size: 13px; }
+  html .dashboard.workspace-studio .dash-hero { min-height: 320px; padding: 42px 48px; border-radius: 24px; }
+  html .dashboard.workspace-studio .dash-hero h2 { font-size: clamp(3rem, 3vw, 4.25rem); }
+  html .dashboard.workspace-studio .dash-hero-copy > p { font-size: 14px; }
+  html .dashboard.workspace-studio .dash-panel-heading h2 { font-size: 17px; }
+  html .dashboard.workspace-studio .dash-panel-heading p { font-size: 12px; }
+  html .dashboard.workspace-studio .dash-stat { padding: 26px 28px 23px; border-radius: 18px; }
+  html .dashboard.workspace-studio .dash-stat .dash-row > span:first-child { font-size: 12px; }
+  html .dashboard.workspace-studio .dash-stat > strong { font-size: 42px; }
+  html .dashboard.workspace-studio .dash-stat > p { font-size: 11px; }
+  html .dashboard.workspace-studio .dash-project-card { padding: 24px; border-radius: 17px; }
+  html .dashboard.workspace-studio .dash-project-card h3 { font-size: 16px; }
+  html .dashboard.workspace-studio .dash-project-card > p { font-size: 12px; }
+}
+
 @media (max-width: 900px) {
   html .home-page .home-site-header > div { padding-inline: 16px; }
   html .home-page .home-site-main { padding-top: 104px; }
