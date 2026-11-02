@@ -101,6 +101,12 @@ export async function authenticate(request: Request, env: NodeJS.ProcessEnv) {
   if (error && ![400, 401, 403].includes(error.status || 0)) throw new ApiError(503, 'Authentication is temporarily unavailable. Please retry shortly.');
   if (error || !data.user) throw new ApiError(401, 'Your session has ended. Please sign in again.');
   if (data.user.app_metadata.must_change_password === true) throw new ApiError(403, 'Set your own password before connecting your tools.');
+  const verifiedFactor = data.user.factors?.some(factor => factor.status === 'verified');
+  if (verifiedFactor) {
+    const assurance = await clients.client.auth.mfa.getAuthenticatorAssuranceLevel(token);
+    if (assurance.error) throw new ApiError(503, 'Multi-factor authentication could not be verified. Please retry.');
+    if (assurance.data.currentLevel !== 'aal2') throw new ApiError(401, 'Complete multi-factor authentication before accessing your workspace.');
+  }
   const active = await clients.admin.rpc('workspace_session_active', { p_user_id: data.user.id, p_session_id: sessionId });
   databaseError(active.error);
   if (active.data !== true) throw new ApiError(401, 'This session has been revoked. Please sign in again.');

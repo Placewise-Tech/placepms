@@ -1389,7 +1389,6 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                 <ul className="flex flex-col gap-2.5 font-body-sm text-xs">
                   <li><a className="footer-animated-link text-slate-600 hover:text-slate-900 transition-colors" href="#team">Our team</a></li>
                   <li><a className="footer-animated-link text-slate-600 hover:text-slate-900 transition-colors" href="#faq">FAQ</a></li>
-                  <li><button className="footer-animated-link text-slate-600 hover:text-slate-900 transition-colors text-left" onClick={() => showToast('Security & Compliance', 'SOC2 Type II & FERPA architecture compliant.')}>Security & Compliance</button></li>
                   <li><button className="footer-animated-link text-slate-600 hover:text-slate-900 transition-colors text-left" onClick={() => showToast('System Status', 'All regions operational. Latency 14ms.')}>System Status</button></li>
                 </ul>
               </div>
