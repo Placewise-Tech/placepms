@@ -25,12 +25,22 @@ const baseNavigation = [
   { slug: 'resources', label: 'Academic Resources', icon: BookOpen, section: 'LIBRARY' },
   { slug: 'blackbook', label: 'Blackbook Generator', icon: BookMarked, section: 'LIBRARY' },
   { slug: 'integrations', label: 'Integrations', icon: Link2, section: 'CONNECTED TOOLS' },
-  { slug: 'repositories', label: 'Repositories Hub', icon: GitBranch, section: 'CONNECTED TOOLS' },
-  { slug: 'figma', label: 'Figma Designs Hub', icon: Link2, section: 'CONNECTED TOOLS' },
-  { slug: 'miro', label: 'Miro Whiteboards Hub', icon: LayoutDashboard, section: 'CONNECTED TOOLS' },
+  { slug: 'repositories', label: 'Repositories Hub', icon: GitBranch, brand: 'github' as const, section: 'CONNECTED TOOLS' },
+  { slug: 'figma', label: 'Figma Designs Hub', icon: Link2, brand: 'figma' as const, section: 'CONNECTED TOOLS' },
+  { slug: 'miro', label: 'Miro Whiteboards Hub', icon: LayoutDashboard, brand: 'miro' as const, section: 'CONNECTED TOOLS' },
   { slug: 'sessions', label: 'Login & Sessions', icon: Inbox, section: 'ACCOUNT' },
   { slug: 'portfolio', label: 'Portfolio', icon: FolderKanban, section: 'CAREER' },
 ];
+
+type NavigationItem = (typeof baseNavigation)[number];
+
+function SidebarIcon({ item }: { item: NavigationItem }) {
+  if (item.brand === 'github') return <svg className="dash-nav-brand-icon dash-nav-brand-github" viewBox="0 0 19 19" aria-hidden="true"><path fill="currentColor" fillRule="evenodd" d="M9.356 1.85C5.05 1.85 1.57 5.356 1.57 9.694a7.84 7.84 0 0 0 5.324 7.44c.387.079.528-.168.528-.376 0-.182-.013-.805-.013-1.454-2.165.467-2.616-.935-2.616-.935-.349-.91-.864-1.143-.864-1.143-.71-.48.051-.48.051-.48.787.051 1.2.805 1.2.805.695 1.194 1.817.857 2.268.649.064-.507.27-.857.49-1.052-1.728-.182-3.545-.857-3.545-3.87 0-.857.31-1.558.8-2.104-.078-.195-.349-1 .077-2.078 0 0 .657-.208 2.14.805a7.5 7.5 0 0 1 1.946-.26c.657 0 1.328.092 1.946.26 1.483-1.013 2.14-.805 2.14-.805.426 1.078.155 1.883.078 2.078.502.546.799 1.247.799 2.104 0 3.013-1.818 3.675-3.558 3.87.284.247.528.714.528 1.454 0 1.052-.012 1.896-.012 2.156 0 .208.142.455.528.377a7.84 7.84 0 0 0 5.324-7.441c.013-4.338-3.48-7.844-7.773-7.844Z" clipRule="evenodd" /></svg>;
+  if (item.brand === 'figma') return <svg className="dash-nav-brand-icon dash-nav-brand-figma" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="1" width="7" height="6" rx="3" fill="#f24e1e" /><rect x="10" y="1" width="7" height="6" rx="3" fill="#ff7262" /><rect x="3" y="7" width="7" height="6" rx="3" fill="#a259ff" /><rect x="10" y="7" width="7" height="6" rx="3" fill="#1abcfe" /><path fill="#0acf83" d="M3 13h7v3.5a3.5 3.5 0 1 1-3.5-3.5H3Z" /></svg>;
+  if (item.brand === 'miro') return <svg className="dash-nav-brand-icon dash-nav-brand-miro" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#ffd02f" /><path fill="#050038" d="M5 5h3.2l3.8 5.1L15.8 5H19v14h-3v-8.2l-4 5.2-4-5.2V19H5V5Z" /></svg>;
+  const Icon = item.icon;
+  return <Icon size={17} />;
+}
 
 export default function Dashboard({ user }: { user: User }) {
   useSessionMonitor(user.id);
@@ -108,7 +118,7 @@ export default function Dashboard({ user }: { user: User }) {
        <button className="dash-institution" onClick={closeMenus} title={college}><span><School size={19} /></span><div><strong>{college}</strong><small>Academic workspace</small></div><ChevronRight size={14} /></button>
         <button className="dash-create-button" aria-label="New project" title="New project" onClick={() => setDialog('project')}><span><Plus size={15} /></span><strong>New project</strong><kbd>N</kbd></button>
         {managedRole==='admin' && <nav className="dash-management" aria-label="Administration management">{managementNavigation.map(item=><NavLink key={item.slug} to={`${root}/${item.slug}`} onClick={closeMenus} title={item.label} className={({isActive})=>`dash-nav-item ${isActive?'active':''}`}><item.icon size={16}/><span>{item.label}</span></NavLink>)}</nav>}
-        <nav className="dash-navigation dash-navigation-flat" aria-label="Workspace navigation">{navigation.map(item => <NavLink key={item.slug || 'overview'} to={`/dashboard${item.slug ? `/${item.slug}` : ''}`} end title={item.label} onClick={event => item.slug ? openFeatureNotice(event, item.label) : closeMenus()} className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><item.icon size={17} /><span>{item.label}</span></NavLink>)}</nav>
+         <nav className="dash-navigation dash-navigation-flat" aria-label="Workspace navigation">{navigation.map(item => <NavLink key={item.slug || 'overview'} to={`/dashboard${item.slug ? `/${item.slug}` : ''}`} end title={item.label} onClick={event => item.slug ? openFeatureNotice(event, item.label) : closeMenus()} className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><SidebarIcon item={item} /><span>{item.label}</span></NavLink>)}</nav>
        <div className="dash-sidebar-bottom"><div className="dash-sidebar-help"><GraduationCap size={19} /><div><strong>A little progress, every day.</strong><span>Your work. Your next chapter.</span></div></div><button className="dash-user" onClick={closeMenus} title={name}><span className="dash-avatar">{avatar ? <img src={avatar} alt="" /> : initials}</span><span className="dash-user-copy"><strong>{name}</strong><small>{role}</small></span><ChevronRight size={15} /></button><button className="dash-sign-out" disabled={signingOut} title="Sign out" onClick={async () => {
         setSigningOut(true);
         setSignOutError('');

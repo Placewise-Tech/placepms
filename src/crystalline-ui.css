@@ -560,6 +560,9 @@ html .dashboard.workspace-studio:not(.admin-workspace) .dash-hero-actions,
 html .dashboard.workspace-studio:not(.admin-workspace) .dash-page-heading > .dash-button { display: none !important; }
 html .dashboard.workspace-studio:not(.admin-workspace) .dash-navigation { padding-top: 10px; }
 html .dashboard.workspace-studio:not(.admin-workspace) .dash-navigation .dash-nav-item { display: flex; }
+html .dashboard.workspace-studio .dash-nav-brand-icon { width: 17px; height: 17px; flex: 0 0 17px; display: block; }
+html .dashboard.workspace-studio.dashboard-dark .dash-nav-brand-github { color: #f0f6fc; }
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-nav-brand-github { color: #171717; }
 html .dashboard.workspace-studio:not(.admin-workspace) .dash-sidebar-bottom .dash-user { cursor: default; }
 html .dashboard.workspace-studio:not(.admin-workspace) .dash-sidebar-bottom .dash-user > svg { display: none; }
 html .dashboard.workspace-studio:not(.admin-workspace) :is(*, *::before, *::after) {
