@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { NavLink as RouterNavLink, useLocation, useNavigate, type NavLinkProps } from 'react-router-dom';
-import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, Inbox, LayoutDashboard, Link2, ListChecks, LogOut, Menu, Moon, Monitor, Orbit, PanelLeftClose, Pause, Play, Plus, Search, School, Sparkles, Sun, Users, X, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, Bell, BookMarked, BookOpen, CalendarDays, CheckSquare, ChevronDown, ChevronRight, CircleHelp, ClipboardCheck, Download, FileText, FlaskConical, FolderKanban, GitBranch, GraduationCap, Inbox, LayoutDashboard, Link2, LogOut, Menu, Moon, Orbit, PanelLeftClose, Pause, Play, Plus, Search, School, Sparkles, Sun, Users, X, type LucideIcon } from 'lucide-react';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useDashboard } from '../../hooks/useDashboard';
 import { useSessionMonitor } from '../../hooks/useSessionMonitor';
@@ -9,8 +9,7 @@ import { calendarExport, safeExternalUrl, upcomingMilestones } from '../../lib/d
 import { supabase } from '../../lib/supabase';
 import DashboardViews from './DashboardViews';
 import WorkspaceDialog from './WorkspaceDialog';
-import { roleLabels, useWorkspaceRoot, workspaceRole, type ManagementSettings } from '../../lib/workspace-roles';
-import { workspaceRequest } from '../../lib/workspace-api';
+import { roleLabels, useWorkspaceRoot, workspaceRole } from '../../lib/workspace-roles';
 
 function NavLink({to,...props}:NavLinkProps) { const root=useWorkspaceRoot(); return <RouterNavLink {...props} to={typeof to==='string'?to.replace(/^\/dashboard(?=\/|$)/,root):to}/>; }
 
@@ -18,11 +17,8 @@ interface NavigationItem { slug: string; label: string; icon: LucideIcon; brand?
 
 const baseNavigation: NavigationItem[] = [
   { slug: '', label: 'Overview', icon: LayoutDashboard, section: 'WORKSPACE' },
-  { slug: 'today', label: 'Today', icon: Sparkles, section: 'WORKSPACE' },
-  { slug: 'automation', label: 'Automations', icon: ListChecks, section: 'WORKSPACE' },
   { slug: 'projects', label: 'Projects', icon: FolderKanban, section: 'WORKSPACE' },
   { slug: 'tasks', label: 'My Tasks', icon: CheckSquare, section: 'WORKSPACE' },
-  { slug: 'scope', label: 'Project Scope', icon: FileText, section: 'WORKSPACE' },
   { slug: 'mentorship', label: 'Mentorship', icon: Users, section: 'WORKSPACE' },
   { slug: 'attendance', label: 'Attendance', icon: ClipboardCheck, section: 'WORKSPACE' },
   { slug: 'calendar', label: 'Calendar', icon: CalendarDays, section: 'WORKSPACE' },
@@ -35,7 +31,6 @@ const baseNavigation: NavigationItem[] = [
   { slug: 'figma', label: 'Figma Designs Hub', icon: Link2, brand: 'figma' as const, section: 'CONNECTED TOOLS' },
   { slug: 'miro', label: 'Miro Whiteboards Hub', icon: LayoutDashboard, brand: 'miro' as const, section: 'CONNECTED TOOLS' },
   { slug: 'sessions', label: 'Login & Sessions', icon: Inbox, section: 'ACCOUNT' },
-  { slug: 'notifications', label: 'Notifications', icon: Inbox, section: 'ACCOUNT' },
   { slug: 'portfolio', label: 'Portfolio', icon: FolderKanban, section: 'CAREER' },
 ];
 
@@ -53,11 +48,7 @@ export default function Dashboard({ user }: { user: User }) {
   const navigate = useNavigate();
   const location = useLocation();
   const root=useWorkspaceRoot(); const managedRole=workspaceRole(user);
-  const [access,setAccess] = useState<{ settings: ManagementSettings } | null>(null);
-  useEffect(() => { let active = true; void workspaceRequest<{ settings: ManagementSettings }>('management', { action: 'access' }).then(result => { if (active && result.settings?.features) setAccess(result); }).catch(() => {}); return () => { active = false; }; }, [user.id, updatedAt]);
-  const managementNavigation: NavigationItem[] = managedRole === 'admin' ? [{ slug: 'accounts', label: 'Accounts & Mentors', icon: Users, section: 'MANAGEMENT' }, { slug: 'connections', label: 'Provider Connections', icon: Link2, section: 'MANAGEMENT' }, { slug: 'settings', label: 'Feature Controls', icon: CheckSquare, section: 'MANAGEMENT' }, { slug: 'audit', label: 'Management Activity', icon: Monitor, section: 'MANAGEMENT' }] : managedRole !== 'student' ? [{ slug: 'students', label: 'Student Roster', icon: GraduationCap, section: 'MENTORING' }] : [];
-  const features: Record<string, keyof ManagementSettings['features']> = { repositories: 'github', reports: 'github', figma: 'figma', miro: 'miro', research: 'research', resources: 'resource', documents: 'document', blackbook: 'blackbook' };
-  const navigation: NavigationItem[] = [...managementNavigation, ...baseNavigation, ...(managedRole !== 'student' ? [{ slug: 'reports', label: 'GitHub Evidence & AI Flags', icon: GitBranch, section: 'CONNECTED TOOLS' }] : [])].filter(item => managedRole === 'admin' || access?.settings.features[features[item.slug]] !== false);
+  const navigation = baseNavigation;
   const view = location.pathname.replace(/^\/(dashboard|admin|teacher|staff)\/?/, '').replace(/\/$/, '') || 'overview';
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('placepms:sidebar') === 'collapsed');
@@ -122,11 +113,10 @@ export default function Dashboard({ user }: { user: User }) {
     {mobileOpen && <button className="dash-sidebar-backdrop" aria-label="Close navigation" onClick={() => setMobileOpen(false)} />}
     <aside className={`dash-sidebar ${mobileOpen ? 'is-open' : ''}`} aria-label="Workspace navigation">
        <div className="dash-brand"><NavLink to="/dashboard" onClick={closeMenus} aria-label="PlacePMS overview"><img src={dark ? '/placewise-logo.png' : '/placewise-logo.png'} alt="PlacePMS" /></NavLink><span className="dash-brand-mark"><Sparkles size={14} /></span><button className="dash-icon-button dash-mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={18} /></button><button className="dash-icon-button dash-collapse" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} onClick={() => { setCollapsed(!collapsed); localStorage.setItem('placepms:sidebar', collapsed ? 'expanded' : 'collapsed'); }}><PanelLeftClose size={16} /></button></div>
-       <button className="dash-institution" onClick={() => { navigate(`${root}/portfolio`); closeMenus(); }} title={`Open ${college} profile`}><span><School size={19} /></span><div><strong>{college}</strong><small>Academic workspace</small></div><ChevronRight size={14} /></button>
+       <button className="dash-institution" onClick={closeMenus} title={college}><span><School size={19} /></span><div><strong>{college}</strong><small>Academic workspace</small></div><ChevronRight size={14} /></button>
         <button className="dash-create-button" aria-label="New project" title="New project" onClick={() => setDialog('project')}><span><Plus size={15} /></span><strong>New project</strong><kbd>N</kbd></button>
-        {managedRole==='admin' && <nav className="dash-management" aria-label="Administration management">{managementNavigation.map(item=><NavLink key={item.slug} to={`${root}/${item.slug}`} onClick={closeMenus} title={item.label} className={({isActive})=>`dash-nav-item ${isActive?'active':''}`}><item.icon size={16}/><span>{item.label}</span></NavLink>)}</nav>}
           <nav className="dash-navigation dash-navigation-flat" aria-label="Workspace navigation">{navigation.map(item => <NavLink key={`${item.section}-${item.slug || 'overview'}`} to={`/dashboard${item.slug ? `/${item.slug}` : ''}`} end onClick={closeMenus} title={item.label} className={({ isActive }) => `dash-nav-item ${isActive ? 'active' : ''}`}><SidebarIcon item={item} /><span>{item.label}</span></NavLink>)}</nav>
-        <div className="dash-sidebar-bottom"><div className="dash-sidebar-help"><GraduationCap size={19} /><div><strong>{college}</strong><span>{data.profile?.program || 'Academic workspace'}</span></div></div><button className="dash-user" onClick={() => { navigate(`${root}/portfolio`); closeMenus(); }} title={`Open ${name}'s portfolio`}><span className="dash-avatar">{avatar ? <img src={avatar} alt="" /> : initials}</span><span className="dash-user-copy"><strong>{name}</strong><small>{role}</small></span><ChevronRight size={15} /></button><button className="dash-sign-out" disabled={signingOut} title="Sign out" onClick={async () => {
+        <div className="dash-sidebar-bottom"><div className="dash-sidebar-help"><GraduationCap size={19} /><div><strong>A little progress, every day.</strong><span>Your work. Your next chapter.</span></div></div><button className="dash-user" onClick={closeMenus} title={name}><span className="dash-avatar">{avatar ? <img src={avatar} alt="" /> : initials}</span><span className="dash-user-copy"><strong>{name}</strong><small>{role}</small></span><ChevronRight size={15} /></button><button className="dash-sign-out" disabled={signingOut} title="Sign out" onClick={async () => {
         setSigningOut(true);
         setSignOutError('');
         try {
@@ -166,7 +156,7 @@ export default function Dashboard({ user }: { user: User }) {
          </>}{notice && <div className="dash-alert dash-alert-success" role="status">{notice}<button aria-label="Dismiss message" onClick={() => setNotice('')}><X size={16} /></button></div>}
          {signOutError && <div className="dash-alert dash-alert-error" role="alert">{signOutError}</div>}
         {data.errors.length > 0 && <div className="dash-alert dash-alert-error" role="alert"><div><strong>Some workspace data could not be loaded.</strong><details><summary>Connection details</summary>{data.errors.map((issue, index) => <p key={`${issue.section}-${index}`}>{issue.section}: {issue.message}</p>)}</details></div><button className="dash-button" disabled={refreshing} onClick={() => void refresh()}>Retry</button></div>}
-         {loading ? <div className="dash-loading" role="status" aria-label="Loading dashboard"><div className="dash-stats">{[1, 2, 3, 4].map(item => <div className="dash-skeleton dash-skeleton-stat" key={item} />)}</div><div className="dash-skeleton dash-skeleton-panel" /><p>Loading your workspace from Supabase…</p></div> : error ? <div className="dash-panel dash-connection-error" role="alert"><CircleHelp size={30} /><h2>We couldn’t load your workspace</h2><p>{error}</p><button className="dash-button dash-button-primary" onClick={() => void refresh()}>Try again</button></div> : <DashboardViews key={view} view={view} data={data} user={user} now={now} features={access?.settings.features} onCreate={setDialog} onSaved={saved} />}
+          {loading ? <div className="dash-loading" role="status" aria-label="Loading dashboard"><div className="dash-stats">{[1, 2, 3, 4].map(item => <div className="dash-skeleton dash-skeleton-stat" key={item} />)}</div><div className="dash-skeleton dash-skeleton-panel" /><p>Loading your workspace from Supabase…</p></div> : error ? <div className="dash-panel dash-connection-error" role="alert"><CircleHelp size={30} /><h2>We couldn’t load your workspace</h2><p>{error}</p><button className="dash-button dash-button-primary" onClick={() => void refresh()}>Try again</button></div> : <DashboardViews key={view} view={view} data={data} user={user} now={now} onCreate={setDialog} onSaved={saved} />}
         <footer className="dash-footer"><span>PlacePMS <span>·</span> Your academic workspace</span><span>{updatedAt ? `Last refreshed ${updatedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}` : 'Connecting to your workspace'}</span></footer>
       </main>
     </div>
