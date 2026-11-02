@@ -548,28 +548,50 @@ html .admin-workspace :is(.admin-panel-heading, .admin-table-row, .admin-directo
 html .admin-workspace :is(.admin-button, .dash-button) { color: #d9fbff; border-color: rgba(99, 232, 255, .2); background: rgba(12, 35, 57, .76); }
 html .admin-workspace .dash-button-primary { color: #04111c !important; background: linear-gradient(135deg, #63e8ff, #4ef0c3); }
 
-/* Overview-only workspace: remove feature navigation and visual noise. */
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-management,
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-create-button,
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-command-trigger,
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-notifications,
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-view-controls,
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-launchpad,
-html .dashboard.workspace-studio:not(.admin-workspace) .studio-sections,
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-hero-actions,
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-page-heading > .dash-button { display: none !important; }
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-navigation { padding-top: 10px; }
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-navigation .dash-nav-item { display: flex; }
 html .dashboard.workspace-studio .dash-nav-brand-icon { width: 17px; height: 17px; flex: 0 0 17px; display: block; }
 html .dashboard.workspace-studio.dashboard-dark .dash-nav-brand-github { color: #f0f6fc; }
 html .dashboard.workspace-studio:not(.dashboard-dark) .dash-nav-brand-github { color: #171717; }
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-sidebar-bottom .dash-user { cursor: default; }
-html .dashboard.workspace-studio:not(.admin-workspace) .dash-sidebar-bottom .dash-user > svg { display: none; }
-html .dashboard.workspace-studio:not(.admin-workspace) :is(*, *::before, *::after) {
-  animation: none !important;
-  transition: none !important;
-  scroll-behavior: auto !important;
-}
-html .dashboard.workspace-studio:not(.admin-workspace) :is(.dash-stat, .dash-panel, .dash-project-card, .studio-card):hover {
-  transform: none !important;
+
+/* Live overview header and summary cards. */
+html .dashboard.workspace-studio .dash-context-nav { display: flex; align-items: center; gap: 7px; min-width: 0; overflow: hidden; }
+html .dashboard.workspace-studio .dash-context-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 12px; border: 1px solid rgba(99, 232, 255, .18); border-radius: 999px; color: #c6d8e6; background: rgba(13, 35, 57, .72); font-size: 11px; font-weight: 650; white-space: nowrap; }
+html .dashboard.workspace-studio .dash-context-chip-button { cursor: pointer; }
+html .dashboard.workspace-studio .dash-context-chip-button:hover { color: #fff; border-color: rgba(99, 232, 255, .45); background: rgba(99, 232, 255, .1); }
+html .dashboard.workspace-studio .dash-header-profile { display: inline-flex; align-items: center; gap: 9px; min-height: 44px; padding: 4px 9px 4px 6px; border: 1px solid rgba(99, 232, 255, .18); border-radius: 13px; color: #e7f4ff; background: rgba(13, 35, 57, .72); text-align: left; }
+html .dashboard.workspace-studio .dash-header-profile:hover { border-color: rgba(99, 232, 255, .45); background: rgba(99, 232, 255, .1); }
+html .dashboard.workspace-studio .dash-header-profile > span:not(.dash-avatar) { min-width: 82px; }
+html .dashboard.workspace-studio .dash-header-profile strong, html .dashboard.workspace-studio .dash-header-profile small { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+html .dashboard.workspace-studio .dash-header-profile strong { font-size: 11px; }
+html .dashboard.workspace-studio .dash-header-profile small { margin-top: 2px; color: #4ef0c3; font-size: 9px; }
+html .dashboard.workspace-studio .dash-overview-welcome { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin: 1px 0 24px; }
+html .dashboard.workspace-studio .dash-overview-welcome h2 { margin-top: 10px; color: #f5fbff; font-size: clamp(25px, 2.4vw, 35px); line-height: 1.1; letter-spacing: -.055em; }
+html .dashboard.workspace-studio .dash-overview-welcome h2 > span:not(.dash-wave) { color: #63e8ff; }
+html .dashboard.workspace-studio .dash-overview-welcome p { margin-top: 10px; color: #91abc0; font-size: 12px; }
+html .dashboard.workspace-studio .dash-overview-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+html .dashboard.workspace-studio .dash-overview-date { display: inline-flex; align-items: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid rgba(99, 232, 255, .16); border-radius: 11px; color: #9db6ca; background: rgba(13, 35, 57, .68); font-size: 11px; white-space: nowrap; }
+html .dashboard.workspace-studio .dash-overview-stats { gap: 16px; margin-bottom: 26px; }
+html .dashboard.workspace-studio .dash-overview-stats .dash-stat { min-height: 124px; padding: 17px 18px; }
+html .dashboard.workspace-studio .dash-overview-stats .dash-stat > strong { color: #f7fbff; font-size: 30px; }
+html .dashboard.workspace-studio .dash-overview-stats .dash-stat > p { color: #9db6ca; }
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-context-chip,
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-header-profile,
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-overview-date { color: var(--dash-text); border-color: var(--dash-border); background: var(--dash-card); }
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-header-profile small { color: var(--dash-brand); }
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-overview-welcome h2 { color: var(--dash-text); }
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-overview-welcome h2 > span:not(.dash-wave) { color: #087f89; }
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-overview-welcome p,
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-overview-stats .dash-stat > p { color: var(--dash-muted); }
+html .dashboard.workspace-studio:not(.dashboard-dark) .dash-overview-stats .dash-stat > strong { color: var(--dash-text); }
+html .dashboard.workspace-studio.dashboard-dark .dash-overview-stats .dash-stat-green .dash-stat-icon { color: #4ef0c3; background: rgba(78, 240, 195, .1); }
+html .dashboard.workspace-studio.dashboard-dark .dash-overview-stats .dash-stat-blue .dash-stat-icon { color: #63b7ff; background: rgba(99, 183, 255, .11); }
+html .dashboard.workspace-studio.dashboard-dark .dash-overview-stats .dash-stat-purple .dash-stat-icon { color: #b598ff; background: rgba(181, 152, 255, .12); }
+html .dashboard.workspace-studio.dashboard-dark .dash-overview-stats .dash-stat-amber .dash-stat-icon { color: #ffd27a; background: rgba(255, 210, 122, .1); }
+@media (max-width: 850px) {
+  html .dashboard.workspace-studio .dash-context-chip:nth-child(n+3) { display: none; }
+  html .dashboard.workspace-studio .dash-command-trigger { width: 36px; padding: 0; justify-content: center; border: 0; background: transparent; }
+  html .dashboard.workspace-studio .dash-command-trigger span, html .dashboard.workspace-studio .dash-command-trigger kbd { display: none; }
+  html .dashboard.workspace-studio .dash-header-profile > span:not(.dash-avatar), html .dashboard.workspace-studio .dash-header-profile > svg { display: none; }
+  html .dashboard.workspace-studio .dash-header-profile { padding: 4px; border: 0; background: transparent; }
+  html .dashboard.workspace-studio .dash-overview-welcome { align-items: flex-start; flex-direction: column; }
+  html .dashboard.workspace-studio .dash-overview-actions { justify-content: flex-start; }
 }

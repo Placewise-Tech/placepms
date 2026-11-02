@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useSearchParams } from 'react-router-dom';
-import { ArrowUpRight, BookOpen, CalendarDays, Check, CheckCircle2, ChevronRight, Circle, Clock3, Download, FileText, FlaskConical, FolderKanban, GraduationCap, Link2, Orbit, Plus, RefreshCw, Search, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, CalendarDays, Check, CheckCircle2, CheckSquare, ChevronRight, Circle, Clock3, Download, FileText, FlaskConical, FolderKanban, GraduationCap, Link2, Plus, RefreshCw, Search, Sparkles, Users } from 'lucide-react';
 import type { DashboardData, Milestone, Squad } from '../../lib/dashboard-data';
-import { getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
+import { calendarExport, getDashboardStats, isComplete, isInactive, localDateKey, safeExternalUrl, upcomingMilestones } from '../../lib/dashboard-data';
 import { supabase } from '../../lib/supabase';
 import IntegrationWorkspace from './IntegrationWorkspace';
 import SessionsView from './SessionsView';
@@ -21,7 +21,7 @@ import { reportHtml } from '../../lib/workspace-library';
 import { EvidenceReadiness, NotificationsView, TodayView } from './WorkspaceSignals';
 import AutomationView from './AutomationView';
 
-interface Props { view: string; data: DashboardData; user: User; features?: Partial<Record<FeatureKey,boolean>>; onCreate: (kind: 'project' | 'milestone' | 'profile') => void; onSaved: (message: string) => Promise<void> }
+interface Props { view: string; data: DashboardData; user: User; now?: Date; features?: Partial<Record<FeatureKey,boolean>>; onCreate: (kind: 'project' | 'milestone' | 'profile') => void; onSaved: (message: string) => Promise<void> }
 function formatDate(value: string | null, withTime = false) {
   if (!value) return 'No date set'; const date = new Date(value.length === 10 ? `${value}T00:00:00` : value);
   return Number.isNaN(date.getTime()) ? 'Date unavailable' : new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: 'numeric', ...(withTime ? { hour: 'numeric', minute: '2-digit' } as const : {}) }).format(date);
@@ -91,13 +91,13 @@ function TaskList({ tasks, data, onSaved }: { tasks: Milestone[]; data: Dashboar
 export default function DashboardViews(props: Props) {
   return <DashboardViewsContent {...props} view={props.view === 'profile' ? 'portfolio' : props.view} />;
 }
-function DashboardViewsContent({ view, data, user, features, onCreate, onSaved }: Props) {
+function DashboardViewsContent({ view, data, user, now, features, onCreate, onSaved }: Props) {
   const [params, setParams] = useSearchParams(); const [query, setQuery] = useState(''); const [sort, setSort] = useState('due');
   const [projectSort, setProjectSort] = useState('newest'); const [projectStatus, setProjectStatus] = useState('active'); const [projectPage, setProjectPage] = useState(1);
   const [taskLayout, setTaskLayout] = useState('list'); const [boardColumn, setBoardColumn] = useState('Planned'); const [section, setSection] = useState('projects');
   const taskFilter = params.get('status') || 'all'; const projectFilter = params.get('project') || '';
   const setFilter = (key: string, value: string) => { const next = new URLSearchParams(params); if (value && value !== 'all') next.set(key, value); else next.delete(key); setParams(next, { replace: true }); };
-  const stats = getDashboardStats(data); const upcoming = upcomingMilestones(data.milestones); const nextDeadline = upcoming[0];
+   const stats = getDashboardStats(data); const upcoming = upcomingMilestones(data.milestones);
   const search = query.trim().toLowerCase(); const projectAction = <button className="dash-button dash-button-primary" onClick={() => onCreate('project')}><Plus size={15} />Create project</button>;
   const taskAction = <button className="dash-button dash-button-primary" disabled={!data.squads.some(project => !isInactive(project.status))} onClick={() => onCreate('milestone')}><Plus size={15} />Add milestone</button>;
   const projectError = data.errors.some(error => ['Projects', 'Team projects', 'Memberships', 'Mentorship'].includes(error.section)); const taskError = projectError || data.errors.some(error => error.section === 'Milestones');
@@ -117,21 +117,27 @@ function DashboardViewsContent({ view, data, user, features, onCreate, onSaved }
   if (view.startsWith('projects/')) return <ProjectDetails id={decodeURIComponent(view.slice(9))} data={data} user={user} onSaved={onSaved} onCreate={onCreate} />;
   if (view === 'calendar') return <CalendarView data={data} user={user} action={taskAction} renderTasks={tasks => <TaskList tasks={tasks} data={data} onSaved={onSaved} />} />;
 
-  if (view === 'overview') return <>
-    <section className="dash-hero"><div className="dash-hero-copy"><span className="dash-eyebrow"><Sparkles size={13} /> YOUR NEXT CHAPTER</span><h2>Big ideas.<br /><span>Real momentum.</span></h2><p>A space to build something that matters.</p><div className="dash-hero-actions">{projectAction}{taskAction}<Link className="dash-hero-link" to="/dashboard/calendar">Open calendar <ArrowUpRight size={14} /></Link></div></div><div className="dash-hero-insight"><div className="dash-momentum-orbit" aria-hidden="true"><span /><Orbit size={16} /><Sparkles size={14} /></div><div className="dash-momentum-ring" role="img" aria-label={taskError ? 'Milestone completion unavailable' : `${stats.completion}% of milestones completed`}><svg viewBox="0 0 144 144" aria-hidden="true"><circle className="dash-ring-track" cx="72" cy="72" r="61" /><circle className="dash-ring-value" cx="72" cy="72" r="61" pathLength="100" strokeDasharray={`${taskError ? 0 : stats.completion} 100`} /></svg><div><span>WORKSPACE MOMENTUM</span><strong>{taskError ? '—' : `${stats.completion}%`}</strong><small>milestones delivered</small></div></div><p>{nextDeadline ? <><strong>Next up:</strong> {nextDeadline.name}<small>Due {nextDeadline.due_date}</small></> : 'Your next move starts with a milestone.'}</p></div></section>
-    <nav className="dash-launchpad" aria-label="Quick access">{[{ path: 'projects', label: 'Project spaces', icon: FolderKanban }, { path: 'tasks', label: 'Your next steps', icon: CheckCircle2 }, { path: 'research', label: 'Idea library', icon: BookOpen }, { path: 'blackbook', label: 'Build your story', icon: FileText }].map(({ path, label, icon: Icon }) => <Link to={`/dashboard/${path}`} key={path}><Icon size={16} /><span>{label}</span><ArrowUpRight size={13} /></Link>)}</nav>
-    <div className="dash-stats">{[
-      { label: 'Active projects', value: projectError ? '—' : stats.activeProjects, description: 'Current project spaces', icon: FolderKanban, color: 'green', link: 'projects' },
-      { label: 'Pending milestones', value: taskError ? '—' : stats.pendingTasks, description: taskError ? 'Data unavailable' : `${stats.overdueTasks} overdue`, icon: Clock3, color: 'amber', link: 'tasks' },
-      { label: 'Completed milestones', value: taskError ? '—' : stats.completedTasks, description: 'Approved deliveries', icon: CheckCircle2, color: 'blue', link: 'tasks' },
-      { label: 'Team members', value: projectError || data.errors.some(error => error.section === 'Team members') ? '—' : stats.members, description: 'Across your teams', icon: Users, color: 'purple', link: 'projects' },
-    ].map(item => <Link to={`/dashboard/${item.link}`} className={`dash-stat dash-stat-${item.color}`} key={item.label}><div className="dash-row"><span>{item.label}</span><span className={`dash-stat-icon ${item.color}`}><item.icon size={17} /></span></div><strong>{item.value}</strong><p>{item.description}<ArrowUpRight size={13} /></p><span className="dash-stat-line" /></Link>)}</div>
+  if (view === 'overview') {
+    const profile = data.profile;
+    const firstName = (profile?.full_name || user.user_metadata.full_name || user.email || 'there').split(/\s+/)[0];
+    const currentTime = now!;
+    const greetingHour = currentTime.getHours();
+    const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 17 ? 'Good afternoon' : 'Good evening';
+    const context = [profile?.college, profile?.program, profile?.batch && `Batch ${profile.batch}`, profile?.division && `Division ${profile.division}`].filter(Boolean).join(' · ');
+    const today = currentTime;
+    const todayLabel = today.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    return <>
+     <section className="dash-overview-welcome"><div><span className="dash-eyebrow"><Sparkles size={13} /> LIVE WORKSPACE OVERVIEW</span><h2>{greeting}, <span>{firstName}</span> <span className="dash-wave" aria-hidden="true">👋</span></h2><p>{context || 'Your workspace data will appear here as it is connected.'}</p></div><div className="dash-overview-actions"><span className="dash-overview-date"><CalendarDays size={15} />{todayLabel}</span><button className="dash-button dash-button-primary" disabled={!data.milestones.some(task => task.due_date)} onClick={() => downloadText('placepms-timetable.ics', calendarExport(data.milestones), 'text/calendar;charset=utf-8')}><Download size={15} />Download timetable</button></div></section>
+     <div className="dash-stats dash-overview-stats">
+       {[{ label: 'ACTIVE PROJECTS', value: projectError ? '—' : stats.activeProjects, description: projectError ? 'Data unavailable' : 'In active workspace', icon: FolderKanban, color: 'green', link: 'projects' }, { label: 'TASKS TOTAL', value: taskError ? '—' : stats.pendingTasks, description: taskError ? 'Data unavailable' : 'Live tasks', icon: CheckSquare, color: 'blue', link: 'tasks' }, { label: 'HOURS LOGGED', value: '—', description: 'Time tracking unavailable', icon: Clock3, color: 'purple', link: 'calendar' }, { label: 'OVERDUE TASKS', value: taskError ? '—' : stats.overdueTasks, description: taskError ? 'Data unavailable' : stats.overdueTasks ? 'Needs attention' : 'All clear', icon: Circle, color: 'amber', link: 'tasks' }].map(item => <Link to={`/dashboard/${item.link}`} className={`dash-stat dash-stat-${item.color}`} key={item.label}><div className="dash-row"><span>{item.label}</span><span className={`dash-stat-icon ${item.color}`}><item.icon size={17} /></span></div><strong>{item.value}</strong><p>{item.description}<ArrowUpRight size={13} /></p><span className="dash-stat-line" /></Link>)}
+     </div>
     <WorkspaceSections label="Overview sections" value={section} onChange={setSection} sections={[
       { id: 'projects', label: 'Projects & deadlines', content: <div className="dash-overview-grid"><Panel title="Your projects" subtitle="Your next ideas, in motion." action={<Link className="dash-text-link" to="/dashboard/projects">View all <ChevronRight size={14} /></Link>}>{data.squads.length ? <div className="dash-project-grid">{data.squads.slice(0, 2).map(project => <ProjectCard key={project.id} project={project} data={data} />)}</div> : <EmptyState title={projectError ? 'Projects could not be loaded' : 'Your next big idea starts here'} description={projectError ? 'Check your connection and refresh.' : 'Create a project, bring your team, and plan your first delivery.'} action={!projectError && projectAction} />}</Panel><Panel title="Upcoming deadlines" subtitle="A focused view of your next deliveries." action={<CalendarDays size={17} />}>{upcoming.length ? <div className="dash-deadlines">{upcoming.slice(0, 4).map(task => <Link to={`/dashboard/calendar?date=${task.due_date}`} className="dash-deadline" key={task.id}><span className="dash-date-tile"><b>{new Date(`${task.due_date}T00:00:00`).getDate()}</b>{new Date(`${task.due_date}T00:00:00`).toLocaleDateString(undefined, { month: 'short' })}</span><div><h3>{task.name}</h3><p>{data.squads.find(project => project.id === task.squad_id)?.title}</p></div><ChevronRight size={15} /></Link>)}</div> : <EmptyState icon={<CalendarDays size={24} />} title={taskError ? 'Deadlines unavailable' : 'Room to plan ahead'} description="Your upcoming milestone dates appear here." />}</Panel></div> },
       { id: 'focus', label: 'Focus & readiness', content: <WorkspaceInsights data={data} onEditProfile={() => onCreate('profile')} /> },
       { id: 'deliveries', label: 'Delivery progress', content: <div className="dash-overview-grid"><Panel title="Milestone progress" subtitle="Evidence, submissions, and review decisions." action={<Link className="dash-text-link" to="/dashboard/tasks">All milestones <ChevronRight size={14} /></Link>}>{data.milestones.length ? <TaskList tasks={data.milestones.slice(0, 5)} data={data} onSaved={onSaved} /> : <EmptyState icon={<CheckCircle2 size={24} />} title={taskError ? 'Milestones unavailable' : 'One step at a time'} description="Break your project into milestones and track each delivery." action={taskAction} />}</Panel><Panel title="Workspace at a glance"><div className="dash-workspace-summary"><div className="dash-completion-ring" style={{ background: `conic-gradient(var(--dash-brand) ${stats.completion}%, var(--dash-border) 0)` }}><div><strong>{taskError ? '—' : `${stats.completion}%`}</strong><span>completed</span></div></div><p>{stats.completedTasks} delivered milestones</p><Link to="/dashboard/integrations"><Link2 size={15} />Connected integrations<strong>{data.errors.some(error => error.section === 'Integrations') ? '—' : data.integrations.filter(item => item.is_connected).length}</strong></Link><Link to="/dashboard/portfolio"><GraduationCap size={15} />Your academic profile<ChevronRight size={15} /></Link></div></Panel></div> },
-    ]} />
-  </>;
+     ]} />
+   </>;
+  }
 
   if (view === 'projects') {
     const projects = data.squads.filter(project => `${project.title} ${project.domain || ''} ${project.summary || ''} ${project.current_phase || ''} ${project.mentor_name || ''}`.toLowerCase().includes(search) && (projectStatus === 'all' || (projectStatus === 'archived' ? isInactive(project.status) : !isInactive(project.status)))).sort((a, b) => projectSort === 'name' ? a.title.localeCompare(b.title) : projectSort === 'progress' ? getDashboardStats({ squads: [b], milestones: data.milestones.filter(task => task.squad_id === b.id), members: [] }).completion - getDashboardStats({ squads: [a], milestones: data.milestones.filter(task => task.squad_id === a.id), members: [] }).completion : (b.created_at || '').localeCompare(a.created_at || ''));
