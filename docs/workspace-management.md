@@ -5,11 +5,11 @@
 1. Apply `supabase/migrations/202610050001_workspace_management.sql` in the project's
    Supabase SQL Editor, after the two existing migrations. It is transactional and
    re-applicable. Existing students, projects, and provider connections are retained.
-2. The installation owner is `placewiseinfo@gmail.com`. With the existing server and
+2. The installation owner is the email configured in `PLACEPMS_ADMIN_EMAIL`. With the existing server and
    SMTP settings in local `.env`, initialize the first administrator explicitly:
 
    ```bash
-   npm run bootstrap:admin -- --email placewiseinfo@gmail.com --name "Placewise Administrator" --institution "Placewise"
+   npm run bootstrap:admin -- --email you@example.com --name "Administrator" --institution "Your institution"
    ```
 
    An existing account is promoted without changing its password. A new account is

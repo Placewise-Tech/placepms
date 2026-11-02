@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import nodemailer, { type SendMailOptions } from 'nodemailer';
 import publicConfig from '../supabase.public.json' with { type: 'json' };
+import { protectRequest, securityHeaders } from './workspace-http.js';
 
 const successMessage = 'Check your email for your temporary login credentials. If you already have an account, sign in or use Forgot password.';
 const emailPattern = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/;
@@ -151,6 +152,7 @@ async function readBody(request: IncomingMessage & { body?: unknown }) {
 
 export function createSignupHandler(env: NodeJS.ProcessEnv = process.env) {
   return async (request: IncomingMessage & { body?: unknown }, response: ServerResponse) => {
+    securityHeaders(response);
     response.setHeader('Content-Type', 'application/json');
     response.setHeader('Cache-Control', 'no-store');
     response.setHeader('X-Content-Type-Options', 'nosniff');
@@ -161,6 +163,7 @@ export function createSignupHandler(env: NodeJS.ProcessEnv = process.env) {
       return;
     }
     try {
+      protectRequest(request, env, 'signup', 8);
       const input = await readBody(request);
       const forwarded = request.headers['x-forwarded-for'];
       // Vercel supplies this header. Locally, ignore client-supplied proxy headers.

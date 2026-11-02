@@ -149,7 +149,7 @@ migrations below in order:
 Apply `supabase/migrations/202610060001_admin_monitoring.sql` after the workspace
 management migration to enable the administrator control center. Apply
 `supabase/migrations/202610060002_designated_admin_bootstrap.sql` afterward to enable
-automatic first-owner promotion for `placewiseinfo@gmail.com`. Administrators get a
+automatic first-owner promotion for the administrator email configured in `PLACEPMS_ADMIN_EMAIL`. Administrators get a
 separate `/admin` workspace with live account presence, minute-level route heartbeats,
 workspace-wide delivery analytics, activity history, per-user project and milestone
 drill-downs, provider connection metadata, and saved integration-analysis payloads.

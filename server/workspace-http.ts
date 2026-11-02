@@ -5,6 +5,56 @@ import { ApiError } from './integration-security.js';
 
 export type Request = IncomingMessage & { body?: unknown };
 const adminClientCache = new Map<string, { secret: string; client: SupabaseClient }>();
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+function header(request: Request, name: string) {
+  const value = request.headers[name];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function clientAddress(request: Request, env: NodeJS.ProcessEnv) {
+  if (env.VERCEL === '1') return header(request, 'x-forwarded-for')?.split(',')[0].trim() || 'vercel-unknown';
+  return request.socket.remoteAddress || 'local';
+}
+
+function sameOrigin(request: Request, env: NodeJS.ProcessEnv) {
+  const origin = header(request, 'origin');
+  if (!origin) return;
+  if (origin === 'null') throw new ApiError(403, 'This request origin is not allowed.');
+  let expected = '';
+  try { expected = new URL(env.APP_URL || '').origin; } catch { /* Fall back to the request host below. */ }
+  const forwardedHost = header(request, 'x-forwarded-host') || header(request, 'host');
+  const forwardedProto = header(request, 'x-forwarded-proto') || (env.APP_URL?.startsWith('https://') ? 'https' : 'http');
+  const requestOrigin = forwardedHost ? `${forwardedProto}://${forwardedHost.split(',')[0].trim()}` : '';
+  if (origin !== expected && origin !== requestOrigin) throw new ApiError(403, 'Cross-site requests are not allowed.');
+}
+
+/** Same-origin enforcement plus a bounded per-IP request bucket for every API. */
+export function protectRequest(request: Request, env: NodeJS.ProcessEnv, scope: string, limit = 120) {
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(request.method || '')) sameOrigin(request, env);
+  const now = Date.now();
+  const key = `${scope}:${clientAddress(request, env)}`;
+  const current = rateBuckets.get(key);
+  if (!current || current.resetAt <= now) rateBuckets.set(key, { count: 1, resetAt: now + 60_000 });
+  else {
+    current.count += 1;
+    if (current.count > limit) {
+      throw new ApiError(429, 'Too many requests. Please wait and try again.');
+    }
+  }
+  // Prevent an abandoned IP map from growing forever in a long-lived process.
+  if (rateBuckets.size > 10_000 && Math.random() < 0.02) {
+    for (const [bucketKey, bucket] of rateBuckets) if (bucket.resetAt <= now) rateBuckets.delete(bucketKey);
+  }
+}
+
+export function securityHeaders(response: ServerResponse) {
+  response.setHeader('X-Content-Type-Options', 'nosniff');
+  response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  response.setHeader('X-Frame-Options', 'DENY');
+  response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+  response.setHeader('Content-Security-Policy', "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.supabase.co https://api.openalex.org; worker-src 'self' blob:");
+}
 
 function serverFetch(input: Parameters<typeof fetch>[0], init?: RequestInit) {
   const timeout = AbortSignal.timeout(20_000);
@@ -76,7 +126,7 @@ export function jsonResponse(response: ServerResponse, value: unknown, status = 
   response.statusCode = status;
   response.setHeader('Content-Type', 'application/json');
   response.setHeader('Cache-Control', 'no-store');
-  response.setHeader('X-Content-Type-Options', 'nosniff');
+  securityHeaders(response);
   response.end(JSON.stringify(value));
 }
 

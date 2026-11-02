@@ -1,7 +1,7 @@
 import type { ServerResponse } from 'node:http';
 import publicConfig from '../supabase.public.json' with { type: 'json' };
 import { ApiError } from './integration-security.js';
-import { errorResponse, jsonResponse, type Request } from './workspace-http.js';
+import { errorResponse, jsonResponse, protectRequest, type Request } from './workspace-http.js';
 
 const methods: Record<string, string[]> = {
   '/token': ['POST'], '/user': ['GET', 'PUT'], '/recover': ['POST'],
@@ -35,6 +35,7 @@ export function createAuthHandler(env: NodeJS.ProcessEnv = process.env) {
     try {
       const params = new URL(request.url || '/', 'http://localhost').searchParams;
       const path = params.get('path') || '';
+      protectRequest(request, env, `auth:${path || 'unknown'}`, path === '/token' || path === '/recover' || path === '/resend' ? 12 : 60);
       const allowed = methods[path];
       if (!allowed) throw new ApiError(404, 'Unknown authentication operation.');
       if (!allowed.includes(request.method || '')) {

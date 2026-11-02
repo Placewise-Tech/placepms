@@ -1,7 +1,7 @@
 import type { ServerResponse } from 'node:http';
 import publicConfig from '../supabase.public.json' with { type: 'json' };
 import { ApiError } from './integration-security.js';
-import { errorResponse, type Request } from './workspace-http.js';
+import { errorResponse, protectRequest, type Request } from './workspace-http.js';
 
 const forwardedHeaders = ['accept', 'accept-profile', 'content-profile', 'content-type', 'if-match', 'if-none-match', 'prefer', 'range', 'x-client-info'];
 
@@ -18,6 +18,7 @@ async function body(request: Request) {
 export function createSupabaseRestProxy(env: NodeJS.ProcessEnv = process.env) {
   return async (request: Request, response: ServerResponse) => {
     try {
+      protectRequest(request, env, 'supabase-rest', 180);
       if (!['GET', 'HEAD', 'POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method || '')) throw new ApiError(405, 'Use a supported Supabase REST method.');
       const incoming = new URL(request.url || '/', 'http://localhost');
       const path = incoming.searchParams.get('path');

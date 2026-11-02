@@ -64,6 +64,18 @@ html .home-page #home-chart-fill stop { stop-color: var(--home-brand); }html .ho
   border-right-color: #d6e1ed;
   box-shadow: 8px 0 26px rgba(30, 65, 98, .035);
 }
+
+/* Account security is intentionally visible without competing with session
+   management. The QR code is rendered as an image; no markup is injected. */
+.studio-security-card { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin: 20px 0; padding: 20px; border: 1px solid color-mix(in srgb, var(--dash-brand) 26%, var(--dash-border)); border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, var(--dash-brand) 8%, var(--dash-card)), var(--dash-card)); box-shadow: 0 12px 30px rgba(27, 62, 96, .06); }
+.studio-security-card h3 { margin: 8px 0 6px; color: var(--dash-text); font-size: 16px; }
+.studio-security-card p { max-width: 560px; margin: 0; color: var(--dash-muted); font-size: 12px; line-height: 1.65; }
+.studio-security-card > .dash-button { flex: 0 0 auto; margin-top: 18px; }
+.studio-mfa-factors { display: grid; gap: 10px; min-width: 260px; }
+.studio-mfa-factor { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; padding: 11px; border: 1px solid var(--dash-border); border-radius: 11px; background: color-mix(in srgb, var(--dash-card) 82%, var(--dash-brand)); }
+.studio-mfa-factor strong, .studio-mfa-factor small { grid-column: 2; }.studio-mfa-factor strong { color: var(--dash-text); font-size: 11px; }.studio-mfa-factor small { color: var(--dash-muted); font-size: 9px; }.studio-mfa-factor .dash-button { grid-column: 3; grid-row: 1 / span 2; }
+.studio-mfa-setup { display: flex; align-items: center; gap: 17px; min-width: 390px; }.studio-mfa-setup img { width: 124px; height: 124px; padding: 7px; border-radius: 10px; background: white; }.studio-mfa-setup > div { display: grid; gap: 7px; }.studio-mfa-setup strong { color: var(--dash-text); font-size: 12px; }.studio-mfa-setup code { max-width: 220px; overflow-wrap: anywhere; color: var(--dash-brand); font: 10px ui-monospace, monospace; }.studio-mfa-setup label { display: grid; gap: 4px; color: var(--dash-muted); font-size: 10px; }.studio-mfa-setup input { width: 150px; padding: 8px; color: var(--dash-text); background: var(--dash-card); border: 1px solid var(--dash-border); border-radius: 7px; letter-spacing: 3px; }
+@media (max-width: 700px) { .studio-security-card, .studio-mfa-setup { flex-direction: column; min-width: 0; }.studio-security-card > .dash-button { margin-top: 0; }.studio-mfa-factor { width: 100%; } }
 .dashboard.workspace-studio:not(.dashboard-dark) .dash-brand {
   border-bottom: 1px solid #e8eef5;
   margin-bottom: 16px;

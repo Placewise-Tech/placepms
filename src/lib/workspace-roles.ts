@@ -3,10 +3,6 @@ import type { User } from '@supabase/supabase-js';
 
 export type WorkspaceRole = 'student' | 'admin' | 'teacher' | 'staff';
 export const roleLabels: Record<WorkspaceRole, string> = { student: 'Student', admin: 'Administrator', teacher: 'Teacher', staff: 'Staff' };
-// This is the installation owner selected for the initial PlacePMS deployment.
-// The server still verifies and persists the role; this value is never used as
-// a client-side permission check.
-export const designatedAdministratorEmail = 'placewiseinfo@gmail.com';
 // App metadata is the fast navigation hint. The app also resolves the live
 // managed account before choosing a workspace, and database/API permissions
 // always read that server-owned account, including after role changes.

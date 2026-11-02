@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { ServerResponse } from 'node:http';
 import { ApiError, digest, providerName, seal, unseal, type Provider } from './integration-security.js';
-import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, serverClients, type Request } from './workspace-http.js';
+import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, protectRequest, serverClients, type Request } from './workspace-http.js';
 import { commitDetail, connectionAccount, githubCommitStatsPage, inspectDesign, inspectGitHub, listResources, object, repositoryFiles, text, type Credential } from './providers.js';
 import { assertFeature, managementError } from './management.js';
 import { detectCommitAI } from '../src/lib/github-ai.js';
@@ -120,6 +120,7 @@ export function createIntegrationsHandler(env: NodeJS.ProcessEnv = process.env) 
     const url = new URL(request.url || '/', 'http://localhost');
     const callback = request.method === 'GET' && url.searchParams.get('action') === 'callback';
     try {
+      protectRequest(request, env, 'integrations', 120);
       if (callback) { await completeOAuth(request, response, url, env); return; }
       const input = await jsonBody(request);
       const { user, admin, client, sessionId } = await authenticate(request, env);

@@ -1,4 +1,6 @@
-import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 
 export class ApiError extends Error {
   status: number;
@@ -42,6 +44,60 @@ export function unseal(value: string, owner: string, env: NodeJS.ProcessEnv) {
 }
 
 export const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+export function secretsEqual(expected: string, received: string | undefined) {
+  if (!received) return false;
+  const expectedBytes = Buffer.from(expected);
+  const receivedBytes = Buffer.from(received);
+  return expectedBytes.length === receivedBytes.length && timingSafeEqual(expectedBytes, receivedBytes);
+}
+
+function privateAddress(value: string) {
+  const address = value.toLowerCase().replace(/^\[|\]$/g, '');
+  const version = isIP(address);
+  if (version === 4) {
+    const parts = address.split('.').map(Number);
+    const [first, second] = parts;
+    return first === 0 || first === 10 || first === 127 || first >= 224 ||
+      (first === 100 && second >= 64 && second <= 127) ||
+      (first === 169 && second === 254) || (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && (second === 0 || second === 168)) || (first === 198 && second >= 18 && second <= 19);
+  }
+  if (version === 6) {
+    const mapped = address.replace(/^::ffff:/, '');
+    if (isIP(mapped) === 4) return privateAddress(mapped);
+    return address === '::' || address === '::1' || address.startsWith('fc') || address.startsWith('fd') ||
+      address.startsWith('fe8') || address.startsWith('fe9') || address.startsWith('fea') || address.startsWith('feb') ||
+      address.startsWith('2001:db8:') || address.startsWith('2001:10:');
+  }
+  return false;
+}
+
+function publicHttpUrl(value: unknown) {
+  if (typeof value !== 'string' || value.length > 2000) throw new ApiError(400, 'The target URL is invalid or too long.');
+  let url: URL;
+  try { url = new URL(value); } catch { throw new ApiError(400, 'Enter a valid HTTP or HTTPS target URL.'); }
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.port || !hostname ||
+      hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === 'metadata.google.internal' ||
+      hostname === 'metadata.google' || privateAddress(hostname)) {
+    throw new ApiError(400, 'Use a public HTTP or HTTPS URL without embedded credentials.');
+  }
+  return url;
+}
+
+/** Resolve the host before a server-side request so private-network SSRF targets are rejected. */
+export async function publicHttpTarget(value: unknown) {
+  const url = publicHttpUrl(value);
+  try {
+    const addresses = isIP(url.hostname) ? [{ address: url.hostname }] : await lookup(url.hostname, { all: true, verbatim: true });
+    if (!addresses.length || addresses.some(item => privateAddress(item.address))) throw new Error('private address');
+  } catch (cause) {
+    if (cause instanceof ApiError) throw cause;
+    throw new ApiError(400, 'The target host could not be verified as public.');
+  }
+  return url;
+}
+
 export function repositoryPath(value: unknown) {
   if (typeof value !== 'string') throw new ApiError(400, 'Enter a GitHub repository URL or owner/repository.');
   let path = value.trim();

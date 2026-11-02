@@ -1,8 +1,7 @@
 import type { ServerResponse } from 'node:http';
-import { isIP } from 'node:net';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ApiError } from './integration-security.js';
-import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, serverClients, type Request } from './workspace-http.js';
+import { ApiError, publicHttpTarget, secretsEqual } from './integration-security.js';
+import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, protectRequest, serverClients, type Request } from './workspace-http.js';
 import { managementAccount } from './management.js';
 import { text } from './providers.js';
 
@@ -31,8 +30,7 @@ function externalUrl(valueToCheck: unknown) {
   try { url = new URL(value); } catch { throw new ApiError(400, 'Enter a valid HTTP or HTTPS target URL.'); }
   const hostname = url.hostname.toLowerCase();
   const privateHost = hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === 'metadata.google.internal' || hostname === 'metadata.google' || hostname === '0.0.0.0' || hostname === '::1' || hostname.startsWith('127.') || hostname.startsWith('10.') || hostname.startsWith('192.168.') || hostname.startsWith('169.254.') || hostname.startsWith('fc') || hostname.startsWith('fd') || hostname.startsWith('fe80.');
-  const numeric = isIP(hostname);
-  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || privateHost || (numeric === 4 && /^172\.(1[6-9]|2\d|3[01])\./.test(hostname))) throw new ApiError(400, 'Use a public HTTP or HTTPS URL without embedded credentials.');
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || privateHost) throw new ApiError(400, 'Use a public HTTP or HTTPS URL without embedded credentials.');
   if (url.href.length > 2000) throw new ApiError(400, 'The target URL is too long.');
   return url.href;
 }
@@ -92,6 +90,7 @@ async function userActions(input: Record<string, unknown>, user: { id: string; e
     const projectId = value(input, 'projectId', 100, true)!; const project = await projectFor(client, projectId);
     if (!await userCanManage(project, user, administrator)) throw new ApiError(403, 'Only the project lead, assigned mentor, or administrator can schedule an automation.');
     const taskType = validTaskType(input.taskType); const targetUrl = taskType === 'HTTP_CHECK' ? externalUrl(input.targetUrl) : null;
+    if (targetUrl) await publicHttpTarget(targetUrl);
     const managerId = input.managerId ? id(input.managerId, 'manager') : user.id;
     const frequency = validFrequency(input.frequency); const nextRunAt = isoDate(input.nextRunAt);
     const result = await client.from('workspace_automation_tasks').insert({ project_id: projectId, created_by: user.id, manager_id: managerId, title: value(input, 'title', 200, true), description: value(input, 'description', 4000) || '', task_type: taskType, target_url: targetUrl, frequency, next_run_at: nextRunAt }).select('id').single();
@@ -139,11 +138,12 @@ async function executeTask(admin: SupabaseClient, task: AutomationTask) {
     return { success, status: success ? 'PASS' : 'FAIL', summary: success ? `Milestone audit passed: ${milestones.length} milestones checked.` : `Milestone audit found ${overdue.length} overdue and ${revisions.length} revision-requested milestone${revisions.length === 1 ? '' : 's'}.`, details: { total: milestones.length, open: open.length, overdue: overdue.length, revisions: revisions.length, submitted: submitted.length } };
   }
   if (!task.target_url) throw new ApiError(400, 'HTTP check has no target URL.');
+  const target = await publicHttpTarget(task.target_url);
   const started = Date.now(); let response: Response;
-  try { response = await fetch(task.target_url, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(15_000), headers: { Accept: 'text/plain, application/json' } }); }
-  catch (cause) { return { success: false, status: 'ERROR' as const, summary: `HTTP check could not reach ${task.target_url}.`, details: { duration_ms: Date.now() - started }, error: cause instanceof Error ? cause.message.slice(0, 500) : 'Request failed' }; }
+  try { response = await fetch(target, { method: 'GET', redirect: 'manual', signal: AbortSignal.timeout(15_000), headers: { Accept: 'text/plain, application/json' } }); }
+  catch (cause) { return { success: false, status: 'ERROR' as const, summary: `HTTP check could not reach ${target.href}.`, details: { duration_ms: Date.now() - started }, error: cause instanceof Error ? cause.message.slice(0, 500) : 'Request failed' }; }
   const success = response.status >= 200 && response.status < 400;
-  return { success, status: success ? 'PASS' as const : 'FAIL' as const, summary: `HTTP check returned ${response.status} for ${task.target_url}.`, details: { status: response.status, duration_ms: Date.now() - started, redirected: response.status >= 300 && response.status < 400 } };
+  return { success, status: success ? 'PASS' as const : 'FAIL' as const, summary: `HTTP check returned ${response.status} for ${target.href}.`, details: { status: response.status, duration_ms: Date.now() - started, redirected: response.status >= 300 && response.status < 400 } };
 }
 
 async function runDueTasks(admin: SupabaseClient) {
@@ -173,9 +173,11 @@ export function createAutomationHandler(env: NodeJS.ProcessEnv = process.env) {
     try {
       if (request.method === 'GET') {
         const secret = env.CRON_SECRET || env.AUTOMATION_CRON_SECRET;
-        if (!secret || request.headers.authorization !== `Bearer ${secret}`) throw new ApiError(401, 'Automation runner authorization required.');
+        const authorization = request.headers.authorization;
+        if (!secret || !authorization?.startsWith('Bearer ') || !secretsEqual(secret, authorization.slice(7))) throw new ApiError(401, 'Automation runner authorization required.');
         const { admin } = serverClients(env); const results = await runDueTasks(admin); jsonResponse(response, { processed: results.length, results }); return;
       }
+      protectRequest(request, env, 'automation', 120);
       const input = await jsonBody(request); const { user, client, admin } = await authenticate(request, env); const account = await managementAccount(admin, user.id, env, user.email || '');
       jsonResponse(response, await userActions(input, user, client, account.role === 'admin'));
     } catch (cause) { errorResponse(response, cause); }

@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, loadEnv } from 'vite'
 import { createSignupHandler } from './server/signup.ts'
@@ -12,32 +12,14 @@ import { createAuthHandler } from './server/auth.ts'
 import { createAutomationHandler } from './server/automation.ts'
 import { createSupabaseRestProxy } from './server/supabase-rest.ts'
 
-// Only public settings reach the browser. Also accepts the labelled keys in
-// the original .env file; private keys are used only by the server middleware.
+// Only explicitly public settings reach the browser. Server credentials are
+// never scanned from .env or substituted into the client bundle.
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const envPath = resolve(process.cwd(), '.env')
-  const original = existsSync(envPath) ? readFileSync(envPath, 'utf8') : ''
-  // Publishable configuration is intentionally public so Git-based Vercel
-  // builds work without uploading the private .env file.
   const publicConfig = JSON.parse(readFileSync(resolve(process.cwd(), 'supabase.public.json'), 'utf8'))
-  const tokens = original.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g) ?? []
-  let projectRef = ''
-  let anonKey = ''
-  for (const token of tokens) {
-    try {
-      const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString())
-      if (claims.role === 'anon') {
-        anonKey = token
-        projectRef = typeof claims.ref === 'string' ? claims.ref : ''
-      }
-    } catch { /* Invalid pasted tokens are not used. */ }
-  }
-  const url = env.VITE_SUPABASE_URL || env.SUPABASE_URL ||
-    (projectRef ? `https://${projectRef}.supabase.co` : publicConfig.url)
+  const url = env.VITE_SUPABASE_URL || publicConfig.url
   const key = env.VITE_SUPABASE_PUBLISHABLE_KEY || env.VITE_SUPABASE_ANON_KEY ||
-    env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY ||
-    original.match(/sb_publishable_[A-Za-z0-9_-]+/)?.[0] || anonKey || publicConfig.publishableKey
+    publicConfig.publishableKey
 
   let privateKey = key.startsWith('sb_secret_')
   try { privateKey ||= JSON.parse(Buffer.from(key.split('.')[1] || '', 'base64url').toString()).role === 'service_role' }
@@ -97,6 +79,7 @@ export default defineConfig(({ mode }) => {
         server.middlewares.use('/api/automation', (request, response) => { void automation(request, response) })
       },
     }],
+    build: { sourcemap: false, reportCompressedSize: false },
     server: { host: true, watch: { usePolling: true, interval: 500 } },
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(url),

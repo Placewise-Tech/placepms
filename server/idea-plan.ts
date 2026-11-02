@@ -2,7 +2,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import type { ServerResponse } from 'node:http';
 import { generateStarterPlan, validateIdeaInput, validateIdeaPlan, type IdeaInput, type IdeaPlan } from '../src/lib/idea-plan.js';
 import { ApiError } from './integration-security.js';
-import { errorResponse, jsonBody, jsonResponse, serverClients, type Request } from './workspace-http.js';
+import { errorResponse, jsonBody, jsonResponse, protectRequest, serverClients, type Request } from './workspace-http.js';
 
 async function generateWithAI(input: IdeaInput, base: IdeaPlan, env: NodeJS.ProcessEnv): Promise<IdeaPlan> {
   const key = env.IDEA_PLANNER_API_KEY || env.OPENAI_API_KEY;
@@ -30,6 +30,7 @@ async function generateWithAI(input: IdeaInput, base: IdeaPlan, env: NodeJS.Proc
 export function createIdeaPlanHandler(env: NodeJS.ProcessEnv = process.env) {
   return async (request: Request, response: ServerResponse) => {
     try {
+      protectRequest(request, env, 'idea-plan', 30);
       const raw = await jsonBody(request);
       let input: IdeaInput;
       try { input = validateIdeaInput(raw); } catch (cause) { throw new ApiError(400, cause instanceof Error ? cause.message : 'Describe your project idea.'); }

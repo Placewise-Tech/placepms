@@ -1,6 +1,6 @@
 import type { ServerResponse } from 'node:http';
 import { ApiError } from './integration-security.js';
-import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, type Request } from './workspace-http.js';
+import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, protectRequest, type Request } from './workspace-http.js';
 import { text } from './providers.js';
 import { managementAccount, managementError } from './management.js';
 import { createIdeaWorkspace } from './idea-workspace.js';
@@ -42,6 +42,7 @@ function uuidValue(value: unknown) {
 export function createWorkspaceHandler(env: NodeJS.ProcessEnv = process.env) {
   return async (request: Request, response: ServerResponse) => {
     try {
+      protectRequest(request, env, 'workspace', 120);
       const input = await jsonBody(request); const { user, admin, client } = await authenticate(request, env);
       const account = await managementAccount(admin,user.id,env,user.email || ''); const administrator = account.role === 'admin';
       const action = text(input.action);

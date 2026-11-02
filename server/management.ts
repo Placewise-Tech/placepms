@@ -1,9 +1,9 @@
 import type { ServerResponse } from 'node:http';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ApiError, providerName } from './integration-security.js';
-import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, type Request } from './workspace-http.js';
+import { authenticate, databaseError, errorResponse, jsonBody, jsonResponse, protectRequest, type Request } from './workspace-http.js';
 import { createServices, temporaryLoginEmail, temporaryPassword } from './signup.js';
-import { designatedAdministratorEmail, featureLabels, type WorkspaceRole } from '../src/lib/workspace-roles.js';
+import { featureLabels, type WorkspaceRole } from '../src/lib/workspace-roles.js';
 import { text } from './providers.js';
 import { databaseMetrics, serverMetrics, systemHealth } from './system-monitor.js';
 
@@ -14,7 +14,7 @@ export function managementError(error: { code?: string; message?: string } | nul
   databaseError(error);
 }
 function configuredAdministratorEmail(env: NodeJS.ProcessEnv = process.env) {
-  return (env.PLACEPMS_ADMIN_EMAIL || env.ADMIN_EMAIL || designatedAdministratorEmail).trim().toLowerCase();
+  return (env.PLACEPMS_ADMIN_EMAIL || env.ADMIN_EMAIL || '').trim().toLowerCase();
 }
 
 export async function managementAccount(admin: SupabaseClient, userId: string, env: NodeJS.ProcessEnv = process.env, email = '') {
@@ -209,6 +209,7 @@ export async function createManagedAccount(input: Record<string,unknown>, actor:
 export function createManagementHandler(env: NodeJS.ProcessEnv=process.env, servicesFactory=createServices) {
   return async (request: Request,response: ServerResponse) => {
     try {
+      protectRequest(request,env,'management',120);
       const input=await jsonBody(request); const { user,admin,client }=await authenticate(request,env); const account=await managementAccount(admin,user.id,env,user.email || '');
       const settings=await admin.from('workspace_settings').select('registration_enabled,features').eq('id',true).single(); managementError(settings.error);
       const administrator=account.role==='admin'; const educator=administrator || ['teacher','staff'].includes(account.role);
