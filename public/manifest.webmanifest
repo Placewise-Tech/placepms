@@ -8,6 +8,6 @@
   "background_color": "#060B19",
   "theme_color": "#060B19",
   "icons": [
-    { "src": "/nebula-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    { "src": "/placewise-logo.png", "sizes": "582x140", "type": "image/png", "purpose": "any" }
   ]
 }

@@ -16,10 +16,10 @@ const AuthInterface = lazy(() => import('./components/AuthInterface'));
 type AuthMode = 'signin' | 'signup';
 
 function WorkspaceLoading() {
-  return <div className="workspace-gate" role="status"><img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" width="140" /><p>Opening your workspace…</p></div>;
+  return <div className="workspace-gate" role="status"><img src="/placewise-logo.png" alt="placewise" width="140" /><p>Opening your workspace…</p></div>;
 }
 function WorkspaceAccessError({ message }: { message: string }) {
-  return <div className="workspace-gate"><img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" width="140" /><div className="workspace-gate-card"><span className="dash-eyebrow">WORKSPACE ACCESS</span><h1>We couldn’t open this workspace</h1><p>{message}</p>{/workspace management migration/i.test(message) && <p>Apply <code>supabase/migrations/202610050001_workspace_management.sql</code> in the production Supabase SQL editor, then apply the administrator monitoring migrations if needed.</p>}<button className="dash-button dash-button-primary" onClick={() => window.location.reload()}>Retry connection</button></div></div>;
+  return <div className="workspace-gate"><img src="/placewise-logo.png" alt="placewise" width="140" /><div className="workspace-gate-card"><span className="dash-eyebrow">WORKSPACE ACCESS</span><h1>We couldn’t open this workspace</h1><p>{message}</p>{/workspace management migration/i.test(message) && <p>Apply <code>supabase/migrations/202610050001_workspace_management.sql</code> in the production Supabase SQL editor, then apply the administrator monitoring migrations if needed.</p>}<button className="dash-button dash-button-primary" onClick={() => window.location.reload()}>Retry connection</button></div></div>;
 }
 
 function MfaChallenge({ factorId, onComplete }: { factorId: string; onComplete: () => void }) {
@@ -36,7 +36,7 @@ function MfaChallenge({ factorId, onComplete }: { factorId: string; onComplete: 
       onComplete();
     } catch (cause) { setError(cause instanceof Error ? cause.message : 'The authenticator code could not be verified.'); }
     finally { setBusy(false); }
-  }}><img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" width="120" /><h1>Verify your identity</h1><p>Enter the current code from your authenticator app to open this workspace.</p>{error && <div role="alert" className="auth-feedback auth-feedback-error">{error}</div>}<label>Authenticator code<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ''))} /></label><button className="dash-button dash-button-primary" disabled={busy || code.length !== 6}>{busy ? 'Verifying…' : 'Verify and continue'}</button></form></div>;
+  }}><img src="/placewise-logo.png" alt="placewise" width="120" /><h1>Verify your identity</h1><p>Enter the current code from your authenticator app to open this workspace.</p>{error && <div role="alert" className="auth-feedback auth-feedback-error">{error}</div>}<label>Authenticator code<input inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} required value={code} onChange={event => setCode(event.target.value.replace(/\D/g, ''))} /></label><button className="dash-button dash-button-primary" disabled={busy || code.length !== 6}>{busy ? 'Verifying…' : 'Verify and continue'}</button></form></div>;
 }
 
 export default function App() {

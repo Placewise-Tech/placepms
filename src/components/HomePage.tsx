@@ -294,7 +294,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
         </div>
 
         {/* 5. Crystalline Floating Top Navigation */}
-        <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+        <header className="home-site-header fixed top-0 left-0 right-0 z-50 transition-all duration-300">
           <div className="max-w-7xl mx-auto px-5 lg:px-10 pt-4">
             <div className="h-16 px-6 rounded-2xl crystal-panel flex items-center justify-between gap-4 border border-white/90 shadow-[0_10px_35px_-5px_rgba(15,23,42,0.06),0_0_15px_rgba(0,242,254,0.08)]">
               {/* Brand Logo with Lift and Rotation */}
@@ -305,7 +305,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                 <img
                   alt="PlacePMS Logo"
                   className="h-8 w-auto object-contain drop-shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:rotate-[-2deg]"
-                  src="/PlacePMS-Logo-Vector.svg"
+                  src="/placewise-logo.png"
                 />
                 <span className="font-headline-sm text-lg font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
                   <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-cyan-100/90 text-cyan-800 border border-cyan-300/50 shadow-sm transition-all duration-300 group-hover:border-cyan-400 group-hover:bg-cyan-200/80">
@@ -401,7 +401,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
         </header>
 
         {/* 6. Main Content */}
-        <main id="home-main" className="relative z-10 w-full pt-28 max-w-7xl mx-auto px-6 lg:px-12">
+        <main id="home-main" className="home-site-main relative z-10 w-full pt-28 max-w-7xl mx-auto px-6 lg:px-12">
           <div className="flex flex-col w-full text-slate-900 pb-16">
             {/* HERO SECTION */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center pt-6 pb-16">
@@ -490,7 +490,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
               </div>
 
               {/* RIGHT COLUMN: Interactive Cockpit Showcase with 3D Tilt */}
-              <div className="lg:col-span-7 relative z-10 w-full fade-in-2" id="interactive-preview">
+              <div className="home-site-preview lg:col-span-7 relative z-10 w-full fade-in-2" id="interactive-preview">
                 {/* Outer Holographic Prismatic Aura Glow */}
                 <div className="absolute -inset-2 bg-gradient-to-tr from-emerald-400/25 via-[#00f2fe]/25 to-violet-400/30 rounded-3xl blur-2xl opacity-80 animate-glow" />
 
@@ -1343,7 +1343,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
         </main>
 
         {/* 17. HIGH-TECH LIGHT FOOTER */}
-        <footer className="relative z-10 w-full crystal-panel border-t border-slate-200/80 mt-12 bg-white/70">
+        <footer className="home-site-footer relative z-10 w-full crystal-panel border-t border-slate-200/80 mt-12 bg-white/70">
           <div className="max-w-7xl mx-auto px-6 lg:px-12 py-12">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 mb-12">
               <div className="lg:col-span-2 flex flex-col gap-4">
@@ -1354,7 +1354,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                   <img
                     alt="PlacePMS Logo"
                     className="h-7 w-auto object-contain transition-transform duration-300 group-hover:scale-110"
-                    src="/PlacePMS-Logo-Vector.svg"
+                    src="/placewise-logo.png"
                   />
                 </div>
                 <p className="font-body-sm text-xs text-slate-600 max-w-sm leading-relaxed">

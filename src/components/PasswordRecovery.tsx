@@ -29,7 +29,7 @@ export default function PasswordRecovery({ onComplete, onSignOut, requiredSetup 
         } catch (cause) { setError(cause instanceof Error ? cause.message : 'Unable to update your password.'); }
         finally { setSaving(false); }
       }}>
-        <img src="/PlacePMS-Logo-White.svg" alt="PlacePMS" width="120" />
+        <img src="/placewise-logo.png" alt="placewise" width="120" />
         <span className="auth-recovery-icon"><KeyRound size={27} /></span>
         <h1>{requiredSetup ? 'Set your own password' : 'Choose a new password'}</h1>
         <p>{requiredSetup ? `You are signed in${email ? ` as ${email}` : ''}. Replace your temporary login code with your own password to continue to your workspace.` : `Choose a new password for your PlacePMS account${email ? ` (${email})` : ''}.`}</p>
