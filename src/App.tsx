@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Preloader, { AnimatePresence } from './components/Preloader';
 import PasswordRecovery from './components/PasswordRecovery';
 import RecoveryHelp from './components/RecoveryHelp';
 import { useAuth } from './hooks/useAuth';
@@ -43,7 +42,6 @@ export default function App() {
   const { session, loading: authLoading, error: sessionError, passwordRecovery, recoveryError, finishPasswordRecovery } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
   const isAuthOpen = location.pathname === '/login' || location.pathname === '/signup' || /^\/(admin|teacher|staff)\/login$/.test(location.pathname);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const accessRole = location.pathname.match(/^\/(admin|teacher|staff)\/login$/)?.[1] as 'admin' | 'teacher' | 'staff' | undefined;
@@ -150,9 +148,6 @@ export default function App() {
       initialMode={location.pathname === '/signup' ? 'signup' : location.pathname.endsWith('/login') ? 'signin' : authMode}
       accessRole={accessRole}
     /></Suspense>}
-    <AnimatePresence mode="wait">
-      {isLoading && <Preloader onComplete={() => setIsLoading(false)} />}
-    </AnimatePresence>
     <Suspense fallback={null}><HomePage onOpenAuth={openAuth} /></Suspense>
   </div>;
 }

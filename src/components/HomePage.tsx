@@ -1,7 +1,7 @@
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, useScroll } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUp,
   ArrowUpRight,
@@ -15,8 +15,6 @@ import {
   LayoutDashboard,
   Menu,
   Orbit,
-  Pause,
-  Play,
   Plus,
   Search,
   Sparkles,
@@ -26,7 +24,6 @@ import '../home.css';
 import '../home-next.css';
 import '../home-crystalline.css';
 import { useReducedMotion } from '../hooks/useReducedMotion';
-import CrystallineShader from './CrystallineShader';
 import HomeAudience from './HomeAudience';
 import HomeTeam from './HomeTeam';
 
@@ -103,11 +100,6 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [preview, setPreview] = useState<Preview>('overview');
   const [step, setStep] = useState(0);
-  const [paused, setPaused] = useState(() => {
-    try { return localStorage.getItem('placepms-home-motion') === 'paused'; }
-    catch { return false; }
-  });
-  const [tourPlaying, setTourPlaying] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const [hasScrolled, setHasScrolled] = useState(false);
   const [faqQuery, setFaqQuery] = useState('');
@@ -120,9 +112,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
   const cursorGlowRef = useRef<HTMLDivElement>(null);
   const toastTimeoutRef = useRef<number | null>(null);
 
-  const reduced = useReducedMotion();
-  const frozen = paused || reduced;
-  const { scrollYProgress } = useScroll();
+  const frozen = true;
 
   const showToast = useCallback((title: string, desc: string) => {
     setToastMessage({ title, desc });
@@ -186,18 +176,6 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
     card.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)';
   };
 
-  // Auto-tour tab cycler
-  useEffect(() => {
-    if (!tourPlaying || frozen) return;
-    const interval = window.setInterval(() => {
-      setPreview(curr => {
-        const nextIdx = (previews.indexOf(curr) + 1) % previews.length;
-        return previews[nextIdx];
-      });
-    }, 2800);
-    return () => window.clearInterval(interval);
-  }, [tourPlaying, frozen]);
-
   // Scroll detection for active sections & floating CTA
   useEffect(() => {
     let frame = 0;
@@ -260,8 +238,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
   return (
     <HomeMotionContext.Provider value={frozen}>
       <div className={`home-page home-crystalline relative min-h-screen text-slate-900 selection:bg-cyan-100 selection:text-cyan-900 antialiased overflow-x-hidden ${frozen ? 'home-motion-paused' : ''}`} onClickCapture={followAnchor}>
-        {/* 1. WebGL Crystalline Background Fluid Shader */}
-        <CrystallineShader motionPaused={frozen} />
+        {/* Static background keeps the public page calm and predictable. */}
 
         {/* 2. Specular Spotlight Cursor Glow */}
         {!frozen && <div id="ambient-cursor-glow" ref={cursorGlowRef} />}
@@ -283,10 +260,10 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
             </span>
             <div className="flex flex-col">
               <span className="font-headline-sm text-xs font-bold text-slate-900" id="matrix-toast-title">
-                {toastMessage?.title || 'Live Matrix Synchronized'}
+                {toastMessage?.title || 'Preview ready'}
               </span>
               <span className="font-body-sm text-[11px] text-slate-500" id="matrix-toast-desc">
-                {toastMessage?.desc || 'Autonomous telemetry ping active across 240+ institutions'}
+                {toastMessage?.desc || 'Your workspace is ready when you connect your account'}
               </span>
             </div>
             <span className="material-symbols-outlined text-[18px] text-cyan-600 ml-2">verified</span>
@@ -397,7 +374,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
               </nav>
             )}
           </div>
-          <motion.div className="h-[2px] bg-gradient-to-r from-emerald-500 via-cyan-500 to-violet-500 origin-left" style={{ scaleX: scrollYProgress }} aria-hidden="true" />
+          <div className="h-[2px] bg-gradient-to-r from-emerald-500 via-cyan-500 to-violet-500 origin-left" aria-hidden="true" />
         </header>
 
         {/* 6. Main Content */}
@@ -410,7 +387,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                 {/* Holographic Pill Badge with Pulse & Radar */}
                 <div
                   className="interactive-press inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full crystal-panel shadow-sm border border-cyan-200/90 bg-white/85 cursor-pointer hover:border-cyan-400 hover:shadow-[0_0_15px_rgba(0,242,254,0.3)]"
-                  onClick={() => showToast('Neural Academic Engine Active', 'Telemetry active across 240+ institutions.')}
+                  onClick={() => showToast('Workspace preview', 'Create an account to open your connected workspace.')}
                 >
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="radar-pulse-ring" />
@@ -521,14 +498,14 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                     <div className="flex items-center gap-2.5">
                       <div
                         className="interactive-press cursor-pointer hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 font-headline-sm text-[11px] font-semibold border border-slate-200 hover:bg-white hover:text-slate-900 hover:border-cyan-300 transition-all"
-                        onClick={() => showToast('Command Palette Active', 'Press ⌘K anytime to filter repositories, capstones, and dossiers.')}
+                        onClick={() => showToast('Workspace search', 'Open your connected workspace to search your projects and milestones.')}
                       >
                         <span className="material-symbols-outlined text-[13px]">search</span>
                         <span>⌘K Search</span>
                       </div>
                       <div
                         className="interactive-press cursor-pointer flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 font-headline-sm text-[11px] font-bold border border-emerald-200 hover:bg-emerald-100 transition-all shadow-xs"
-                        onClick={() => showToast('Live Matrix Synchronized', 'Telemetry node pinged across 240+ academic pipelines.')}
+                        onClick={() => showToast('Preview ready', 'This is an illustrative preview; your workspace uses your own data.')}
                       >
                         <span className="relative flex h-2 w-2">
                           <span className="radar-pulse-ring" />
@@ -558,8 +535,8 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                           JD
                         </div>
                         <div className="flex flex-col pr-1">
-                          <span className="font-headline-sm text-xs font-bold text-slate-800 leading-tight">Jayesh D.</span>
-                          <span className="font-headline-sm text-[10px] font-semibold text-emerald-600">CS Senior • Placed</span>
+                          <span className="font-headline-sm text-xs font-bold text-slate-800 leading-tight">Your profile</span>
+                          <span className="font-headline-sm text-[10px] font-semibold text-emerald-600">Shown after sign in</span>
                         </div>
                       </div>
                     </div>
@@ -579,7 +556,6 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                             }`}
                             onClick={() => {
                               setPreview(tabKey);
-                              setTourPlaying(false);
                             }}
                           >
                             {label}
@@ -611,7 +587,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                                 </span>
                               </div>
                               <div className="flex items-baseline gap-2">
-                                <span className="metric-number font-code-metric text-3xl font-extrabold text-slate-900 transition-colors">03</span>
+                                <span className="metric-number font-code-metric text-3xl font-extrabold text-slate-900 transition-colors">—</span>
                                 <span className="font-headline-sm text-[11px] font-bold text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-1.5 py-0.5 rounded-md halo-breathe-indicator">
                                   +1 this week
                                 </span>
@@ -628,7 +604,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                                 </span>
                               </div>
                               <div className="flex items-baseline gap-2">
-                                <span className="metric-number font-code-metric text-3xl font-extrabold text-slate-900 transition-colors">08</span>
+                                <span className="metric-number font-code-metric text-3xl font-extrabold text-slate-900 transition-colors">—</span>
                                 <span className="font-headline-sm text-[11px] font-bold text-cyan-700 bg-cyan-100/70 border border-cyan-200 px-1.5 py-0.5 rounded-md halo-breathe-indicator">
                                   100% verified
                                 </span>
@@ -645,7 +621,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                                 </span>
                               </div>
                               <div className="flex items-baseline gap-2">
-                                <span className="metric-number font-code-metric text-3xl font-extrabold text-slate-900 transition-colors">04</span>
+                                <span className="metric-number font-code-metric text-3xl font-extrabold text-slate-900 transition-colors">—</span>
                                 <span className="font-headline-sm text-[11px] font-bold text-violet-700 bg-violet-100/70 border border-violet-200 px-1.5 py-0.5 rounded-md halo-breathe-indicator">
                                   Active now
                                 </span>
@@ -663,7 +639,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                                   Project momentum
                                 </span>
                                 <span className="interactive-press cursor-pointer font-headline-sm text-[11px] text-slate-500 hover:text-cyan-700 font-semibold flex items-center gap-0.5 transition-colors">
-                                  This week <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+                                  Illustrative preview <span className="material-symbols-outlined text-[14px]">info</span>
                                 </span>
                               </div>
 
@@ -689,15 +665,15 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                                   <line stroke="#cbd5e1" strokeWidth="1" x1="0" x2="340" y1="110" y2="110" />
                                   <path d="M 0,95 Q 40,88 80,75 T 160,50 T 240,65 T 300,28 L 340,20 L 340,115 L 0,115 Z" fill="url(#lightMomentumGrad)" />
                                   <path className="animated-chart-line" d="M 0,95 Q 40,88 80,75 T 160,50 T 240,65 T 300,28 L 340,20" fill="none" filter="url(#chartGlowLight)" stroke="#0891b2" strokeWidth="2.5" />
-                                  <circle className="chart-beacon cursor-pointer" cx="340" cy="20" fill="#059669" onMouseEnter={() => setActiveChartPoint('98.2% Velocity Peak')} onMouseLeave={() => setActiveChartPoint(null)} />
-                                  <circle className="cursor-pointer transition-transform hover:scale-150" cx="160" cy="50" fill="#06b6d4" r="3.5" onMouseEnter={() => setActiveChartPoint('Sprint 2: 76%')} onMouseLeave={() => setActiveChartPoint(null)} />
-                                  <circle className="cursor-pointer transition-transform hover:scale-150" cx="240" cy="65" fill="#0284c7" r="3.5" onMouseEnter={() => setActiveChartPoint('Git Review: 84%')} onMouseLeave={() => setActiveChartPoint(null)} />
-                                  <circle className="cursor-pointer transition-transform hover:scale-150" cx="300" cy="28" fill="#10b981" r="3.5" onMouseEnter={() => setActiveChartPoint('Mentor Viva: 92%')} onMouseLeave={() => setActiveChartPoint(null)} />
+                                  <circle className="chart-beacon cursor-pointer" cx="340" cy="20" fill="#059669" onMouseEnter={() => setActiveChartPoint('Example checkpoint')} onMouseLeave={() => setActiveChartPoint(null)} />
+                                  <circle className="cursor-pointer transition-transform hover:scale-150" cx="160" cy="50" fill="#06b6d4" r="3.5" onMouseEnter={() => setActiveChartPoint('Example checkpoint')} onMouseLeave={() => setActiveChartPoint(null)} />
+                                  <circle className="cursor-pointer transition-transform hover:scale-150" cx="240" cy="65" fill="#0284c7" r="3.5" onMouseEnter={() => setActiveChartPoint('Example checkpoint')} onMouseLeave={() => setActiveChartPoint(null)} />
+                                  <circle className="cursor-pointer transition-transform hover:scale-150" cx="300" cy="28" fill="#10b981" r="3.5" onMouseEnter={() => setActiveChartPoint('Example checkpoint')} onMouseLeave={() => setActiveChartPoint(null)} />
                                 </svg>
 
                                 <div className="interactive-press absolute top-1 right-2 px-2.5 py-0.5 rounded-full bg-white/95 border border-emerald-200 shadow-sm font-headline-sm text-[11px] font-bold text-emerald-700 flex items-center gap-1 cursor-pointer hover:border-emerald-400">
                                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                                  <span>94.8% Target Velocity</span>
+                                  <span>Example progress view</span>
                                 </div>
                               </div>
 
@@ -723,17 +699,17 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
 
                               <div className="my-2">
                                 <h4 className="font-headline-sm text-sm font-bold text-slate-900 group-hover:text-cyan-800 transition-colors">
-                                  Something extraordinary.
+                                  Your project workspace
                                 </h4>
                                 <p className="font-body-sm text-xs text-slate-500 truncate">
-                                  Decentralized credentialing engine
+                                  Connect your account to see your project data
                                 </p>
                               </div>
 
                               <div className="flex flex-col gap-1.5">
                                 <div className="flex justify-between items-center font-headline-sm text-[11px]">
                                   <span className="text-slate-500">Milestone Sprint</span>
-                                  <span className="text-emerald-600 font-bold group-hover:scale-105 transition-transform">82%</span>
+                                  <span className="text-emerald-600 font-bold group-hover:scale-105 transition-transform">Live</span>
                                 </div>
                                 <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden flex border border-slate-200/60 shadow-inner">
                                   <div className="h-full bg-emerald-500 rounded-l-full shadow-sm" style={{ width: '55%' }} />
@@ -744,13 +720,11 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
 
                               <div className="flex items-center justify-between pt-2.5">
                                 <div className="flex -space-x-1.5">
-                                  <div className="h-6 w-6 rounded-full bg-emerald-600 text-white flex items-center justify-center font-headline-sm text-[9px] font-bold ring-2 ring-white hover:scale-125 hover:z-10 cursor-pointer shadow-xs">JD</div>
-                                  <div className="h-6 w-6 rounded-full bg-cyan-600 text-white flex items-center justify-center font-headline-sm text-[9px] font-bold ring-2 ring-white hover:scale-125 hover:z-10 cursor-pointer shadow-xs">AK</div>
-                                  <div className="h-6 w-6 rounded-full bg-indigo-600 text-white flex items-center justify-center font-headline-sm text-[9px] font-bold ring-2 ring-white hover:scale-125 hover:z-10 cursor-pointer shadow-xs">SR</div>
+                                  <div className="h-6 w-6 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-headline-sm text-[9px] font-bold ring-2 ring-white shadow-xs">+</div>
                                 </div>
                                 <span className="font-headline-sm text-[11px] font-semibold text-slate-500 flex items-center gap-1 group-hover:text-slate-700 transition-colors">
                                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 halo-breathe-indicator" />
-                                  Building together
+                                  Team data appears here
                                 </span>
                               </div>
                             </div>
@@ -900,38 +874,11 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                       }`}
                       onClick={() => {
                         setPreview(tab);
-                        setTourPlaying(false);
                       }}
                     />
                   ))}
                 </div>
 
-                <button
-                  className={`interactive-press inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl font-headline-sm text-xs font-semibold border transition-all shadow-sm active:scale-95 group ${
-                    tourPlaying
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                      : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-50'
-                  }`}
-                  onClick={() => setTourPlaying(!tourPlaying)}
-                >
-                  <span className={`material-symbols-outlined text-[16px] transition-transform duration-300 ${tourPlaying ? 'text-white animate-spin' : 'text-emerald-600 group-hover:rotate-45'}`}>
-                    motion_photos_on
-                  </span>
-                  <span>{tourPlaying ? 'Tour Playing' : 'Auto tour'}</span>
-                </button>
-
-                <button
-                  className="interactive-press inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-headline-sm text-xs font-medium border border-slate-200 bg-white/80 text-slate-600 hover:text-slate-900 transition-all"
-                  onClick={() => {
-                    const next = !paused;
-                    setPaused(next);
-                    try { localStorage.setItem('placepms-home-motion', next ? 'paused' : 'playing'); } catch { /* ignore */ }
-                  }}
-                  title={paused ? 'Resume ambient shaders and animations' : 'Pause ambient shaders and animations'}
-                >
-                  {paused ? <Play size={13} className="text-emerald-600" /> : <Pause size={13} className="text-slate-400" />}
-                  <span>{paused ? 'Resume Motion' : 'Pause Motion'}</span>
-                </button>
               </div>
             </div>
 
@@ -1019,7 +966,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                   <div className="interactive-press p-2.5 rounded-xl bg-slate-100/80 border border-slate-200/70 flex items-center gap-2.5 transition-all group-hover:bg-emerald-50/70 group-hover:border-emerald-200">
                     <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_6px_#10b981] animate-pulse" />
                     <span className="font-headline-sm text-xs font-semibold text-slate-700 group-hover:text-emerald-900 transition-colors">
-                      Git sync • 14 verified commits logged
+                      GitHub evidence appears after connection
                     </span>
                   </div>
                 </div>
@@ -1320,7 +1267,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                     Ready to turn collegiate effort into permanent career capital?
                   </h3>
                   <p className="font-body-md text-slate-600 max-w-xl text-sm sm:text-base">
-                    Join over 45,000+ students and 240+ institutions streamlining capstone project workflows directly into campus recruitment shortlists.
+                    Bring your academic projects, people, and evidence into one clear workspace.
                   </p>
                 </div>
                 <div className="lg:col-span-4 flex flex-col sm:flex-row lg:flex-col gap-4 justify-center items-start lg:items-end">
@@ -1358,18 +1305,18 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                   />
                 </div>
                 <p className="font-body-sm text-xs text-slate-600 max-w-sm leading-relaxed">
-                  Autonomous university placement operating architecture. Empowering institutions, talent pipelines, and recruit teams with predictive placement workflows.
+                  A focused workspace for academic projects, collaboration, evidence, and progress.
                 </p>
                 <div
                   className="interactive-press inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/80 w-fit cursor-pointer hover:bg-emerald-100 transition-all"
-                  onClick={() => showToast('Network Status: Optimal', '99.98% platform operational uptime verified.')}
+                  onClick={() => showToast('Network Status: Optimal', 'The service status is available from your connected workspace.')}
                 >
                   <span className="relative flex h-2 w-2">
                     <span className="radar-pulse-ring" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_#10b981]" />
                   </span>
                   <span className="font-headline-sm text-[11px] font-bold text-emerald-800">
-                    Placement Network Live • 99.98% Operational
+                    Workspace status is shown after sign in
                   </span>
                 </div>
               </div>
@@ -1389,7 +1336,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
                 <ul className="flex flex-col gap-2.5 font-body-sm text-xs">
                   <li><a className="footer-animated-link text-slate-600 hover:text-slate-900 transition-colors" href="#team">Our team</a></li>
                   <li><a className="footer-animated-link text-slate-600 hover:text-slate-900 transition-colors" href="#faq">FAQ</a></li>
-                  <li><button className="footer-animated-link text-slate-600 hover:text-slate-900 transition-colors text-left" onClick={() => showToast('System Status', 'All regions operational. Latency 14ms.')}>System Status</button></li>
+                  <li><button className="footer-animated-link text-slate-600 hover:text-slate-900 transition-colors text-left" onClick={() => showToast('System Status', 'Check the workspace connection indicator for the current service state.')}>System Status</button></li>
                 </ul>
               </div>
 

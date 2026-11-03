@@ -586,6 +586,43 @@ html .dashboard.workspace-studio.dashboard-dark .dash-overview-stats .dash-stat-
 html .dashboard.workspace-studio.dashboard-dark .dash-overview-stats .dash-stat-blue .dash-stat-icon { color: #63b7ff; background: rgba(99, 183, 255, .11); }
 html .dashboard.workspace-studio.dashboard-dark .dash-overview-stats .dash-stat-purple .dash-stat-icon { color: #b598ff; background: rgba(181, 152, 255, .12); }
 html .dashboard.workspace-studio.dashboard-dark .dash-overview-stats .dash-stat-amber .dash-stat-icon { color: #ffd27a; background: rgba(255, 210, 122, .1); }
+
+/* Calm, static presentation across the public and account surfaces. */
+html .home-page *, html .home-page *::before, html .home-page *::after,
+html .auth-studio *, html .auth-studio *::before, html .auth-studio *::after,
+html .auth-recovery *, html .auth-recovery *::before, html .auth-recovery *::after,
+html .workspace-gate *, html .workspace-gate *::before, html .workspace-gate *::after,
+html .dashboard *, html .dashboard *::before, html .dashboard *::after,
+html .admin-workspace *, html .admin-workspace *::before, html .admin-workspace *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+html .home-page [class*='hover:scale'], html .home-page [class*='hover:rotate'], html .home-page [class*='hover:translate'] { transform: none !important; }
+html .home-page .home-site-header { background: rgba(248, 250, 252, .92); border-bottom: 1px solid var(--ui-line); box-shadow: 0 4px 18px rgba(15, 23, 42, .05); }
+html .home-page .home-site-header > div { padding-top: 12px; }
+html .home-page .home-site-header > div > div { min-height: 60px; border-color: var(--ui-line); box-shadow: 0 8px 24px rgba(15, 23, 42, .06); }
+html .home-page .home-site-main { padding-top: 112px; }
+html .home-page .crystal-panel, html .home-page .home-feature, html .home-page .home-team-card, html .home-page .home-faq details { box-shadow: 0 8px 24px rgba(15, 23, 42, .06); backdrop-filter: none; -webkit-backdrop-filter: none; }
+html .home-page .home-site-main h1 { letter-spacing: -.045em; }
+html .home-page .home-site-main button, html .home-page .home-site-main a { min-height: 40px; }
+html .auth-studio { background: #f7f2ec; color-scheme: light; color: #0f172a; }
+html .auth-studio .auth-showcase { background: #102a43; border-color: #dbe5ef; }
+html .auth-studio .auth-form-shell { background: #ffffff; }
+html .auth-studio .auth-card { padding-block: 18px; }
+html .auth-studio .auth-mode-tabs { background: #f1f5f9; border-color: #dbe5ef; }
+html .auth-studio .auth-mode-tabs button { color: #64748b; }
+html .auth-studio .auth-mode-tabs button[aria-pressed='true'] { color: #0f172a; background: #ffffff; border-color: #cbd5e1; }
+html .auth-studio .auth-card h1 { color: #0f172a; }
+html .auth-studio .auth-card-heading > p, html .auth-studio .auth-form label, html .auth-studio .auth-login-hint { color: #475569; }
+html .auth-studio .auth-form input:not([type='checkbox']) { color: #0f172a; background: #ffffff; border-color: #cbd5e1; }
+html .auth-studio .auth-form input:not([type='checkbox']):focus { border-color: #0891b2; box-shadow: 0 0 0 3px rgba(8, 145, 178, .12); }
+html .auth-studio .auth-login-hint { background: #f8fafc; border-color: #dbe5ef; }
+html .auth-studio .auth-submit { color: #ffffff; background: #0f766e; border-color: #0f766e; box-shadow: none; }
+html .auth-studio .auth-submit:hover { color: #ffffff; background: #115e59; }
+html .auth-studio .auth-topbar, html .auth-studio .auth-form-footer { border-color: #e2e8f0; }
+html .auth-studio .auth-topbar > span, html .auth-studio .auth-back, html .auth-studio .auth-form-footer { color: #64748b; }
+html .auth-studio .auth-universe { opacity: .8; }
 @media (max-width: 850px) {
   html .dashboard.workspace-studio .dash-context-chip:nth-child(n+3) { display: none; }
   html .dashboard.workspace-studio .dash-command-trigger { width: 36px; padding: 0; justify-content: center; border: 0; background: transparent; }
