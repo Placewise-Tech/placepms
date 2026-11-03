@@ -37,7 +37,7 @@ export default function HomePage({ onOpenAuth }: HomePageProps) {
   const openAuth = (mode: AuthMode) => { setMenuOpen(false); onOpenAuth(mode); };
   const goTo = (id: string) => { setMenuOpen(false); navigate(`#${id}`, { preventScrollReset: true }); document.getElementById(id)?.scrollIntoView({ behavior: 'auto', block: 'start' }); };
 
-  return <div className="site-home">
+  return <div className="site-home home-page home-next">
     <header className="site-header">
       <div className="site-header-inner">
         <button className="site-brand" onClick={() => goTo('home-main')} aria-label="PlacePMS home"><img src="/placewise-logo.png" alt="Placewise" /></button>
